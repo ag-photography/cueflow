@@ -1,0 +1,41 @@
+# macOS
+.DS_Store
+
+# Xcode build artifacts
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Generated project — xcodegen recreates this from project.yml.
+# CI runs xcodegen via ci_scripts/ci_post_clone.sh.
+LanguageLearning.xcodeproj/
+
+# Per-user Xcode state
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# Swift Package Manager
+.swiftpm/
+.build/
+Packages/
+
+# CocoaPods (unused, defensive)
+Pods/
+
+# Carthage (unused, defensive)
+Carthage/Build/
+
+# Coverage / playgrounds
+*.playground/
+*.gcno
+
+# Local Claude state — keep out of public repos
+.claude/
+
+# Local TestFlight scratch
+*.ipa
