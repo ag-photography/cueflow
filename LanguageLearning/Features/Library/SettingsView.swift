@@ -9,6 +9,7 @@ struct SettingsView: View {
     @State private var dailyNewLimit: Int = 10
     @State private var transliterationVisible: TransliterationMode = .auto
     @State private var useAIGradingAssist: Bool = false
+    @State private var starterPackResult: String?
 
     var body: some View {
         NavigationStack {
@@ -40,6 +41,29 @@ struct SettingsView: View {
                     Text("Nutzt Apples On-Device-Sprachmodell, um Tier-2-Bewertungen zu verfeinern (iOS 26+, nur auf Apple-Intelligence-fähigen Geräten).")
                 }
 
+                Section {
+                    Button {
+                        let result = SeedData.addStarterPack(context)
+                        starterPackResult = "Hinzugefügt: \(result.phrasesAdded) Karten, \(result.topicsAdded) neue Themen."
+                    } label: {
+                        Label("Starter-Vokabular laden (A1)", systemImage: "tray.and.arrow.down")
+                    }
+                } header: {
+                    Text("Inhalte")
+                } footer: {
+                    Text("Ca. 250 kuratierte A1-Sätze in 23 Themen (Begrüßung, Familie, Verben, Adjektive, …). Doppelte Einträge werden übersprungen.")
+                }
+
+                Section {
+                    vocabLoadButton(level: "A2", count: 230)
+                    vocabLoadButton(level: "B1", count: 492)
+                    vocabLoadButton(level: "B2", count: 986)
+                } header: {
+                    Text("Wortlisten (OpenRussian.org)")
+                } footer: {
+                    Text("Häufigste russische Wörter mit deutschen Übersetzungen, sortiert nach Schwierigkeit. Jede Stufe wird als eigenes Thema eingefügt und ist standardmäßig inaktiv – aktiviere sie in der Bibliothek, wenn du soweit bist. Daten: openrussian.org (CC BY-SA 4.0).")
+                }
+
                 Section("Entwickler") {
                     NavigationLink {
                         TelemetryView()
@@ -55,6 +79,17 @@ struct SettingsView: View {
                 }
             }
             .onAppear { hydrate() }
+            .alert(
+                "Starter-Vokabular",
+                isPresented: Binding(
+                    get: { starterPackResult != nil },
+                    set: { if !$0 { starterPackResult = nil } }
+                )
+            ) {
+                Button("OK") { starterPackResult = nil }
+            } message: {
+                Text(starterPackResult ?? "")
+            }
         }
     }
 
@@ -63,6 +98,21 @@ struct SettingsView: View {
         dailyNewLimit = row?.dailyNewLimit ?? 10
         transliterationVisible = TransliterationMode.from(row?.transliterationVisible)
         useAIGradingAssist = row?.useAIGradingAssist ?? false
+    }
+
+    private func vocabLoadButton(level: String, count: Int) -> some View {
+        Button {
+            let result = SeedData.addVocabLevel(context, level: level)
+            starterPackResult = "Wortliste \(level): \(result.phrasesAdded) Karten hinzugefügt (von \(result.total))."
+        } label: {
+            HStack {
+                Label("Wortliste \(level) laden", systemImage: "books.vertical")
+                Spacer()
+                Text("\(count)")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+            }
+        }
     }
 
     private func save() {

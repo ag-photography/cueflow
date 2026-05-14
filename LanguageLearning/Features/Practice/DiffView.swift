@@ -13,7 +13,7 @@ struct DiffView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: DS.space.md) {
             row(label: "Erwartet", text: render(diff.expected, isExpected: true))
             row(label: "Du", text: render(diff.actual, isExpected: false))
         }
@@ -22,10 +22,12 @@ struct DiffView: View {
     private func row(label: String, text: Text) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(DS.textTertiary)
+                .textCase(.uppercase)
+                .tracking(0.5)
             text
-                .font(.title3)
+                .font(.system(.title3, design: .rounded))
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
@@ -40,21 +42,19 @@ struct DiffView: View {
         switch op {
         case .match(let ch):
             return Text(String(ch))
-                .foregroundStyle(isExpected ? Color.green : Color.primary)
+                .foregroundStyle(isExpected ? DS.gradePerfect : DS.textPrimary)
         case .mismatch(let ch):
             return Text(String(ch))
-                .foregroundStyle(.red)
-                .underline(true, color: .red)
+                .foregroundStyle(DS.gradeWrong)
+                .underline(true, color: DS.gradeWrong)
         case .missing(let ch):
-            // Only render in the expected row — the actual row didn't have it.
             return isExpected
-                ? Text(String(ch)).foregroundStyle(.orange).underline(true, color: .orange)
+                ? Text(String(ch)).foregroundStyle(DS.gradeMinor).underline(true, color: DS.gradeMinor)
                 : Text("")
         case .extra(let ch):
-            // Only render in the actual row — the expected didn't have it.
             return isExpected
                 ? Text("")
-                : Text(String(ch)).foregroundStyle(.red).strikethrough(true, color: .red)
+                : Text(String(ch)).foregroundStyle(DS.gradeWrong).strikethrough(true, color: DS.gradeWrong)
         }
     }
 }

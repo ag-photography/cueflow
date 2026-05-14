@@ -1,21 +1,11 @@
 import SwiftUI
 
-/// Two practice modes side by side; swipe horizontally to switch. Page dots at
-/// the bottom show position. Library + settings live in each mode's toolbar.
+/// Single practice screen with an internal mode picker. Earlier versions used
+/// `TabView` page-style for swipe-to-switch, but the bottom page dots overlay
+/// the rating buttons and conflict with editing — the explicit segmented
+/// control at the top is clearer.
 struct RootView: View {
-    @State private var mode: CardDirection = .typeDeToRu
-
     var body: some View {
-        TabView(selection: $mode) {
-            ForEach(CardDirection.allCases, id: \.self) { direction in
-                PracticeView(mode: direction)
-                    .tag(direction)
-            }
-        }
-        .tabViewStyle(.page(indexDisplayMode: .always))
-        .indexViewStyle(.page(backgroundDisplayMode: .always))
-        // Intentionally NOT .ignoresSafeArea(.bottom): that disables SwiftUI's
-        // automatic keyboard-avoidance in the child PracticeView, which lets
-        // the keyboard overlay the Prüfen / "Ich weiß es nicht" buttons.
+        PracticeView()
     }
 }

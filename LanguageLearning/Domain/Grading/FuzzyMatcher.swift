@@ -124,8 +124,10 @@ enum FuzzyMatcher {
     }
 
     private static let punctuationToStrip: Set<Unicode.Scalar> = {
-        // ASCII punctuation + German guillemets + curly/typographic quotes.
+        // ASCII punctuation + German guillemets + curly/typographic quotes
+        // + dashes and ellipses commonly emitted by SFSpeechRecognizer.
         let chars = ".,!?;:\"'()[]{}\u{00AB}\u{00BB}\u{201E}\u{201C}\u{201D}\u{2018}\u{2019}"
+            + "\u{2013}\u{2014}\u{2015}\u{2026}\u{00B7}\u{2022}/\\"
         return Set(chars.unicodeScalars)
     }()
 

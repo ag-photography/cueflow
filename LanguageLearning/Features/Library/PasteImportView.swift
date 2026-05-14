@@ -12,21 +12,40 @@ struct PasteImportView: View {
 
     @State private var rawText: String = ""
     @State private var separator: String = "="
+    @State private var order: LineOrder = .deRu
 
     private var parsedLines: [ParsedLine] {
         rawText
             .split(separator: "\n", omittingEmptySubsequences: false)
             .enumerated()
-            .map { ParsedLine(index: $0.offset, raw: String($0.element), separator: separator) }
+            .map {
+                ParsedLine(
+                    index: $0.offset,
+                    raw: String($0.element),
+                    separator: separator,
+                    order: order
+                )
+            }
             .filter { !$0.raw.trimmingCharacters(in: .whitespaces).isEmpty }
     }
 
     private var validLines: [ParsedLine] { parsedLines.filter { $0.isValid } }
 
+    private var formatHintText: String {
+        let leftLabel = order == .deRu ? "Deutsch" : "Russisch"
+        let rightLabel = order == .deRu ? "Russisch" : "Deutsch"
+        return "Pro Zeile: \(leftLabel) \(separator) \(rightLabel) | Themenname (optional)"
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section {
+                    Picker("Reihenfolge", selection: $order) {
+                        ForEach(LineOrder.allCases) { ord in
+                            Text(ord.label).tag(ord)
+                        }
+                    }
                     Picker("Trennzeichen", selection: $separator) {
                         Text("=").tag("=")
                         Text("→").tag("→")
@@ -36,7 +55,7 @@ struct PasteImportView: View {
                 } header: {
                     Text("Format")
                 } footer: {
-                    Text("Pro Zeile: Deutsch \(separator) Russisch | Themenname (optional)")
+                    Text(formatHintText)
                 }
 
                 Section("Einfügen") {
@@ -69,11 +88,21 @@ struct PasteImportView: View {
     private func previewRow(line: ParsedLine) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             if line.isValid {
-                Text(line.source ?? "")
-                    .font(.subheadline.weight(.medium))
-                Text(line.target ?? "")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("DE")
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                    Text(line.source ?? "")
+                        .font(.subheadline.weight(.medium))
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("RU")
+                        .font(.caption2.monospaced())
+                        .foregroundStyle(.secondary)
+                    Text(line.target ?? "")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
                 if let topic = line.topic {
                     Text(topic)
                         .font(.caption)
@@ -126,16 +155,30 @@ struct PasteImportView: View {
     }
 }
 
+enum LineOrder: String, CaseIterable, Identifiable {
+    case deRu
+    case ruDe
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .deRu: return "Deutsch → Russisch"
+        case .ruDe: return "Russisch → Deutsch"
+        }
+    }
+}
+
 private struct ParsedLine: Identifiable {
     let id: Int
     let raw: String
+    /// Always German — regardless of the side the user typed it on.
     let source: String?
+    /// Always Russian.
     let target: String?
     let topic: String?
 
     var isValid: Bool { source != nil && target != nil }
 
-    init(index: Int, raw: String, separator: String) {
+    init(index: Int, raw: String, separator: String, order: LineOrder) {
         self.id = index
         self.raw = raw
         let parts = raw.components(separatedBy: separator)
@@ -152,8 +195,22 @@ private struct ParsedLine: Identifiable {
         let topic = rhsParts.count > 1
             ? rhsParts[1].trimmingCharacters(in: .whitespaces)
             : nil
-        self.source = lhs.isEmpty ? nil : lhs
-        self.target = rhs.isEmpty ? nil : rhs
+
+        // Canonicalise: regardless of typed order, store German in `source`
+        // and Russian in `target`. The Phrase model is direction-agnostic at
+        // storage, but the practice loop expects sourceText = prompt language.
+        let german: String
+        let russian: String
+        switch order {
+        case .deRu:
+            german = lhs
+            russian = rhs
+        case .ruDe:
+            german = rhs
+            russian = lhs
+        }
+        self.source = german.isEmpty ? nil : german
+        self.target = russian.isEmpty ? nil : russian
         self.topic = (topic?.isEmpty ?? true) ? nil : topic
     }
 }

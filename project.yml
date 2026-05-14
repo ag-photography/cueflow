@@ -33,7 +33,7 @@ targets:
       properties:
         CFBundleDisplayName: CueFlow
         CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "2"
+        CFBundleVersion: "4"
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen:
           UIColorName: ""

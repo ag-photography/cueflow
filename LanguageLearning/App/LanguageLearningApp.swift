@@ -25,6 +25,10 @@ struct LanguageLearningApp: App {
         WindowGroup {
             RootView()
                 .modelContainer(container)
+                // Brand teal as the system tint so buttons, NavigationLinks,
+                // selection indicators and active-topic badges inherit it
+                // without each view setting `.tint` manually.
+                .tint(DS.accent)
         }
     }
 }
