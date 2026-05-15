@@ -122,29 +122,36 @@ struct PracticeView: View {
     }
 
     private var modePicker: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             ForEach(CardDirection.allCases, id: \.self) { direction in
-                Button {
-                    withAnimation(.easeInOut(duration: 0.2)) { mode = direction }
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: direction == .typeDeToRu ? "keyboard" : "mic.fill")
-                            .font(.subheadline)
-                        Text(direction.displayName)
-                            .font(.subheadline.weight(.semibold))
-                    }
-                    .padding(.horizontal, DS.space.md)
-                    .padding(.vertical, 8)
-                    .foregroundStyle(mode == direction ? .white : DS.textSecondary)
-                    .background(mode == direction ? DS.accent : Color.clear)
-                    .clipShape(Capsule())
-                }
-                .buttonStyle(.plain)
+                modePickerButton(direction: direction)
             }
         }
         .padding(4)
         .background(DS.surface1)
         .clipShape(Capsule())
+    }
+
+    private func modePickerButton(direction: CardDirection) -> some View {
+        let selected = mode == direction
+        let fg: Color = selected ? .white : DS.textSecondary
+        let bg: Color = selected ? DS.accent : .clear
+        return Button {
+            withAnimation(.easeInOut(duration: 0.2)) { mode = direction }
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: direction.displayIcon)
+                    .font(.caption)
+                Text(direction.displayName)
+                    .font(.caption.weight(.semibold))
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 8)
+            .foregroundStyle(fg)
+            .background(bg)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - Phase content
@@ -155,13 +162,87 @@ struct PracticeView: View {
         case .loading:
             loadingView.task { advance() }
         case .prompt(let card):
-            promptContent(card: card, revealed: false)
+            if mode == .flipDeToRu {
+                flipCardScreen(card: card)
+            } else {
+                promptContent(card: card, revealed: false)
+            }
         case .study(let card):
             promptContent(card: card, revealed: true)
         case .reveal(let card, let result, let answer, let elapsedMs):
             revealContent(card: card, result: result, userAnswer: answer, responseTimeMs: elapsedMs)
         case .empty:
             emptyContent
+        }
+    }
+
+    // MARK: - Flip card mode
+
+    private func flipCardScreen(card: StudyCard) -> some View {
+        VStack(spacing: DS.space.md) {
+            topicChips(card: card)
+
+            FlipCardView(
+                card: card,
+                showTransliteration: shouldShowTransliteration,
+                onRate: { rating in
+                    recordFlipReview(card: card, rating: rating)
+                }
+            )
+            .id(card.persistentModelID)  // forces fresh state per card
+
+            HStack(spacing: DS.space.md) {
+                Label("Wischen", systemImage: "arrow.left.and.right")
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(DS.textTertiary)
+                Spacer()
+                Button {
+                    // Manual skip — rate as Again so it surfaces again later.
+                    recordFlipReview(card: card, rating: 1)
+                } label: {
+                    Text("Überspringen")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(DS.textSecondary)
+                        .underline()
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, DS.space.md)
+        .onAppear {
+            if promptStart == nil { promptStart = .now }
+        }
+    }
+
+    private func recordFlipReview(card: StudyCard, rating: Int) {
+        do {
+            let wasNew = card.state == .new
+            try scheduler.record(rating: rating, on: card)
+
+            let review = Review(
+                card: card,
+                rating: rating,
+                autoGradeRating: rating,  // no auto-grader involved in flip mode
+                userAnswer: "",
+                mode: card.direction,
+                responseTimeMs: Int((promptStart.map { Date.now.timeIntervalSince($0) } ?? 0) * 1000),
+                gradeTier: 0,  // tier 0 = recognition flip, no character grading
+                wasNew: wasNew
+            )
+            context.insert(review)
+            try context.save()
+        } catch {
+            print("Failed to record flip review: \(error)")
+        }
+
+        promptStart = nil
+        sessionCount += 1
+        if rating >= 3 { sessionCorrect += 1 }
+
+        if sessionCount >= sessionTarget {
+            showingSessionSummary = true
+        } else {
+            phase = .loading
         }
     }
 
@@ -287,6 +368,10 @@ struct PracticeView: View {
             typingInputSection(revealed: revealed)
         case .speakDeToRu:
             speakInputSection(revealed: revealed)
+        case .flipDeToRu:
+            // Flip mode renders FlipCardView at the screen level, no
+            // separate input area is needed.
+            EmptyView()
         }
     }
 

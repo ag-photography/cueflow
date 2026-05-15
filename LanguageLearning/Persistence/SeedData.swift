@@ -2,6 +2,25 @@ import Foundation
 import SwiftData
 
 enum SeedData {
+    /// Idempotent: every Phrase should have one StudyCard per CardDirection.
+    /// When a new direction is added in a future build (e.g. `.flipDeToRu` in
+    /// build 8) existing phrases are missing the new card — this backfills it
+    /// so the new mode has content to schedule on first run.
+    @discardableResult
+    static func backfillMissingCards(_ context: ModelContext) -> Int {
+        let phrases = (try? context.fetch(FetchDescriptor<Phrase>())) ?? []
+        var added = 0
+        for phrase in phrases {
+            let existing = Set(phrase.cards.map(\.direction))
+            for direction in CardDirection.allCases where !existing.contains(direction) {
+                context.insert(StudyCard(phrase: phrase, direction: direction))
+                added += 1
+            }
+        }
+        if added > 0 { try? context.save() }
+        return added
+    }
+
     /// Inserts the default Russian language and the full starter pack on first
     /// launch with an empty store.
     static func seedIfNeeded(_ context: ModelContext) {

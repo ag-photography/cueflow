@@ -15,7 +15,11 @@ struct LanguageLearningApp: App {
                 configurations: configuration
             )
             self.container = container
-            SeedData.seedIfNeeded(ModelContext(container))
+            let setupContext = ModelContext(container)
+            SeedData.seedIfNeeded(setupContext)
+            // Backfill StudyCards for any new directions added in updates
+            // (idempotent — only inserts the missing ones).
+            SeedData.backfillMissingCards(setupContext)
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }

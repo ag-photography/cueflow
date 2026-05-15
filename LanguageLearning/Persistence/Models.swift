@@ -95,13 +95,23 @@ final class Phrase {
 }
 
 enum CardDirection: String, Codable, CaseIterable {
-    case typeDeToRu
-    case speakDeToRu
+    case flipDeToRu       // recognition: tap to reveal, swipe to rate
+    case typeDeToRu       // written production
+    case speakDeToRu      // spoken production
 
     var displayName: String {
         switch self {
+        case .flipDeToRu: return "Karten"
         case .typeDeToRu: return "Tippen"
         case .speakDeToRu: return "Sprechen"
+        }
+    }
+
+    var displayIcon: String {
+        switch self {
+        case .flipDeToRu: return "rectangle.on.rectangle"
+        case .typeDeToRu: return "keyboard"
+        case .speakDeToRu: return "mic.fill"
         }
     }
 }
