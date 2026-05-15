@@ -18,6 +18,11 @@ enum DS {
     static let surface1 = Color(.secondarySystemBackground)
     static let surface2 = Color(.tertiarySystemBackground)
 
+    /// Disabled-state grey. Distinct from the faded-accent look so a disabled
+    /// primary button reads as "waiting for input" not "broken".
+    static let disabled = Color(.systemGray5)
+    static let disabledText = Color(.systemGray2)
+
     /// Foreground scale.
     static let textPrimary = Color(.label)
     static let textSecondary = Color(.secondaryLabel)

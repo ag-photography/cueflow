@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 /// Practice screen — the core loop. Custom header at the top with a pill-style
 /// mode picker (no more bottom page dots overlaying the rating row). Hero
@@ -54,6 +55,7 @@ struct PracticeView: View {
 
     var body: some View {
         VStack(spacing: 0) {
+            sessionProgressBar
             headerBar
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -77,20 +79,31 @@ struct PracticeView: View {
 
     // MARK: - Header
 
+    /// Duolingo-style thin progress bar showing where we are in the current
+    /// 10-card block. Fills with brand accent. 4pt tall, full width.
+    private var sessionProgressBar: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(DS.surface1)
+                Rectangle()
+                    .fill(DS.accent)
+                    .frame(width: geo.size.width * progressFraction)
+                    .animation(.easeOut(duration: 0.3), value: sessionCount)
+            }
+        }
+        .frame(height: 4)
+    }
+
+    private var progressFraction: CGFloat {
+        guard sessionTarget > 0 else { return 0 }
+        return CGFloat(min(sessionCount, sessionTarget)) / CGFloat(sessionTarget)
+    }
+
     private var headerBar: some View {
         HStack(spacing: DS.space.md) {
             modePicker
             Spacer()
-            if sessionCount > 0 {
-                Text("\(sessionCount)/\(sessionTarget)")
-                    .font(.footnote.monospacedDigit().weight(.medium))
-                    .foregroundStyle(DS.textSecondary)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(DS.surface1)
-                    .clipShape(Capsule())
-                    .transition(.opacity)
-            }
             Button {
                 showingLibrary = true
             } label: {
@@ -299,24 +312,45 @@ struct PracticeView: View {
                 .focused($inputFocused)
                 .onSubmit { submit(revealed: revealed) }
 
-            Button {
-                submit(revealed: revealed)
-            } label: {
-                Text("Prüfen")
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
-                    .background(
-                        input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? DS.accent.opacity(0.35)
-                            : DS.accent
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
-            }
-            .buttonStyle(.plain)
-            .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            primaryButton(
+                title: "Prüfen",
+                disabled: input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                action: { submit(revealed: revealed) }
+            )
         }
+    }
+
+    /// Big-friendly primary action button — Duolingo-style depth (slight
+    /// lower-edge shadow when active, gray when disabled so it doesn't look
+    /// like a broken accent button). 60pt tall, full width.
+    private func primaryButton(
+        title: String,
+        disabled: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button {
+            UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            action()
+        } label: {
+            Text(title)
+                .font(.headline.weight(.bold))
+                .tracking(0.5)
+                .foregroundStyle(disabled ? DS.disabledText : .white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(
+                    RoundedRectangle(cornerRadius: DS.radius.md)
+                        .fill(disabled ? DS.disabled : DS.accent)
+                )
+                .shadow(
+                    color: disabled ? .clear : DS.accent.opacity(0.25),
+                    radius: 6,
+                    x: 0,
+                    y: 3
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
     }
 
     @ViewBuilder
@@ -513,7 +547,10 @@ struct PracticeView: View {
         onTap: @escaping () -> Void
     ) -> some View {
         let isSuggested = spec.rating == suggested
-        return Button(action: onTap) {
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            onTap()
+        } label: {
             VStack(spacing: 4) {
                 Image(systemName: spec.symbol)
                     .font(.title3)
@@ -522,9 +559,15 @@ struct PracticeView: View {
             }
             .foregroundStyle(isSuggested ? .white : spec.color)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 14)
+            .padding(.vertical, 16)
             .background(isSuggested ? spec.color : spec.color.opacity(0.12))
             .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .shadow(
+                color: isSuggested ? spec.color.opacity(0.25) : .clear,
+                radius: 4,
+                x: 0,
+                y: 2
+            )
         }
         .buttonStyle(.plain)
     }
