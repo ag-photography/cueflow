@@ -5,11 +5,23 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query private var settings: [AppSettings]
+    @Query private var topics: [Topic]
+    @Query private var phrases: [Phrase]
 
     @State private var dailyNewLimit: Int = 10
     @State private var transliterationVisible: TransliterationMode = .auto
     @State private var useAIGradingAssist: Bool = false
     @State private var starterPackResult: String?
+
+    private let starterPackTotal = 250  // see SeedData.starterPhrases
+    private let vocabExpected: [String: Int] = ["A2": 230, "B1": 492, "B2": 986]
+    private let starterTopicNames: Set<String> = [
+        "Begrüßung", "Höflichkeit", "Verständigung", "Sich vorstellen",
+        "Zahlen", "Wochentage", "Monate", "Zeit", "Familie", "Im Restaurant",
+        "Wegbeschreibung", "Einkaufen", "Verben", "Adjektive", "Fragewörter",
+        "Wetter", "Körperteile", "Essen & Trinken", "Kleidung", "Zuhause",
+        "Farben", "Verkehr", "Allgemein"
+    ]
 
     var body: some View {
         NavigationStack {
@@ -42,26 +54,21 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Button {
-                        let result = SeedData.addStarterPack(context)
-                        starterPackResult = "Hinzugefügt: \(result.phrasesAdded) Karten, \(result.topicsAdded) neue Themen."
-                    } label: {
-                        Label("Starter-Vokabular laden (A1)", systemImage: "tray.and.arrow.down")
-                    }
+                    starterPackRow
                 } header: {
-                    Text("Inhalte")
+                    Text("Starter-Vokabular (A1)")
                 } footer: {
-                    Text("Ca. 250 kuratierte A1-Sätze in 23 Themen (Begrüßung, Familie, Verben, Adjektive, …). Doppelte Einträge werden übersprungen.")
+                    Text("Ca. 250 kuratierte A1-Sätze in 23 Themen (Begrüßung, Familie, Verben, Adjektive, …).")
                 }
 
                 Section {
-                    vocabLoadButton(level: "A2", count: 230)
-                    vocabLoadButton(level: "B1", count: 492)
-                    vocabLoadButton(level: "B2", count: 986)
+                    vocabRow(level: "A2")
+                    vocabRow(level: "B1")
+                    vocabRow(level: "B2")
                 } header: {
                     Text("Wortlisten (OpenRussian.org)")
                 } footer: {
-                    Text("Häufigste russische Wörter mit deutschen Übersetzungen, sortiert nach Schwierigkeit. Jede Stufe wird als eigenes Thema eingefügt und ist standardmäßig inaktiv – aktiviere sie in der Bibliothek, wenn du soweit bist. Daten: openrussian.org (CC BY-SA 4.0).")
+                    Text("Häufigste russische Wörter mit deutschen Übersetzungen. Jede Stufe landet als eigenes Thema in der Bibliothek (inaktiv) – aktiviere sie dort, wenn du soweit bist. Daten: openrussian.org (CC BY-SA 4.0).")
                 }
 
                 Section {
@@ -110,19 +117,88 @@ struct SettingsView: View {
         useAIGradingAssist = row?.useAIGradingAssist ?? false
     }
 
-    private func vocabLoadButton(level: String, count: Int) -> some View {
-        Button {
-            let result = SeedData.addVocabLevel(context, level: level)
-            starterPackResult = "Wortliste \(level): \(result.phrasesAdded) Karten hinzugefügt (von \(result.total))."
-        } label: {
-            HStack {
-                Label("Wortliste \(level) laden", systemImage: "books.vertical")
-                Spacer()
-                Text("\(count)")
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+    // MARK: - Load-state rows
+
+    private var starterPackRow: some View {
+        let loaded = starterPackLoadedCount
+        let isLoaded = loaded >= starterPackTotal * 9 / 10
+        return Group {
+            if isLoaded {
+                HStack {
+                    Label("Geladen", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Spacer()
+                    Text("\(loaded)/\(starterPackTotal)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            } else if loaded > 0 {
+                Button {
+                    let result = SeedData.addStarterPack(context)
+                    starterPackResult = "Hinzugefügt: \(result.phrasesAdded) Karten."
+                } label: {
+                    HStack {
+                        Label("Teilweise geladen – Rest laden", systemImage: "arrow.down.circle")
+                        Spacer()
+                        Text("\(loaded)/\(starterPackTotal)")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+            } else {
+                Button {
+                    let result = SeedData.addStarterPack(context)
+                    starterPackResult = "Hinzugefügt: \(result.phrasesAdded) Karten, \(result.topicsAdded) neue Themen."
+                } label: {
+                    HStack {
+                        Label("Laden", systemImage: "tray.and.arrow.down")
+                        Spacer()
+                        Text("\(starterPackTotal)")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
             }
         }
+    }
+
+    private func vocabRow(level: String) -> some View {
+        let expected = vocabExpected[level] ?? 0
+        let loaded = phrases.filter { phrase in
+            phrase.topics.contains { $0.name == "Wortliste \(level)" }
+        }.count
+        let isLoaded = loaded >= expected * 9 / 10
+        return Group {
+            if isLoaded {
+                HStack {
+                    Label("Wortliste \(level)", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Spacer()
+                    Text("\(loaded)/\(expected)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            } else {
+                Button {
+                    let result = SeedData.addVocabLevel(context, level: level)
+                    starterPackResult = "Wortliste \(level): \(result.phrasesAdded) Karten hinzugefügt."
+                } label: {
+                    HStack {
+                        Label("Wortliste \(level) laden", systemImage: loaded > 0 ? "arrow.down.circle" : "books.vertical")
+                        Spacer()
+                        Text(loaded > 0 ? "\(loaded)/\(expected)" : "\(expected)")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+            }
+        }
+    }
+
+    private var starterPackLoadedCount: Int {
+        phrases.filter { phrase in
+            phrase.topics.contains { starterTopicNames.contains($0.name) }
+        }.count
     }
 
     private func save() {

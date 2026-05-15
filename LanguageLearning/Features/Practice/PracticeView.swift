@@ -16,6 +16,7 @@ struct PracticeView: View {
     @State private var input: String = ""
     @State private var promptStart: Date?
     @State private var showingLibrary = false
+    @State private var showingProfile = false
     @State private var sessionCount: Int = 0
     @State private var sessionCorrect: Int = 0
     @State private var showingSessionSummary = false
@@ -65,6 +66,9 @@ struct PracticeView: View {
         .sheet(isPresented: $showingLibrary, onDismiss: { advance() }) {
             LibraryView()
         }
+        .sheet(isPresented: $showingProfile) {
+            ProfileView()
+        }
         .sheet(isPresented: $showingSessionSummary) {
             sessionSummarySheet
         }
@@ -101,24 +105,27 @@ struct PracticeView: View {
     }
 
     private var headerBar: some View {
-        HStack(spacing: DS.space.md) {
+        HStack(spacing: DS.space.sm) {
             modePicker
             Spacer()
-            Button {
-                showingLibrary = true
-            } label: {
-                Image(systemName: "books.vertical")
-                    .font(.title3)
-                    .foregroundStyle(DS.textPrimary)
-                    .frame(width: 40, height: 40)
-                    .background(DS.surface1)
-                    .clipShape(Circle())
-            }
-            .buttonStyle(.plain)
+            headerIconButton(systemName: "chart.bar.fill") { showingProfile = true }
+            headerIconButton(systemName: "books.vertical") { showingLibrary = true }
         }
         .padding(.horizontal, DS.space.md)
         .padding(.vertical, DS.space.sm)
         .background(DS.surface0)
+    }
+
+    private func headerIconButton(systemName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(.callout)
+                .foregroundStyle(DS.textPrimary)
+                .frame(width: 36, height: 36)
+                .background(DS.surface1)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
     }
 
     private var modePicker: some View {
@@ -139,17 +146,15 @@ struct PracticeView: View {
         return Button {
             withAnimation(.easeInOut(duration: 0.2)) { mode = direction }
         } label: {
-            HStack(spacing: 5) {
-                Image(systemName: direction.displayIcon)
-                    .font(.caption)
-                Text(direction.displayName)
-                    .font(.caption.weight(.semibold))
-            }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 8)
-            .foregroundStyle(fg)
-            .background(bg)
-            .clipShape(Capsule())
+            Text(direction.displayName)
+                .font(.caption.weight(.semibold))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .foregroundStyle(fg)
+                .background(bg)
+                .clipShape(Capsule())
         }
         .buttonStyle(.plain)
     }
