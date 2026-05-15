@@ -31,8 +31,14 @@ struct FlipCardView: View {
                 .onTapGesture {
                     let haptic = UIImpactFeedbackGenerator(style: .light)
                     haptic.impactOccurred()
+                    let willReveal = !flipped
                     withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) {
                         flipped.toggle()
+                    }
+                    // Speak the Russian when revealing (not when flipping back).
+                    // Matches the auto-play behaviour on the type/speak reveal screens.
+                    if willReveal {
+                        TTSService.shared.speak(card.phrase?.targetText ?? "", times: 2)
                     }
                 }
         }

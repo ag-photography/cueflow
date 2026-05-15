@@ -20,6 +20,9 @@ struct LanguageLearningApp: App {
             // Backfill StudyCards for any new directions added in updates
             // (idempotent — only inserts the missing ones).
             SeedData.backfillMissingCards(setupContext)
+            // Migrate old "Wortliste A2/B1/B2" mega-topics into POS-split
+            // topics (idempotent — no-op once migrated).
+            SeedData.migrateVocabTopicsToPOS(setupContext)
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }

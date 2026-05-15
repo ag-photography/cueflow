@@ -38,6 +38,11 @@ enum SeedData {
     /// Loads a level pack (A2/B1/B2) from the bundled OpenRussian.org dataset.
     /// CC BY-SA 4.0 — see `openrussian-vocab.json` for the source attribution.
     ///
+    /// Phrases are split into POS-specific topics ("A2 Substantive", "A2
+    /// Verben", "A2 Adjektive", "A2 Sonstige") rather than dumped into one
+    /// big "Wortliste A2" bag — matches the grouping style of the curated
+    /// starter pack.
+    ///
     /// Idempotent: skips phrases that already exist by exact (`de`, `ru`)
     /// signature. Stress-marked Cyrillic goes into `transliteration` as a
     /// pronunciation hint; `targetText` stores the bare form so grading
@@ -47,50 +52,37 @@ enum SeedData {
         _ context: ModelContext,
         level: String
     ) -> (phrasesAdded: Int, total: Int, topicAdded: Bool) {
-        guard
-            let url = Bundle.main.url(forResource: "openrussian-vocab", withExtension: "json"),
-            let data = try? Data(contentsOf: url),
-            let payload = try? JSONDecoder().decode([String: [VocabEntry]].self, from: data),
-            let entries = payload[level]
-        else {
+        guard let entries = loadVocabPayload()?[level] else {
             return (0, 0, false)
         }
 
-        let languages = (try? context.fetch(FetchDescriptor<Language>())) ?? []
-        let russian: Language
-        if let existing = languages.first(where: { $0.code == "ru" }) {
-            russian = existing
-        } else {
-            russian = Language(code: "ru", name: "Русский")
-            context.insert(russian)
-        }
-
-        let topicName = "Wortliste \(level)"
-        let existingTopics = (try? context.fetch(FetchDescriptor<Topic>())) ?? []
-        let topic: Topic
-        var topicAdded = false
-        if let existing = existingTopics.first(where: { $0.name == topicName }) {
-            topic = existing
-        } else {
-            topic = Topic(name: topicName, language: russian, isActive: false)
-            context.insert(topic)
-            topicAdded = true
-        }
+        let russian = ensureRussianLanguage(context: context)
+        var topicCache = buildTopicCache(context: context)
 
         let existingPhrases = (try? context.fetch(FetchDescriptor<Phrase>())) ?? []
         var sigs = Set(existingPhrases.map { "\($0.sourceText)|||\($0.targetText)" })
 
         var added = 0
+        var topicsAdded = 0
         for entry in entries {
             let signature = "\(entry.de)|||\(entry.ru)"
             guard !sigs.contains(signature) else { continue }
             sigs.insert(signature)
 
+            let topicName = "\(level) \(posToGermanLabel(entry.pos))"
+            let topicResult = ensureTopic(
+                name: topicName,
+                language: russian,
+                context: context,
+                cache: &topicCache
+            )
+            if topicResult.created { topicsAdded += 1 }
+
             let phrase = Phrase(
                 sourceText: entry.de,
                 targetText: entry.ru,
                 language: russian,
-                topics: [topic],
+                topics: [topicResult.topic],
                 transliteration: entry.ru_a == entry.ru ? nil : entry.ru_a
             )
             context.insert(phrase)
@@ -100,7 +92,116 @@ enum SeedData {
             added += 1
         }
         try? context.save()
-        return (added, entries.count, topicAdded)
+        return (added, entries.count, topicsAdded > 0)
+    }
+
+    /// One-shot migration from the old "Wortliste A2/B1/B2" mega-topics to
+    /// the POS-split layout. For every phrase in an old "Wortliste X" topic,
+    /// look up its part of speech in the bundled JSON, move it to "X POS",
+    /// and delete the now-empty old topic.
+    ///
+    /// Idempotent: if no old topics exist, no-op. Safe to call on every launch.
+    @discardableResult
+    static func migrateVocabTopicsToPOS(_ context: ModelContext) -> Int {
+        let allTopics = (try? context.fetch(FetchDescriptor<Topic>())) ?? []
+        let oldTopics = allTopics.filter { $0.name.hasPrefix("Wortliste ") }
+        guard !oldTopics.isEmpty else { return 0 }
+
+        guard let payload = loadVocabPayload() else { return 0 }
+
+        // Build ru-bare → pos lookup across all levels.
+        var posByRu: [String: String] = [:]
+        for (_, entries) in payload {
+            for entry in entries { posByRu[entry.ru] = entry.pos }
+        }
+
+        let russian = ensureRussianLanguage(context: context)
+        var topicCache = buildTopicCache(context: context)
+
+        var movedPhrases = 0
+        for oldTopic in oldTopics {
+            let level = String(oldTopic.name.dropFirst("Wortliste ".count))
+            let snapshot = oldTopic.phrases
+            for phrase in snapshot {
+                let pos = posByRu[phrase.targetText] ?? "other"
+                let newTopicName = "\(level) \(posToGermanLabel(pos))"
+                let newTopic = ensureTopic(
+                    name: newTopicName,
+                    language: russian,
+                    context: context,
+                    cache: &topicCache,
+                    isActive: oldTopic.isActive
+                ).topic
+
+                // Detach from old topic, attach to new.
+                phrase.topics.removeAll { $0.persistentModelID == oldTopic.persistentModelID }
+                if !phrase.topics.contains(where: { $0.persistentModelID == newTopic.persistentModelID }) {
+                    phrase.topics.append(newTopic)
+                }
+                movedPhrases += 1
+            }
+        }
+
+        // Delete the old now-empty topics.
+        for oldTopic in oldTopics where oldTopic.phrases.isEmpty {
+            context.delete(oldTopic)
+        }
+        try? context.save()
+        return movedPhrases
+    }
+
+    // MARK: - Vocab helpers
+
+    private static func loadVocabPayload() -> [String: [VocabEntry]]? {
+        guard
+            let url = Bundle.main.url(forResource: "openrussian-vocab", withExtension: "json"),
+            let data = try? Data(contentsOf: url)
+        else { return nil }
+        return try? JSONDecoder().decode([String: [VocabEntry]].self, from: data)
+    }
+
+    private static func ensureRussianLanguage(context: ModelContext) -> Language {
+        let languages = (try? context.fetch(FetchDescriptor<Language>())) ?? []
+        if let existing = languages.first(where: { $0.code == "ru" }) {
+            return existing
+        }
+        let russian = Language(code: "ru", name: "Русский")
+        context.insert(russian)
+        return russian
+    }
+
+    private static func buildTopicCache(context: ModelContext) -> [String: Topic] {
+        let existing = (try? context.fetch(FetchDescriptor<Topic>())) ?? []
+        return Dictionary(uniqueKeysWithValues: existing.map { ($0.name, $0) })
+    }
+
+    private static func ensureTopic(
+        name: String,
+        language: Language,
+        context: ModelContext,
+        cache: inout [String: Topic],
+        isActive: Bool = false
+    ) -> (topic: Topic, created: Bool) {
+        if let existing = cache[name] { return (existing, false) }
+        let topic = Topic(name: name, language: language, isActive: isActive)
+        context.insert(topic)
+        cache[name] = topic
+        return (topic, true)
+    }
+
+    /// Maps OpenRussian POS tags to German labels users will recognise.
+    private static func posToGermanLabel(_ pos: String) -> String {
+        switch pos.lowercased() {
+        case "noun": return "Substantive"
+        case "verb": return "Verben"
+        case "adjective": return "Adjektive"
+        case "pronoun": return "Pronomen"
+        case "adverb": return "Adverbien"
+        case "preposition": return "Präpositionen"
+        case "conjunction": return "Konjunktionen"
+        case "numeral", "number": return "Zahlwörter"
+        default: return "Sonstige"
+        }
     }
 
     private struct VocabEntry: Decodable {

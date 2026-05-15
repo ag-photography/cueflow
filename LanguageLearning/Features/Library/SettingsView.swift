@@ -165,7 +165,7 @@ struct SettingsView: View {
     private func vocabRow(level: String) -> some View {
         let expected = vocabExpected[level] ?? 0
         let loaded = phrases.filter { phrase in
-            phrase.topics.contains { $0.name == "Wortliste \(level)" }
+            phrase.topics.contains { $0.name.hasPrefix("\(level) ") }
         }.count
         let isLoaded = loaded >= expected * 9 / 10
         return Group {
