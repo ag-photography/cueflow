@@ -1,4 +1,15 @@
 import SwiftUI
+import UIKit
+
+extension Color {
+    /// Light/dark variant convenience — bakes a `UIColor.init(dynamicProvider:)`
+    /// behind the scenes so trait collection changes are observed.
+    init(light: Color, dark: Color) {
+        self.init(UIColor { trait in
+            trait.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light)
+        })
+    }
+}
 
 /// Single source of truth for visual tokens — colour, spacing, corner radius,
 /// shadow, typography helpers. Every screen pulls from here so the look stays
@@ -7,26 +18,41 @@ enum DS {
 
     // MARK: - Colour
 
-    /// Brand accent — calm deep teal. Reads as "premium reading app" rather
-    /// than gamified or playful.
-    static let accent = Color(red: 0.16, green: 0.45, blue: 0.55)
-    static let accentSoft = Color(red: 0.16, green: 0.45, blue: 0.55).opacity(0.12)
+    /// Brand accent — deep teal, slightly more saturated than the previous
+    /// muted shade so primary buttons read as confident, not tentative.
+    static let accent = Color(red: 0.08, green: 0.42, blue: 0.52)
+    static let accentSoft = Color(red: 0.08, green: 0.42, blue: 0.52).opacity(0.12)
 
-    /// Surface scale. Use these instead of `.background` / hard-coded greys
-    /// so dark mode just works.
-    static let surface0 = Color(.systemBackground)
-    static let surface1 = Color(.secondarySystemBackground)
-    static let surface2 = Color(.tertiarySystemBackground)
+    /// Surface scale. Warm cream in light mode (Babbel-style premium reading
+    /// surface), deep neutral charcoal in dark mode. Avoids the stark
+    /// iOS-default white that read as "system form".
+    static let surface0 = Color(
+        light: Color(red: 0.97, green: 0.95, blue: 0.90),   // warm cream
+        dark: Color(red: 0.09, green: 0.09, blue: 0.10)      // near-black
+    )
+    static let surface1 = Color(
+        light: Color(red: 1.00, green: 0.99, blue: 0.96),   // very light cream / "white" on cream
+        dark: Color(red: 0.16, green: 0.16, blue: 0.17)
+    )
+    static let surface2 = Color(
+        light: Color(red: 0.93, green: 0.90, blue: 0.83),   // slightly deeper cream
+        dark: Color(red: 0.22, green: 0.22, blue: 0.23)
+    )
 
-    /// Disabled-state grey. Distinct from the faded-accent look so a disabled
-    /// primary button reads as "waiting for input" not "broken".
-    static let disabled = Color(.systemGray5)
-    static let disabledText = Color(.systemGray2)
-
-    /// Foreground scale.
     static let textPrimary = Color(.label)
     static let textSecondary = Color(.secondaryLabel)
     static let textTertiary = Color(.tertiaryLabel)
+
+    /// Disabled-state grey. Distinct from the faded-accent look so a disabled
+    /// primary button reads as "waiting for input" not "broken".
+    static let disabled = Color(
+        light: Color(red: 0.85, green: 0.83, blue: 0.78),
+        dark: Color(red: 0.27, green: 0.27, blue: 0.28)
+    )
+    static let disabledText = Color(
+        light: Color(red: 0.55, green: 0.53, blue: 0.48),
+        dark: Color(red: 0.55, green: 0.55, blue: 0.56)
+    )
 
     /// Semantic colours for grading. Slightly desaturated so they feel
     /// information-conveying, not alarming.

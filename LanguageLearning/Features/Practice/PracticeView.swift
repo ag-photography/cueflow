@@ -231,12 +231,13 @@ struct PracticeView: View {
     }
 
     private func heroPrompt(card: StudyCard) -> some View {
-        // Confident typography, no card chrome — the prompt IS the page.
+        // Serif typography (Apple "New York" via design: .serif) for a
+        // premium reading-app feel — borrowed from Babbel's headline style.
         // Scales down for longer phrases so wrapping stays graceful.
         let text = card.phrase?.sourceText ?? "—"
-        let size: CGFloat = text.count > 30 ? 28 : (text.count > 15 ? 34 : 40)
+        let size: CGFloat = text.count > 30 ? 30 : (text.count > 15 ? 38 : 46)
         return Text(text)
-            .font(.system(size: size, weight: .semibold))
+            .font(.system(size: size, weight: .bold, design: .serif))
             .multilineTextAlignment(.center)
             .foregroundStyle(DS.textPrimary)
             .frame(maxWidth: .infinity)
@@ -298,13 +299,13 @@ struct PracticeView: View {
             TextField("Auf Russisch tippen…", text: $input)
                 .font(.title3)
                 .textFieldStyle(.plain)
-                .padding(.horizontal, DS.space.md)
-                .padding(.vertical, 14)
+                .padding(.horizontal, DS.space.lg)
+                .padding(.vertical, 18)
                 .background(DS.surface1)
-                .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+                .clipShape(Capsule())
                 .overlay(
-                    RoundedRectangle(cornerRadius: DS.radius.md)
-                        .stroke(inputFocused ? DS.accent : .clear, lineWidth: 2)
+                    Capsule()
+                        .stroke(inputFocused ? DS.accent : Color.black.opacity(0.08), lineWidth: 2)
                 )
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
@@ -320,9 +321,9 @@ struct PracticeView: View {
         }
     }
 
-    /// Big-friendly primary action button — Duolingo-style depth (slight
-    /// lower-edge shadow when active, gray when disabled so it doesn't look
-    /// like a broken accent button). 60pt tall, full width.
+    /// Pill-shaped primary action button — Babbel-style fully rounded shape,
+    /// Duolingo-style depth via subtle accent-coloured shadow. Disabled state
+    /// uses neutral grey so it reads "waiting for input" not "broken".
     private func primaryButton(
         title: String,
         disabled: Bool,
@@ -334,19 +335,18 @@ struct PracticeView: View {
         } label: {
             Text(title)
                 .font(.headline.weight(.bold))
-                .tracking(0.5)
                 .foregroundStyle(disabled ? DS.disabledText : .white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 18)
+                .padding(.vertical, 20)
                 .background(
-                    RoundedRectangle(cornerRadius: DS.radius.md)
+                    Capsule()
                         .fill(disabled ? DS.disabled : DS.accent)
                 )
                 .shadow(
-                    color: disabled ? .clear : DS.accent.opacity(0.25),
-                    radius: 6,
+                    color: disabled ? .clear : DS.accent.opacity(0.30),
+                    radius: 8,
                     x: 0,
-                    y: 3
+                    y: 4
                 )
         }
         .buttonStyle(.plain)
@@ -374,6 +374,7 @@ struct PracticeView: View {
             }
 
             Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 if speech.isRecording {
                     speech.stop()
                     submit(revealed: revealed)
@@ -385,12 +386,17 @@ struct PracticeView: View {
                     Image(systemName: speech.isRecording ? "stop.fill" : "mic.fill")
                     Text(speech.isRecording ? "Stoppen & Prüfen" : "Aufnahme starten")
                 }
-                .font(.headline)
+                .font(.headline.weight(.bold))
                 .foregroundStyle(.white)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(speech.isRecording ? DS.gradeWrong : DS.accent)
-                .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+                .padding(.vertical, 20)
+                .background(
+                    Capsule().fill(speech.isRecording ? DS.gradeWrong : DS.accent)
+                )
+                .shadow(
+                    color: (speech.isRecording ? DS.gradeWrong : DS.accent).opacity(0.30),
+                    radius: 8, x: 0, y: 4
+                )
             }
             .buttonStyle(.plain)
         }
