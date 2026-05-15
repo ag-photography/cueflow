@@ -64,6 +64,16 @@ struct SettingsView: View {
                     Text("Häufigste russische Wörter mit deutschen Übersetzungen, sortiert nach Schwierigkeit. Jede Stufe wird als eigenes Thema eingefügt und ist standardmäßig inaktiv – aktiviere sie in der Bibliothek, wenn du soweit bist. Daten: openrussian.org (CC BY-SA 4.0).")
                 }
 
+                Section {
+                    NavigationLink {
+                        BackupView()
+                    } label: {
+                        Label("Sicherung & Export", systemImage: "externaldrive.badge.icloud")
+                    }
+                } footer: {
+                    Text("Exportiert alle Daten als JSON. TestFlight- und App-Store-Updates erhalten deinen Fortschritt automatisch.")
+                }
+
                 Section("Entwickler") {
                     NavigationLink {
                         TelemetryView()

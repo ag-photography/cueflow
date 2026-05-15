@@ -123,6 +123,16 @@ enum FuzzyMatcher {
         return (expectedOps.reversed(), actualOps.reversed())
     }
 
+    /// Strips the same punctuation set as `normalize` but preserves case and
+    /// whitespace — for diff rendering, where we want the user-visible
+    /// comparison to match the comparison grading actually uses (so the user
+    /// doesn't see a punctuation mark highlighted in red and think it counted).
+    static func stripGradingPunctuation(_ s: String) -> String {
+        s.unicodeScalars
+            .filter { !punctuationToStrip.contains($0) }
+            .reduce(into: "") { $0.append(Character($1)) }
+    }
+
     private static let punctuationToStrip: Set<Unicode.Scalar> = {
         // ASCII punctuation + German guillemets + curly/typographic quotes
         // + dashes and ellipses commonly emitted by SFSpeechRecognizer.

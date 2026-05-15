@@ -9,7 +9,12 @@ struct DiffView: View {
     let actual: String
 
     private var diff: (expected: [FuzzyMatcher.DiffOp], actual: [FuzzyMatcher.DiffOp]) {
-        FuzzyMatcher.characterDiff(expected: expected, actual: actual)
+        // Strip punctuation from both sides before diffing so the user doesn't
+        // see a `?` highlighted as a mismatch when speech recognition didn't
+        // emit one — punctuation is already ignored by grading.
+        let cleanExpected = FuzzyMatcher.stripGradingPunctuation(expected)
+        let cleanActual = FuzzyMatcher.stripGradingPunctuation(actual)
+        return FuzzyMatcher.characterDiff(expected: cleanExpected, actual: cleanActual)
     }
 
     var body: some View {

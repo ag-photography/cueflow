@@ -81,6 +81,16 @@ struct PracticeView: View {
         HStack(spacing: DS.space.md) {
             modePicker
             Spacer()
+            if sessionCount > 0 {
+                Text("\(sessionCount)/\(sessionTarget)")
+                    .font(.footnote.monospacedDigit().weight(.medium))
+                    .foregroundStyle(DS.textSecondary)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(DS.surface1)
+                    .clipShape(Capsule())
+                    .transition(.opacity)
+            }
             Button {
                 showingLibrary = true
             } label: {
@@ -177,10 +187,8 @@ struct PracticeView: View {
                     Text("Ich weiß es nicht")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(DS.textSecondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(DS.surface1)
-                        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+                        .underline()
+                        .padding(.vertical, 8)
                 }
                 .buttonStyle(.plain)
             }
@@ -210,13 +218,17 @@ struct PracticeView: View {
     }
 
     private func heroPrompt(card: StudyCard) -> some View {
-        VStack(spacing: DS.space.sm) {
-            Text(card.phrase?.sourceText ?? "—")
-                .font(.system(.title, design: .rounded, weight: .semibold))
-                .multilineTextAlignment(.center)
-                .foregroundStyle(DS.textPrimary)
-        }
-        .dsHeroCard()
+        // Confident typography, no card chrome — the prompt IS the page.
+        // Scales down for longer phrases so wrapping stays graceful.
+        let text = card.phrase?.sourceText ?? "—"
+        let size: CGFloat = text.count > 30 ? 28 : (text.count > 15 ? 34 : 40)
+        return Text(text)
+            .font(.system(size: size, weight: .semibold))
+            .multilineTextAlignment(.center)
+            .foregroundStyle(DS.textPrimary)
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, DS.space.md)
+            .padding(.vertical, DS.space.lg)
     }
 
     private func answerCard(card: StudyCard) -> some View {
@@ -266,6 +278,9 @@ struct PracticeView: View {
 
     @ViewBuilder
     private func typingInputSection(revealed: Bool) -> some View {
+        // Single column, no keyboard accessory bar. Return on the keyboard
+        // submits (`.submitLabel(.go)` shows "Los"). The full-width Prüfen
+        // button is the visible fallback when the keyboard is dismissed.
         VStack(spacing: DS.space.sm) {
             TextField("Auf Russisch tippen…", text: $input)
                 .font(.title3)
@@ -283,15 +298,6 @@ struct PracticeView: View {
                 .submitLabel(.go)
                 .focused($inputFocused)
                 .onSubmit { submit(revealed: revealed) }
-                .toolbar {
-                    ToolbarItemGroup(placement: .keyboard) {
-                        Button("Tastatur zu") { inputFocused = false }
-                        Spacer()
-                        Button("Prüfen") { submit(revealed: revealed) }
-                            .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                            .fontWeight(.semibold)
-                    }
-                }
 
             Button {
                 submit(revealed: revealed)
@@ -300,10 +306,10 @@ struct PracticeView: View {
                     .font(.headline)
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
+                    .padding(.vertical, 16)
                     .background(
                         input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            ? DS.accent.opacity(0.4)
+                            ? DS.accent.opacity(0.35)
                             : DS.accent
                     )
                     .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
