@@ -35,6 +35,32 @@ enum SeedData {
         try? context.save()
     }
 
+    /// Idempotent: ensures all supported languages have a `Language` record.
+    /// On first launch only Russian is seeded; this function adds Arabic
+    /// (and future languages) on later launches without disturbing existing
+    /// Russian content. Active language stays whatever the user picked.
+    @discardableResult
+    static func ensureSupportedLanguages(_ context: ModelContext) -> Int {
+        let existing = (try? context.fetch(FetchDescriptor<Language>())) ?? []
+        let codes = Set(existing.map(\.code))
+        var added = 0
+        let supported: [(code: String, name: String, isRTL: Bool, translit: Bool)] = [
+            ("ru", "Русский", false, true),
+            ("ar", "العربية", true, true)
+        ]
+        for lang in supported where !codes.contains(lang.code) {
+            context.insert(Language(
+                code: lang.code,
+                name: lang.name,
+                isRTL: lang.isRTL,
+                defaultTransliterationVisible: lang.translit
+            ))
+            added += 1
+        }
+        if added > 0 { try? context.save() }
+        return added
+    }
+
     /// Loads a level pack (A2/B1/B2) from the bundled OpenRussian.org dataset.
     /// CC BY-SA 4.0 — see `openrussian-vocab.json` for the source attribution.
     ///

@@ -7,6 +7,10 @@ enum AutoGrade {
     case hesitant   // Tier 1 exact match, slow (or via accepted alternative)
     case minor      // Tier 2: 1–2 char edits in a single word (likely morphology)
     case wrong      // Tier 2: multi-word or major edits
+    case studied    // User pressed "Ich weiß es nicht", then copied the answer
+                    // correctly. SRS-wise this is still rating 1 (didn't
+                    // recall) but the UI label is encouraging rather than
+                    // punitive — they did real work.
 }
 
 extension AutoGrade {
@@ -17,6 +21,7 @@ extension AutoGrade {
         case .hesitant: return 3
         case .minor: return 2
         case .wrong: return 1
+        case .studied: return 1
         }
     }
 
@@ -26,6 +31,7 @@ extension AutoGrade {
         case .hesitant: return "Zögernd"
         case .minor: return "Fast"
         case .wrong: return "Falsch"
+        case .studied: return "Geübt"
         }
     }
 }

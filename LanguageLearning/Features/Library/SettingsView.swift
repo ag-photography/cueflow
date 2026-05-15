@@ -8,10 +8,13 @@ struct SettingsView: View {
     @Query private var topics: [Topic]
     @Query private var phrases: [Phrase]
 
+    @Query(sort: \Language.code) private var languages: [Language]
+
     @State private var dailyNewLimit: Int = 10
     @State private var transliterationVisible: TransliterationMode = .auto
     @State private var useAIGradingAssist: Bool = false
     @State private var starterPackResult: String?
+    @State private var activeLanguageCode: String = "ru"
 
     private let starterPackTotal = 250  // see SeedData.starterPhrases
     private let vocabExpected: [String: Int] = ["A2": 230, "B1": 492, "B2": 986]
@@ -26,6 +29,18 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Picker("Aktive Sprache", selection: $activeLanguageCode) {
+                        ForEach(languages, id: \.code) { lang in
+                            Text(lang.germanLabel).tag(lang.code)
+                        }
+                    }
+                } header: {
+                    Text("Sprache")
+                } footer: {
+                    Text("Phrasen anderer Sprachen werden ausgeblendet, bis du sie hier auswählst. Russisch & Arabisch werden unterstützt – Vokabular fügst du per Stapel-Import oder einzeln hinzu.")
+                }
+
                 Section {
                     Stepper(value: $dailyNewLimit, in: 0...50) {
                         HStack {
@@ -115,6 +130,7 @@ struct SettingsView: View {
         dailyNewLimit = row?.dailyNewLimit ?? 10
         transliterationVisible = TransliterationMode.from(row?.transliterationVisible)
         useAIGradingAssist = row?.useAIGradingAssist ?? false
+        activeLanguageCode = row?.activeLanguageCode ?? "ru"
     }
 
     // MARK: - Load-state rows
@@ -210,6 +226,7 @@ struct SettingsView: View {
         row.dailyNewLimit = dailyNewLimit
         row.transliterationVisible = transliterationVisible.persisted
         row.useAIGradingAssist = useAIGradingAssist
+        row.activeLanguageCode = activeLanguageCode
         try? context.save()
     }
 }

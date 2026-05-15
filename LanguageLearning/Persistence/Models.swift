@@ -25,6 +25,32 @@ final class Language {
         self.isRTL = isRTL
         self.defaultTransliterationVisible = defaultTransliterationVisible
     }
+
+    /// AVFoundation TTS locale identifier (e.g. "ru-RU", "ar-SA").
+    var ttsLocale: String {
+        switch code {
+        case "ru": return "ru-RU"
+        case "ar": return "ar-SA"          // Modern Standard Arabic
+        case "de": return "de-DE"
+        default: return code
+        }
+    }
+
+    /// SFSpeechRecognizer locale identifier.
+    var speechLocale: String { ttsLocale }
+
+    /// User-facing German name (e.g. "Russisch", "Arabisch"). Distinct from
+    /// `name` which holds the language's native name.
+    var germanLabel: String {
+        switch code {
+        case "ru": return "Russisch"
+        case "ar": return "Arabisch"
+        case "de": return "Deutsch"
+        default: return name
+        }
+    }
+
+    var inputPlaceholder: String { "Auf \(germanLabel) tippen…" }
 }
 
 @Model

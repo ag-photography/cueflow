@@ -16,7 +16,7 @@ final class SpeechRecognitionService: ObservableObject {
     @Published private(set) var isRecording: Bool = false
     @Published private(set) var lastError: String?
 
-    private let recognizer: SFSpeechRecognizer?
+    private var recognizer: SFSpeechRecognizer?
     private let audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
@@ -25,9 +25,19 @@ final class SpeechRecognitionService: ObservableObject {
     private var firstWordAt: Date?
     private var lastSpeechAt: Date?
     private var longestPauseSec: Double = 0
+    private(set) var currentLocale: String = "ru_RU"
 
     init(localeIdentifier: String = "ru_RU") {
+        self.currentLocale = localeIdentifier
         self.recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeIdentifier))
+    }
+
+    /// Switch the recogniser to a different language. Cheap; just instantiates
+    /// a new SFSpeechRecognizer for the new locale. No-op if already on this locale.
+    func setLocale(_ localeIdentifier: String) {
+        guard localeIdentifier != currentLocale else { return }
+        currentLocale = localeIdentifier
+        recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeIdentifier))
     }
 
     /// Hesitancy: time before the first recognized word and the longest gap
@@ -53,7 +63,7 @@ final class SpeechRecognitionService: ObservableObject {
     func start() throws {
         guard let recognizer, recognizer.isAvailable else {
             throw NSError(domain: "Speech", code: -1,
-                          userInfo: [NSLocalizedDescriptionKey: "Russisches Sprachmodell nicht verfügbar."])
+                          userInfo: [NSLocalizedDescriptionKey: "Sprachmodell für \(currentLocale) nicht verfügbar."])
         }
 
         // Reset state

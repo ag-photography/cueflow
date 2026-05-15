@@ -10,6 +10,7 @@ struct PracticeView: View {
     @Query private var cards: [StudyCard]
     @Query private var reviews: [Review]
     @Query private var settings: [AppSettings]
+    @Query private var languages: [Language]
 
     @State private var mode: CardDirection = .typeDeToRu
     @State private var phase: Phase = .loading
@@ -52,6 +53,21 @@ struct PracticeView: View {
         }
     }
 
+    /// The user's currently-selected target language (Russian, Arabic, …).
+    /// Falls back to Russian if settings is uninitialised. Drives card filtering,
+    /// TTS voice selection, ASR locale, RTL flip and the input placeholder.
+    private var activeLanguage: Language? {
+        let code = settings.first?.activeLanguageCode ?? "ru"
+        return languages.first(where: { $0.code == code })
+    }
+
+    /// Cards in the active language only — Russian phrases stay hidden when
+    /// the user has Arabic selected and vice versa.
+    private var cardsForActiveLanguage: [StudyCard] {
+        guard let code = activeLanguage?.code else { return cards }
+        return cards.filter { $0.phrase?.language?.code == code }
+    }
+
     // MARK: - Body
 
     var body: some View {
@@ -78,6 +94,22 @@ struct PracticeView: View {
             phase = .loading
             input = ""
             speech.clearTranscription()
+        }
+        .onChange(of: settings.first?.activeLanguageCode) { _, _ in
+            // Active language switch: reset session, update speech locale,
+            // reload the first card for the new language.
+            resetSession()
+            phase = .loading
+            input = ""
+            speech.clearTranscription()
+            if let locale = activeLanguage?.speechLocale {
+                speech.setLocale(locale)
+            }
+        }
+        .onAppear {
+            if let locale = activeLanguage?.speechLocale {
+                speech.setLocale(locale)
+            }
         }
     }
 
@@ -341,7 +373,7 @@ struct PracticeView: View {
                     .tracking(0.5)
                 Spacer()
                 Button {
-                    tts.speak(card.phrase?.targetText ?? "", times: 2)
+                    tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2)
                 } label: {
                     Image(systemName: "speaker.wave.2.fill")
                         .font(.callout)
@@ -363,7 +395,7 @@ struct PracticeView: View {
         .padding(DS.space.md)
         .background(DS.gradePerfect.opacity(0.10))
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
-        .onAppear { tts.speak(card.phrase?.targetText ?? "", times: 2) }
+        .onAppear { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) }
     }
 
     @ViewBuilder
@@ -386,9 +418,10 @@ struct PracticeView: View {
         // submits (`.submitLabel(.go)` shows "Los"). The full-width Prüfen
         // button is the visible fallback when the keyboard is dismissed.
         VStack(spacing: DS.space.sm) {
-            TextField("Auf Russisch tippen…", text: $input)
+            TextField(activeLanguage?.inputPlaceholder ?? "Antwort tippen…", text: $input)
                 .font(.title3)
                 .textFieldStyle(.plain)
+                .multilineTextAlignment(activeLanguage?.isRTL == true ? .trailing : .leading)
                 .padding(.horizontal, DS.space.lg)
                 .padding(.vertical, 18)
                 .background(DS.surface1)
@@ -525,7 +558,7 @@ struct PracticeView: View {
                     gradeChip(for: result.autoGrade)
                     Spacer()
                     Button {
-                        tts.speak(card.phrase?.targetText ?? "", times: 2)
+                        tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2)
                     } label: {
                         Image(systemName: "speaker.wave.2.fill")
                             .font(.title3)
@@ -565,7 +598,7 @@ struct PracticeView: View {
             }
             .padding(.vertical, DS.space.md)
         }
-        .onAppear { tts.speak(card.phrase?.targetText ?? "", times: 2) }
+        .onAppear { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) }
     }
 
     private func detailsDisclosure(result: GradeResult) -> some View {
@@ -689,6 +722,7 @@ struct PracticeView: View {
         case .hesitant: return DS.gradeHesitant
         case .minor: return DS.gradeMinor
         case .wrong: return DS.gradeWrong
+        case .studied: return DS.accent
         }
     }
 
@@ -698,6 +732,7 @@ struct PracticeView: View {
         case .hesitant: return "hourglass"
         case .minor: return "exclamationmark.circle.fill"
         case .wrong: return "xmark.circle.fill"
+        case .studied: return "book.fill"
         }
     }
 
@@ -847,8 +882,12 @@ struct PracticeView: View {
     ) {
         var result = baseline
         if revealed {
+            // Study-mode copy-typing: SRS-wise still rating 1 (didn't recall)
+            // but the UI grade is .studied when the copy is correct — an
+            // encouraging label rather than .wrong. They did real work.
+            let copiedCorrectly = result.normalizedActual == result.normalizedExpected
             result = GradeResult(
-                autoGrade: .wrong,
+                autoGrade: copiedCorrectly ? .studied : .wrong,
                 tier: result.tier,
                 normalizedExpected: result.normalizedExpected,
                 normalizedActual: result.normalizedActual,
@@ -935,7 +974,7 @@ struct PracticeView: View {
     private func advance() {
         let limit = settings.first?.dailyNewLimit ?? 10
         showingGradeDetails = false
-        if let next = scheduler.nextCard(from: cards, direction: mode, reviews: reviews, dailyNewLimit: limit) {
+        if let next = scheduler.nextCard(from: cardsForActiveLanguage, direction: mode, reviews: reviews, dailyNewLimit: limit) {
             phase = .prompt(next)
         } else {
             phase = .empty

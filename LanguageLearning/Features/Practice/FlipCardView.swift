@@ -38,7 +38,11 @@ struct FlipCardView: View {
                     // Speak the Russian when revealing (not when flipping back).
                     // Matches the auto-play behaviour on the type/speak reveal screens.
                     if willReveal {
-                        TTSService.shared.speak(card.phrase?.targetText ?? "", times: 2)
+                        TTSService.shared.speak(
+                            card.phrase?.targetText ?? "",
+                            language: card.phrase?.language?.ttsLocale ?? "ru-RU",
+                            times: 2
+                        )
                     }
                 }
         }
