@@ -16,7 +16,8 @@ struct SettingsView: View {
     @State private var starterPackResult: String?
     @State private var activeLanguageCode: String = "ru"
 
-    private let starterPackTotal = 250  // see SeedData.starterPhrases
+    private let starterPackTotal = 250        // see SeedData.starterPhrases (Russian)
+    private let arabicStarterTotal = 115      // see SeedData.arabicStarterPhrases
     private let vocabExpected: [String: Int] = ["A2": 230, "B1": 492, "B2": 986]
     private let starterTopicNames: Set<String> = [
         "Begrüßung", "Höflichkeit", "Verständigung", "Sich vorstellen",
@@ -71,9 +72,17 @@ struct SettingsView: View {
                 Section {
                     starterPackRow
                 } header: {
-                    Text("Starter-Vokabular (A1)")
+                    Text("Starter-Vokabular (A1) – Russisch")
                 } footer: {
                     Text("Ca. 250 kuratierte A1-Sätze in 23 Themen (Begrüßung, Familie, Verben, Adjektive, …).")
+                }
+
+                Section {
+                    arabicStarterRow
+                } header: {
+                    Text("Starter-Vokabular (A1) – Arabisch")
+                } footer: {
+                    Text("Ca. 115 A1-Phrasen in Lateinschrift (Transliteration) – die arabische Schrift wird darunter angezeigt. So kannst du sofort mit der deutschen Tastatur tippen, ohne erst das arabische Alphabet zu lernen.")
                 }
 
                 Section {
@@ -215,6 +224,38 @@ struct SettingsView: View {
         phrases.filter { phrase in
             phrase.topics.contains { starterTopicNames.contains($0.name) }
         }.count
+    }
+
+    private var arabicStarterRow: some View {
+        let loaded = phrases.filter { phrase in
+            phrase.topics.contains { $0.name.hasSuffix("(AR)") }
+        }.count
+        let isLoaded = loaded >= arabicStarterTotal * 9 / 10
+        return Group {
+            if isLoaded {
+                HStack {
+                    Label("Arabisch-Starter geladen", systemImage: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                    Spacer()
+                    Text("\(loaded)/\(arabicStarterTotal)")
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+            } else {
+                Button {
+                    let result = SeedData.addArabicStarter(context)
+                    starterPackResult = "Arabisch-Starter: \(result.phrasesAdded) Karten hinzugefügt, \(result.topicsAdded) neue Themen."
+                } label: {
+                    HStack {
+                        Label(loaded > 0 ? "Rest laden" : "Laden", systemImage: loaded > 0 ? "arrow.down.circle" : "tray.and.arrow.down")
+                        Spacer()
+                        Text(loaded > 0 ? "\(loaded)/\(arabicStarterTotal)" : "\(arabicStarterTotal)")
+                            .foregroundStyle(.secondary)
+                            .monospacedDigit()
+                    }
+                }
+            }
+        }
     }
 
     private func save() {

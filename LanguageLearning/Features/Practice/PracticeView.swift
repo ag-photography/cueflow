@@ -421,7 +421,11 @@ struct PracticeView: View {
             TextField(activeLanguage?.inputPlaceholder ?? "Antwort tippen…", text: $input)
                 .font(.title3)
                 .textFieldStyle(.plain)
-                .multilineTextAlignment(activeLanguage?.isRTL == true ? .trailing : .leading)
+                // No forced RTL: the Arabic starter pack stores Latin
+                // transliteration as the practice target, so .leading is
+                // correct for both Russian Cyrillic and Latin-translit Arabic.
+                // SwiftUI's bidi handles the rare case where the user types
+                // genuine Arabic script.
                 .padding(.horizontal, DS.space.lg)
                 .padding(.vertical, 18)
                 .background(DS.surface1)

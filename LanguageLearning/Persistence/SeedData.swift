@@ -237,6 +237,240 @@ enum SeedData {
         let pos: String
     }
 
+    // MARK: - Arabic starter pack
+
+    /// Idempotent A1 Arabic starter: ~120 phrases organised into topics,
+    /// stored with Latin transliteration as `targetText` (the practice form,
+    /// typeable with the default keyboard) and Arabic script in the
+    /// `transliteration` field as a cultural reference shown below the answer.
+    @discardableResult
+    static func addArabicStarter(_ context: ModelContext) -> (phrasesAdded: Int, topicsAdded: Int) {
+        let languages = (try? context.fetch(FetchDescriptor<Language>())) ?? []
+        let arabic: Language
+        if let existing = languages.first(where: { $0.code == "ar" }) {
+            arabic = existing
+        } else {
+            arabic = Language(code: "ar", name: "العربية", isRTL: true, defaultTransliterationVisible: true)
+            context.insert(arabic)
+        }
+
+        // Topic cache keyed by name (Arabic topic names are suffixed "(AR)"
+        // to avoid collision with the Russian-language topics that use the
+        // bare German names).
+        let existingTopics = (try? context.fetch(FetchDescriptor<Topic>())) ?? []
+        var topicCache: [String: Topic] = Dictionary(uniqueKeysWithValues: existingTopics.map { ($0.name, $0) })
+        var topicsAdded = 0
+        for spec in arabicStarterTopics where topicCache[spec.name] == nil {
+            let topic = Topic(name: spec.name, language: arabic, isActive: spec.initiallyActive)
+            context.insert(topic)
+            topicCache[spec.name] = topic
+            topicsAdded += 1
+        }
+
+        let existingPhrases = (try? context.fetch(FetchDescriptor<Phrase>())) ?? []
+        var sigs = Set(existingPhrases.map { "\($0.sourceText)|||\($0.targetText)" })
+
+        var added = 0
+        for spec in arabicStarterPhrases {
+            let signature = "\(spec.de)|||\(spec.translit)"
+            guard !sigs.contains(signature) else { continue }
+            sigs.insert(signature)
+
+            let topics = spec.topics.compactMap { topicCache[$0] }
+            let phrase = Phrase(
+                sourceText: spec.de,
+                targetText: spec.translit,       // Latin form — what the user types & is graded against
+                language: arabic,
+                topics: topics,
+                transliteration: spec.script     // Arabic script — display reference under the answer
+            )
+            context.insert(phrase)
+            for direction in CardDirection.allCases {
+                context.insert(StudyCard(phrase: phrase, direction: direction))
+            }
+            added += 1
+        }
+        try? context.save()
+        return (added, topicsAdded)
+    }
+
+    private struct ArabicTopic {
+        let name: String
+        let initiallyActive: Bool
+    }
+
+    private struct ArabicPhrase {
+        let de: String
+        let translit: String   // Latin transliteration (target for grading)
+        let script: String     // Arabic script (shown below as reference)
+        let topics: [String]
+    }
+
+    private static let arabicStarterTopics: [ArabicTopic] = [
+        .init(name: "Begrüßung (AR)", initiallyActive: true),
+        .init(name: "Höflichkeit (AR)", initiallyActive: true),
+        .init(name: "Verständigung (AR)", initiallyActive: true),
+        .init(name: "Sich vorstellen (AR)", initiallyActive: false),
+        .init(name: "Zahlen (AR)", initiallyActive: false),
+        .init(name: "Wochentage (AR)", initiallyActive: false),
+        .init(name: "Familie (AR)", initiallyActive: false),
+        .init(name: "Im Restaurant (AR)", initiallyActive: false),
+        .init(name: "Wegbeschreibung (AR)", initiallyActive: false),
+        .init(name: "Einkaufen (AR)", initiallyActive: false),
+        .init(name: "Farben (AR)", initiallyActive: false),
+        .init(name: "Verben (AR)", initiallyActive: false),
+        .init(name: "Adjektive (AR)", initiallyActive: false),
+        .init(name: "Fragewörter (AR)", initiallyActive: false)
+    ]
+
+    private static let arabicStarterPhrases: [ArabicPhrase] = [
+        // Begrüßung
+        .init(de: "Hallo.", translit: "marhaba", script: "مرحبا", topics: ["Begrüßung (AR)"]),
+        .init(de: "Guten Morgen.", translit: "sabah al-khayr", script: "صباح الخير", topics: ["Begrüßung (AR)"]),
+        .init(de: "Guten Abend.", translit: "masa al-khayr", script: "مساء الخير", topics: ["Begrüßung (AR)"]),
+        .init(de: "Gute Nacht.", translit: "tusbih ala khayr", script: "تصبح على خير", topics: ["Begrüßung (AR)"]),
+        .init(de: "Auf Wiedersehen.", translit: "ma'a as-salama", script: "مع السلامة", topics: ["Begrüßung (AR)"]),
+        .init(de: "Bis morgen.", translit: "ila al-ghad", script: "إلى الغد", topics: ["Begrüßung (AR)"]),
+        .init(de: "Friede sei mit dir.", translit: "as-salamu alaykum", script: "السلام عليكم", topics: ["Begrüßung (AR)"]),
+        .init(de: "Und mit dir Friede.", translit: "wa alaykum as-salam", script: "وعليكم السلام", topics: ["Begrüßung (AR)"]),
+        .init(de: "Willkommen.", translit: "ahlan wa sahlan", script: "أهلا وسهلا", topics: ["Begrüßung (AR)"]),
+
+        // Höflichkeit
+        .init(de: "Danke.", translit: "shukran", script: "شكرا", topics: ["Höflichkeit (AR)"]),
+        .init(de: "Vielen Dank.", translit: "shukran jazilan", script: "شكرا جزيلا", topics: ["Höflichkeit (AR)"]),
+        .init(de: "Bitte.", translit: "min fadlak", script: "من فضلك", topics: ["Höflichkeit (AR)"]),
+        .init(de: "Bitte sehr.", translit: "afwan", script: "عفوا", topics: ["Höflichkeit (AR)"]),
+        .init(de: "Entschuldigung.", translit: "aasif", script: "آسف", topics: ["Höflichkeit (AR)"]),
+        .init(de: "Es tut mir leid.", translit: "ana aasif", script: "أنا آسف", topics: ["Höflichkeit (AR)"]),
+        .init(de: "Macht nichts.", translit: "la ba's", script: "لا بأس", topics: ["Höflichkeit (AR)"]),
+
+        // Verständigung
+        .init(de: "Ja.", translit: "naam", script: "نعم", topics: ["Verständigung (AR)"]),
+        .init(de: "Nein.", translit: "la", script: "لا", topics: ["Verständigung (AR)"]),
+        .init(de: "Vielleicht.", translit: "rubbama", script: "ربما", topics: ["Verständigung (AR)"]),
+        .init(de: "Ich verstehe nicht.", translit: "la afham", script: "لا أفهم", topics: ["Verständigung (AR)"]),
+        .init(de: "Können Sie wiederholen?", translit: "mumkin tuid", script: "ممكن تعيد", topics: ["Verständigung (AR)"]),
+        .init(de: "Langsamer, bitte.", translit: "ahdaa min fadlak", script: "أهدأ من فضلك", topics: ["Verständigung (AR)"]),
+        .init(de: "Sprechen Sie Englisch?", translit: "hal tatakallam al-injliziyya", script: "هل تتكلم الإنجليزية", topics: ["Verständigung (AR)"]),
+        .init(de: "Ich spreche ein bisschen Arabisch.", translit: "atakallam al-arabiyya qaleelan", script: "أتكلم العربية قليلا", topics: ["Verständigung (AR)"]),
+        .init(de: "Wie heißt das auf Arabisch?", translit: "ma ismuhu bil arabiyya", script: "ما اسمه بالعربية", topics: ["Verständigung (AR)"]),
+        .init(de: "Ich weiß nicht.", translit: "la a'rif", script: "لا أعرف", topics: ["Verständigung (AR)"]),
+
+        // Sich vorstellen
+        .init(de: "Wie heißt du?", translit: "ma ismuk", script: "ما اسمك", topics: ["Sich vorstellen (AR)"]),
+        .init(de: "Ich heiße Alex.", translit: "ismi Alex", script: "اسمي أليكس", topics: ["Sich vorstellen (AR)"]),
+        .init(de: "Sehr angenehm.", translit: "tasharrafna", script: "تشرفنا", topics: ["Sich vorstellen (AR)"]),
+        .init(de: "Woher kommst du?", translit: "min ayna ant", script: "من أين أنت", topics: ["Sich vorstellen (AR)"]),
+        .init(de: "Ich komme aus Deutschland.", translit: "ana min almaniya", script: "أنا من ألمانيا", topics: ["Sich vorstellen (AR)"]),
+        .init(de: "Wo wohnst du?", translit: "ayna taskun", script: "أين تسكن", topics: ["Sich vorstellen (AR)"]),
+        .init(de: "Ich wohne in Berlin.", translit: "askunu fi Berlin", script: "أسكن في برلين", topics: ["Sich vorstellen (AR)"]),
+        .init(de: "Wie alt bist du?", translit: "kam umruk", script: "كم عمرك", topics: ["Sich vorstellen (AR)"]),
+        .init(de: "Ich bin dreißig.", translit: "umri thalathuna", script: "عمري ثلاثون", topics: ["Sich vorstellen (AR)"]),
+
+        // Zahlen 1-10
+        .init(de: "eins", translit: "wahid", script: "واحد", topics: ["Zahlen (AR)"]),
+        .init(de: "zwei", translit: "ithnan", script: "اثنان", topics: ["Zahlen (AR)"]),
+        .init(de: "drei", translit: "thalatha", script: "ثلاثة", topics: ["Zahlen (AR)"]),
+        .init(de: "vier", translit: "arba'a", script: "أربعة", topics: ["Zahlen (AR)"]),
+        .init(de: "fünf", translit: "khamsa", script: "خمسة", topics: ["Zahlen (AR)"]),
+        .init(de: "sechs", translit: "sitta", script: "ستة", topics: ["Zahlen (AR)"]),
+        .init(de: "sieben", translit: "sab'a", script: "سبعة", topics: ["Zahlen (AR)"]),
+        .init(de: "acht", translit: "thamaniya", script: "ثمانية", topics: ["Zahlen (AR)"]),
+        .init(de: "neun", translit: "tis'a", script: "تسعة", topics: ["Zahlen (AR)"]),
+        .init(de: "zehn", translit: "ashra", script: "عشرة", topics: ["Zahlen (AR)"]),
+
+        // Wochentage
+        .init(de: "Sonntag", translit: "al-ahad", script: "الأحد", topics: ["Wochentage (AR)"]),
+        .init(de: "Montag", translit: "al-ithnayn", script: "الإثنين", topics: ["Wochentage (AR)"]),
+        .init(de: "Dienstag", translit: "ath-thulatha", script: "الثلاثاء", topics: ["Wochentage (AR)"]),
+        .init(de: "Mittwoch", translit: "al-arba'a", script: "الأربعاء", topics: ["Wochentage (AR)"]),
+        .init(de: "Donnerstag", translit: "al-khamis", script: "الخميس", topics: ["Wochentage (AR)"]),
+        .init(de: "Freitag", translit: "al-jum'a", script: "الجمعة", topics: ["Wochentage (AR)"]),
+        .init(de: "Samstag", translit: "as-sabt", script: "السبت", topics: ["Wochentage (AR)"]),
+
+        // Familie
+        .init(de: "der Vater", translit: "ab", script: "أب", topics: ["Familie (AR)"]),
+        .init(de: "die Mutter", translit: "umm", script: "أم", topics: ["Familie (AR)"]),
+        .init(de: "der Bruder", translit: "akh", script: "أخ", topics: ["Familie (AR)"]),
+        .init(de: "die Schwester", translit: "ukht", script: "أخت", topics: ["Familie (AR)"]),
+        .init(de: "der Sohn", translit: "ibn", script: "ابن", topics: ["Familie (AR)"]),
+        .init(de: "die Tochter", translit: "bint", script: "بنت", topics: ["Familie (AR)"]),
+        .init(de: "der Großvater", translit: "jadd", script: "جد", topics: ["Familie (AR)"]),
+        .init(de: "die Großmutter", translit: "jadda", script: "جدة", topics: ["Familie (AR)"]),
+        .init(de: "die Familie", translit: "a'ila", script: "عائلة", topics: ["Familie (AR)"]),
+
+        // Im Restaurant
+        .init(de: "Die Speisekarte, bitte.", translit: "al-qa'ima min fadlak", script: "القائمة من فضلك", topics: ["Im Restaurant (AR)"]),
+        .init(de: "Wasser, bitte.", translit: "ma' min fadlak", script: "ماء من فضلك", topics: ["Im Restaurant (AR)"]),
+        .init(de: "Eine Tasse Kaffee.", translit: "finjan qahwa", script: "فنجان قهوة", topics: ["Im Restaurant (AR)"]),
+        .init(de: "Tee, bitte.", translit: "shay min fadlak", script: "شاي من فضلك", topics: ["Im Restaurant (AR)"]),
+        .init(de: "Die Rechnung, bitte.", translit: "al-hisab min fadlak", script: "الحساب من فضلك", topics: ["Im Restaurant (AR)"]),
+        .init(de: "Es war lecker.", translit: "kana ladhidhan", script: "كان لذيذا", topics: ["Im Restaurant (AR)"]),
+        .init(de: "Ich habe Hunger.", translit: "ana jaw'an", script: "أنا جوعان", topics: ["Im Restaurant (AR)"]),
+        .init(de: "Ich habe Durst.", translit: "ana atshan", script: "أنا عطشان", topics: ["Im Restaurant (AR)"]),
+
+        // Wegbeschreibung
+        .init(de: "Wo ist die Toilette?", translit: "ayna al-hammam", script: "أين الحمام", topics: ["Wegbeschreibung (AR)"]),
+        .init(de: "links", translit: "yasaar", script: "يسار", topics: ["Wegbeschreibung (AR)"]),
+        .init(de: "rechts", translit: "yameen", script: "يمين", topics: ["Wegbeschreibung (AR)"]),
+        .init(de: "geradeaus", translit: "ila al-amam", script: "إلى الأمام", topics: ["Wegbeschreibung (AR)"]),
+        .init(de: "hier", translit: "huna", script: "هنا", topics: ["Wegbeschreibung (AR)"]),
+        .init(de: "dort", translit: "hunaak", script: "هناك", topics: ["Wegbeschreibung (AR)"]),
+
+        // Einkaufen
+        .init(de: "Wie viel kostet das?", translit: "bikam", script: "بكم", topics: ["Einkaufen (AR)"]),
+        .init(de: "Das ist zu teuer.", translit: "ghaali jiddan", script: "غالي جدا", topics: ["Einkaufen (AR)"]),
+        .init(de: "Haben Sie das?", translit: "indak hadha", script: "عندك هذا", topics: ["Einkaufen (AR)"]),
+        .init(de: "Ich nehme das.", translit: "aakhudhu hadha", script: "آخذ هذا", topics: ["Einkaufen (AR)"]),
+        .init(de: "Wo ist der Markt?", translit: "ayna as-souq", script: "أين السوق", topics: ["Einkaufen (AR)"]),
+
+        // Farben
+        .init(de: "rot", translit: "ahmar", script: "أحمر", topics: ["Farben (AR)"]),
+        .init(de: "blau", translit: "azraq", script: "أزرق", topics: ["Farben (AR)"]),
+        .init(de: "grün", translit: "akhdar", script: "أخضر", topics: ["Farben (AR)"]),
+        .init(de: "gelb", translit: "asfar", script: "أصفر", topics: ["Farben (AR)"]),
+        .init(de: "schwarz", translit: "aswad", script: "أسود", topics: ["Farben (AR)"]),
+        .init(de: "weiß", translit: "abyad", script: "أبيض", topics: ["Farben (AR)"]),
+
+        // Verben (Past 3ms = dictionary form in MSA)
+        .init(de: "essen", translit: "akala", script: "أكل", topics: ["Verben (AR)"]),
+        .init(de: "trinken", translit: "shariba", script: "شرب", topics: ["Verben (AR)"]),
+        .init(de: "gehen", translit: "dhahaba", script: "ذهب", topics: ["Verben (AR)"]),
+        .init(de: "kommen", translit: "ja'a", script: "جاء", topics: ["Verben (AR)"]),
+        .init(de: "sehen", translit: "ra'a", script: "رأى", topics: ["Verben (AR)"]),
+        .init(de: "hören", translit: "sami'a", script: "سمع", topics: ["Verben (AR)"]),
+        .init(de: "sprechen", translit: "takallama", script: "تكلم", topics: ["Verben (AR)"]),
+        .init(de: "lesen", translit: "qara'a", script: "قرأ", topics: ["Verben (AR)"]),
+        .init(de: "schreiben", translit: "kataba", script: "كتب", topics: ["Verben (AR)"]),
+        .init(de: "lernen", translit: "ta'allama", script: "تعلم", topics: ["Verben (AR)"]),
+        .init(de: "arbeiten", translit: "amila", script: "عمل", topics: ["Verben (AR)"]),
+        .init(de: "schlafen", translit: "naama", script: "نام", topics: ["Verben (AR)"]),
+        .init(de: "lieben", translit: "ahabba", script: "أحب", topics: ["Verben (AR)"]),
+        .init(de: "wissen", translit: "arafa", script: "عرف", topics: ["Verben (AR)"]),
+
+        // Adjektive
+        .init(de: "gut", translit: "jayyid", script: "جيد", topics: ["Adjektive (AR)"]),
+        .init(de: "schlecht", translit: "sayyi'", script: "سيء", topics: ["Adjektive (AR)"]),
+        .init(de: "groß", translit: "kabir", script: "كبير", topics: ["Adjektive (AR)"]),
+        .init(de: "klein", translit: "saghir", script: "صغير", topics: ["Adjektive (AR)"]),
+        .init(de: "neu", translit: "jadid", script: "جديد", topics: ["Adjektive (AR)"]),
+        .init(de: "alt", translit: "qadim", script: "قديم", topics: ["Adjektive (AR)"]),
+        .init(de: "schön", translit: "jamil", script: "جميل", topics: ["Adjektive (AR)"]),
+        .init(de: "einfach", translit: "sahl", script: "سهل", topics: ["Adjektive (AR)"]),
+        .init(de: "schwierig", translit: "sa'b", script: "صعب", topics: ["Adjektive (AR)"]),
+        .init(de: "warm", translit: "daafi", script: "دافئ", topics: ["Adjektive (AR)"]),
+        .init(de: "kalt", translit: "barid", script: "بارد", topics: ["Adjektive (AR)"]),
+
+        // Fragewörter
+        .init(de: "Was?", translit: "ma", script: "ما", topics: ["Fragewörter (AR)"]),
+        .init(de: "Wer?", translit: "man", script: "من", topics: ["Fragewörter (AR)"]),
+        .init(de: "Wo?", translit: "ayna", script: "أين", topics: ["Fragewörter (AR)"]),
+        .init(de: "Wann?", translit: "mata", script: "متى", topics: ["Fragewörter (AR)"]),
+        .init(de: "Warum?", translit: "limadha", script: "لماذا", topics: ["Fragewörter (AR)"]),
+        .init(de: "Wie?", translit: "kayfa", script: "كيف", topics: ["Fragewörter (AR)"]),
+        .init(de: "Wie viel?", translit: "kam", script: "كم", topics: ["Fragewörter (AR)"])
+    ]
+
     /// Idempotent: inserts any starter-pack phrases not already present in the
     /// store. Matches by exact `sourceText` + `targetText`. Reuses existing
     /// topics by name; creates new ones otherwise. Returns counts for UI feedback.
