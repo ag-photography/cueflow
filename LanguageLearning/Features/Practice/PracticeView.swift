@@ -25,6 +25,7 @@ struct PracticeView: View {
     @State private var speechErrorMessage: String?
     @State private var showingGradeDetails: Bool = false
     @State private var savedAlternativeBanner: String?
+    @State private var surprisePraiseBanner: String?
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
 
@@ -391,6 +392,9 @@ struct PracticeView: View {
         VStack(spacing: DS.space.lg) {
             if let saved = savedAlternativeBanner {
                 savedBanner(saved)
+            }
+            if let praise = surprisePraiseBanner {
+                surpriseBanner(praise)
             }
 
             topicChips(card: card)
@@ -1093,7 +1097,13 @@ struct PracticeView: View {
         speech.clearTranscription()
         promptStart = nil
         sessionCount += 1
-        if rating >= 3 { sessionCorrect += 1 }
+        if rating >= 3 {
+            sessionCorrect += 1
+            // Variable-ratio reinforcement: ~12% chance per correct answer
+            // to trigger a surprise praise. The banner shows on the next
+            // prompt screen for ~2.5s, then fades.
+            maybeTriggerSurprisePraise()
+        }
 
         if sessionCount >= sessionTarget {
             showingSessionSummary = true
@@ -1101,6 +1111,59 @@ struct PracticeView: View {
             phase = .loading
         }
     }
+
+    /// Slot-machine-style variable reward: rare bonus praise on top of the
+    /// normal grade. Only fires on confirmed correct ratings, so it always
+    /// celebrates real progress. Configurable; can be disabled in Settings.
+    private func maybeTriggerSurprisePraise() {
+        guard settings.first?.surpriseRewardsEnabled ?? true else { return }
+        guard Double.random(in: 0..<1) < 0.12 else { return }
+        let praise = Self.surprisePraises.randomElement() ?? "🎯"
+        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+            surprisePraiseBanner = praise
+        }
+        Task {
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            await MainActor.run {
+                withAnimation(.easeOut(duration: 0.3)) {
+                    surprisePraiseBanner = nil
+                }
+            }
+        }
+    }
+
+    private func surpriseBanner(_ text: String) -> some View {
+        Text(text)
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(.horizontal, DS.space.md)
+            .padding(.vertical, 10)
+            .frame(maxWidth: .infinity)
+            .background(
+                LinearGradient(
+                    colors: [DS.accent, DS.gradePerfect],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .clipShape(Capsule())
+            .shadow(color: DS.accent.opacity(0.3), radius: 8, y: 3)
+            .transition(.move(edge: .top).combined(with: .opacity))
+    }
+
+    private static let surprisePraises: [String] = [
+        "🎯  Sauber!",
+        "💫  Auf Flammen.",
+        "🔥  Drei am Stück.",
+        "⭐  Das hat gesessen.",
+        "✨  Im Fluss.",
+        "🚀  Du fliegst.",
+        "💡  Klick.",
+        "🏆  Stark.",
+        "🌟  Volltreffer.",
+        "💪  Solide."
+    ]
 
     private func resetSession() {
         sessionCount = 0

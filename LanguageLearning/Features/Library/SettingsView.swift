@@ -18,6 +18,7 @@ struct SettingsView: View {
     @State private var dailyReminderEnabled: Bool = false
     @State private var dailyReminderTime: Date = SettingsView.defaultReminderTime
     @State private var reminderPermissionDenied: Bool = false
+    @State private var surpriseRewardsEnabled: Bool = true
 
     private static var defaultReminderTime: Date {
         var comps = DateComponents()
@@ -114,6 +115,12 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    Toggle("Überraschungs-Belohnungen", isOn: $surpriseRewardsEnabled)
+                } footer: {
+                    Text("Gelegentliche Mini-Feier nach einer richtigen Antwort (ca. jede 8. Karte). Reines Spaß-Element — wenn's nervt, ausschalten.")
+                }
+
+                Section {
                     starterPackRow
                 } header: {
                     Text("Starter-Vokabular (A1) – Russisch")
@@ -189,6 +196,7 @@ struct SettingsView: View {
         comps.hour = row?.dailyReminderHour ?? 19
         comps.minute = row?.dailyReminderMinute ?? 0
         dailyReminderTime = Calendar.current.date(from: comps) ?? Self.defaultReminderTime
+        surpriseRewardsEnabled = row?.surpriseRewardsEnabled ?? true
     }
 
     private func handleReminderToggle(_ enabled: Bool) {
@@ -361,6 +369,7 @@ struct SettingsView: View {
         row.transliterationVisible = transliterationVisible.persisted
         row.useAIGradingAssist = useAIGradingAssist
         row.activeLanguageCode = activeLanguageCode
+        row.surpriseRewardsEnabled = surpriseRewardsEnabled
         try? context.save()
     }
 }

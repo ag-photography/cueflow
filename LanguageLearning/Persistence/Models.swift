@@ -252,6 +252,10 @@ final class AppSettings {
     // for. Prevents re-celebration when the user does multiple sessions on
     // the same milestone day.
     var lastCelebratedStreak: Int = 0
+    // Variable-ratio reinforcement: roughly 1-in-8 correct answers trigger a
+    // surprise praise banner. Defaults to on; can be disabled if it gets
+    // distracting from the calm reading-app feel.
+    var surpriseRewardsEnabled: Bool = true
 
     init(
         dailyNewLimit: Int = 10,
@@ -267,5 +271,6 @@ final class AppSettings {
         self.dailyReminderHour = 19
         self.dailyReminderMinute = 0
         self.lastCelebratedStreak = 0
+        self.surpriseRewardsEnabled = true
     }
 }
