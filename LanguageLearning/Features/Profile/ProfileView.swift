@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Charts
 
 /// User-facing progress screen. Shows what the SRS schedule already knows
 /// but isn't surfaced anywhere in the practice loop: streak, today's count,
@@ -12,6 +13,7 @@ struct ProfileView: View {
     @Query private var cards: [StudyCard]
     @Query(sort: \Review.timestamp, order: .reverse) private var reviews: [Review]
     @Query(sort: \Topic.name) private var topics: [Topic]
+    @Query(sort: \Language.code) private var languages: [Language]
 
     var body: some View {
         NavigationStack {
@@ -19,6 +21,10 @@ struct ProfileView: View {
                 VStack(spacing: DS.space.lg) {
                     heroSection
                     todaySection
+                    weeklyChart
+                    if languages.count > 1 {
+                        perLanguage
+                    }
                     libraryBreakdown
                     topicProgress
                 }
@@ -133,6 +139,66 @@ struct ProfileView: View {
             .padding(DS.space.md)
             .background(DS.surface1)
             .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        }
+    }
+
+    // MARK: - 7-day chart
+
+    private var weeklyChart: some View {
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            sectionHeader("Letzte 7 Tage")
+            Chart(weeklyData) { day in
+                BarMark(
+                    x: .value("Tag", day.date, unit: .day),
+                    y: .value("Karten", day.count)
+                )
+                .foregroundStyle(day.count > 0 ? DS.accent : DS.surface2)
+                .cornerRadius(4)
+            }
+            .frame(height: 140)
+            .chartXAxis {
+                AxisMarks(values: .stride(by: .day)) { _ in
+                    AxisValueLabel(format: .dateTime.weekday(.narrow))
+                        .font(.caption2)
+                }
+            }
+            .chartYAxis {
+                AxisMarks { _ in
+                    AxisGridLine()
+                    AxisValueLabel().font(.caption2)
+                }
+            }
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        }
+    }
+
+    private var perLanguage: some View {
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            sectionHeader("Pro Sprache")
+            VStack(spacing: 8) {
+                ForEach(languages, id: \.code) { lang in
+                    let count = reviews.filter { $0.card?.phrase?.language?.code == lang.code }.count
+                    if count > 0 {
+                        statRow(lang.germanLabel, "\(count)")
+                    }
+                }
+            }
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        }
+    }
+
+    private var weeklyData: [DayStat] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: .now)
+        return (0..<7).reversed().map { offset in
+            let date = cal.date(byAdding: .day, value: -offset, to: today) ?? today
+            let next = cal.date(byAdding: .day, value: 1, to: date) ?? date
+            let count = reviews.filter { $0.timestamp >= date && $0.timestamp < next }.count
+            return DayStat(date: date, count: count)
         }
     }
 
@@ -266,4 +332,10 @@ struct ProfileView: View {
             return phraseIDs.contains(phrase.persistentModelID)
         }
     }
+}
+
+private struct DayStat: Identifiable {
+    let id = UUID()
+    let date: Date
+    let count: Int
 }

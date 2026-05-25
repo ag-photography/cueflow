@@ -102,7 +102,7 @@ struct SettingsView: View {
                         Label("Sicherung & Export", systemImage: "externaldrive.badge.icloud")
                     }
                 } footer: {
-                    Text("Exportiert alle Daten als JSON. TestFlight- und App-Store-Updates erhalten deinen Fortschritt automatisch.")
+                    Text("Fortschritt & Streak: oben rechts auf der Übungsseite (Diagramm-Icon). TestFlight-Updates erhalten deinen Fortschritt automatisch.")
                 }
 
                 Section("Entwickler") {

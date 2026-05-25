@@ -81,13 +81,15 @@ struct FlipCardView: View {
 
     private func face(text: String, subtitle: String?, showTapHint: Bool) -> some View {
         // Length-aware font scaling so longer phrases wrap gracefully.
-        let size: CGFloat = text.count > 30 ? 28 : (text.count > 15 ? 34 : 42)
+        let size: CGFloat = text.count > 40 ? 22 : (text.count > 30 ? 28 : (text.count > 15 ? 34 : 42))
         return VStack(spacing: DS.space.md) {
             Spacer()
             Text(text)
                 .font(.system(size: size, weight: .bold, design: .serif))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(DS.textPrimary)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.horizontal, DS.space.md)
             if let subtitle {
                 Text(subtitle)

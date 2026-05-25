@@ -140,12 +140,53 @@ struct PracticeView: View {
         HStack(spacing: DS.space.sm) {
             modePicker
             Spacer()
+            if currentStreak > 0 {
+                streakChip
+            }
             headerIconButton(systemName: "chart.bar.fill") { showingProfile = true }
             headerIconButton(systemName: "books.vertical") { showingLibrary = true }
         }
         .padding(.horizontal, DS.space.md)
         .padding(.vertical, DS.space.sm)
         .background(DS.surface0)
+    }
+
+    /// Streak chip — internal trigger (Hook Model): "don't break the chain".
+    /// Small, restrained — no panicking-owl energy.
+    private var streakChip: some View {
+        Button {
+            showingProfile = true
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "flame.fill")
+                    .font(.caption)
+                Text("\(currentStreak)")
+                    .font(.caption.weight(.bold).monospacedDigit())
+            }
+            .foregroundStyle(DS.accent)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background(DS.accentSoft)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Days in a row with at least one review, counting back from today.
+    /// Today only counts if there's been a review today (strict — no grace).
+    private var currentStreak: Int {
+        let cal = Calendar.current
+        var day = cal.startOfDay(for: .now)
+        var streak = 0
+        while true {
+            let next = cal.date(byAdding: .day, value: 1, to: day) ?? day
+            if !reviews.contains(where: { $0.timestamp >= day && $0.timestamp < next }) {
+                break
+            }
+            streak += 1
+            day = cal.date(byAdding: .day, value: -1, to: day) ?? day
+        }
+        return streak
     }
 
     private func headerIconButton(systemName: String, action: @escaping () -> Void) -> some View {
@@ -353,11 +394,13 @@ struct PracticeView: View {
         // premium reading-app feel — borrowed from Babbel's headline style.
         // Scales down for longer phrases so wrapping stays graceful.
         let text = card.phrase?.sourceText ?? "—"
-        let size: CGFloat = text.count > 30 ? 30 : (text.count > 15 ? 38 : 46)
+        let size: CGFloat = text.count > 40 ? 24 : (text.count > 30 ? 30 : (text.count > 15 ? 38 : 46))
         return Text(text)
             .font(.system(size: size, weight: .bold, design: .serif))
             .multilineTextAlignment(.center)
             .foregroundStyle(DS.textPrimary)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity)
             .padding(.horizontal, DS.space.md)
             .padding(.vertical, DS.space.lg)
@@ -385,6 +428,8 @@ struct PracticeView: View {
                 .font(.system(.title2, design: .rounded, weight: .medium))
                 .foregroundStyle(DS.textPrimary)
                 .multilineTextAlignment(.center)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
             if shouldShowTransliteration, let translit = card.phrase?.transliteration {
                 Text(translit)
@@ -832,13 +877,43 @@ struct PracticeView: View {
     }
 
     private var sessionAccuracyMessage: String {
+        // Variable reward (Hook Model): rotating messages within each accuracy
+        // band so the same outcome doesn't always read identical. Pick by
+        // session count modulo the bucket size — deterministic per session
+        // but cycles through.
         let pct = sessionCount == 0 ? 0 : Int((Double(sessionCorrect) / Double(sessionCount)) * 100)
+        let candidates: [String]
         switch pct {
-        case 90...: return "Großartig!"
-        case 70...: return "Solide Runde."
-        case 50...: return "Weiter dran bleiben."
-        default: return "Schwierige Runde — Wiederholung hilft."
+        case 90...:
+            candidates = [
+                "Großartig!",
+                "Auf Flammen heute.",
+                "Sauber durch.",
+                "Das saß."
+            ]
+        case 70...:
+            candidates = [
+                "Solide Runde.",
+                "Gute Arbeit.",
+                "Stetiger Fortschritt.",
+                "Macht sich bezahlt."
+            ]
+        case 50...:
+            candidates = [
+                "Weiter dran bleiben.",
+                "Knapp die Hälfte — passt schon.",
+                "Schwierige Wörter brauchen Zeit.",
+                "Morgen probierst du wieder."
+            ]
+        default:
+            candidates = [
+                "Schwierige Runde — Wiederholung hilft.",
+                "Die kommen bald wieder, dann besser.",
+                "Knapp, aber dranbleiben.",
+                "SRS sorgt dafür, dass du sie nicht vergisst."
+            ]
         }
+        return candidates[abs(sessionCount.hashValue) % candidates.count]
     }
 
     // MARK: - Logic (unchanged)
