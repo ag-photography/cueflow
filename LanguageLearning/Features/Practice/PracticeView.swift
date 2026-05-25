@@ -172,6 +172,59 @@ struct PracticeView: View {
         .buttonStyle(.plain)
     }
 
+    /// If today's streak is a milestone (3, 7, 14, 30, 100, 365) AND we
+    /// haven't celebrated it yet, return that number. Marking-celebrated is
+    /// persisted to AppSettings so multiple sessions on the same day don't
+    /// re-trigger the banner.
+    private var unseenStreakMilestone: Int? {
+        let milestones = [3, 7, 14, 30, 100, 365]
+        guard milestones.contains(currentStreak) else { return nil }
+        let alreadyCelebrated = settings.first?.lastCelebratedStreak ?? 0
+        return currentStreak > alreadyCelebrated ? currentStreak : nil
+    }
+
+    private func markStreakCelebrated(_ days: Int) {
+        let row = settings.first ?? {
+            let s = AppSettings()
+            context.insert(s)
+            return s
+        }()
+        row.lastCelebratedStreak = days
+        try? context.save()
+    }
+
+    private func milestoneBanner(days: Int) -> some View {
+        HStack(spacing: DS.space.md) {
+            Image(systemName: "flame.fill")
+                .font(.system(size: 32))
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(days) Tage Serie!")
+                    .font(.headline.weight(.bold))
+                Text(milestoneSubtitle(days: days))
+                    .font(.caption)
+                    .opacity(0.9)
+            }
+            Spacer()
+        }
+        .foregroundStyle(.white)
+        .padding(DS.space.md)
+        .frame(maxWidth: .infinity)
+        .background(DS.accent)
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+    }
+
+    private func milestoneSubtitle(days: Int) -> String {
+        switch days {
+        case 3: return "Drei Tage am Stück — Routine setzt sich."
+        case 7: return "Eine Woche. Das ist schon Habit."
+        case 14: return "Zwei Wochen — solide."
+        case 30: return "Ein Monat. Beeindruckend."
+        case 100: return "Hundert Tage. Außergewöhnlich."
+        case 365: return "Ein ganzes Jahr. Wow."
+        default: return ""
+        }
+    }
+
     /// Days in a row with at least one review, counting back from today.
     /// Today only counts if there's been a review today (strict — no grace).
     private var currentStreak: Int {
@@ -839,6 +892,10 @@ struct PracticeView: View {
 
     private var sessionSummarySheet: some View {
         VStack(spacing: DS.space.lg) {
+            if let milestone = unseenStreakMilestone {
+                milestoneBanner(days: milestone)
+                    .onAppear { markStreakCelebrated(milestone) }
+            }
             Spacer()
             Text("\(sessionCorrect)/\(sessionCount)")
                 .font(.system(size: 72, weight: .bold, design: .rounded))

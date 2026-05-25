@@ -15,6 +15,16 @@ struct SettingsView: View {
     @State private var useAIGradingAssist: Bool = false
     @State private var starterPackResult: String?
     @State private var activeLanguageCode: String = "ru"
+    @State private var dailyReminderEnabled: Bool = false
+    @State private var dailyReminderTime: Date = SettingsView.defaultReminderTime
+    @State private var reminderPermissionDenied: Bool = false
+
+    private static var defaultReminderTime: Date {
+        var comps = DateComponents()
+        comps.hour = 19
+        comps.minute = 0
+        return Calendar.current.date(from: comps) ?? .now
+    }
 
     private let starterPackTotal = 250        // see SeedData.starterPhrases (Russian)
     private let arabicStarterTotal = 115      // see SeedData.arabicStarterPhrases
@@ -53,6 +63,40 @@ struct SettingsView: View {
                     }
                 } footer: {
                     Text("Begrenzt, wie viele neue Karten pro Tag eingeführt werden. Wiederholungen sind unbegrenzt.")
+                }
+
+                Section {
+                    Toggle("Tägliche Erinnerung", isOn: $dailyReminderEnabled)
+                        .onChange(of: dailyReminderEnabled) { _, newValue in
+                            handleReminderToggle(newValue)
+                        }
+                    if dailyReminderEnabled {
+                        DatePicker(
+                            "Zeit",
+                            selection: $dailyReminderTime,
+                            displayedComponents: .hourAndMinute
+                        )
+                        .onChange(of: dailyReminderTime) { _, newTime in
+                            saveReminderTime(newTime)
+                            Task {
+                                let cal = Calendar.current
+                                let comps = cal.dateComponents([.hour, .minute], from: newTime)
+                                await NotificationService.shared.scheduleDailyReminder(
+                                    hour: comps.hour ?? 19,
+                                    minute: comps.minute ?? 0
+                                )
+                            }
+                        }
+                    }
+                    if reminderPermissionDenied {
+                        Text("Benachrichtigungen sind in den iOS-Einstellungen deaktiviert. Aktiviere sie dort, um die Erinnerung zu nutzen.")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                } header: {
+                    Text("Erinnerung")
+                } footer: {
+                    Text("Eine sanfte tägliche Erinnerung zur gewählten Zeit. Keine Streak-Panik, keine FOMO. Jederzeit ausschaltbar.")
                 }
 
                 Section("Transliteration") {
@@ -140,6 +184,55 @@ struct SettingsView: View {
         transliterationVisible = TransliterationMode.from(row?.transliterationVisible)
         useAIGradingAssist = row?.useAIGradingAssist ?? false
         activeLanguageCode = row?.activeLanguageCode ?? "ru"
+        dailyReminderEnabled = row?.dailyReminderEnabled ?? false
+        var comps = DateComponents()
+        comps.hour = row?.dailyReminderHour ?? 19
+        comps.minute = row?.dailyReminderMinute ?? 0
+        dailyReminderTime = Calendar.current.date(from: comps) ?? Self.defaultReminderTime
+    }
+
+    private func handleReminderToggle(_ enabled: Bool) {
+        if enabled {
+            Task {
+                let granted = await NotificationService.shared.requestAuthorization()
+                if granted {
+                    reminderPermissionDenied = false
+                    saveReminderEnabled(true)
+                    let cal = Calendar.current
+                    let comps = cal.dateComponents([.hour, .minute], from: dailyReminderTime)
+                    await NotificationService.shared.scheduleDailyReminder(
+                        hour: comps.hour ?? 19,
+                        minute: comps.minute ?? 0
+                    )
+                } else {
+                    reminderPermissionDenied = true
+                    dailyReminderEnabled = false   // revert toggle since not authorised
+                }
+            }
+        } else {
+            NotificationService.shared.cancelDailyReminder()
+            saveReminderEnabled(false)
+        }
+    }
+
+    private func saveReminderEnabled(_ enabled: Bool) {
+        ensureSettingsRow().dailyReminderEnabled = enabled
+        try? context.save()
+    }
+
+    private func saveReminderTime(_ time: Date) {
+        let comps = Calendar.current.dateComponents([.hour, .minute], from: time)
+        let row = ensureSettingsRow()
+        row.dailyReminderHour = comps.hour ?? 19
+        row.dailyReminderMinute = comps.minute ?? 0
+        try? context.save()
+    }
+
+    private func ensureSettingsRow() -> AppSettings {
+        if let existing = settings.first { return existing }
+        let row = AppSettings()
+        context.insert(row)
+        return row
     }
 
     // MARK: - Load-state rows

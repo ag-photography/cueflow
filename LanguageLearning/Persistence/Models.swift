@@ -242,6 +242,16 @@ final class AppSettings {
     var activeLanguageCode: String
     var transliterationVisible: Bool?
     var useAIGradingAssist: Bool
+    // Daily reminder: defaults are off-and-7pm so a SwiftData lightweight
+    // migration from earlier builds doesn't surprise existing users with a
+    // notification — they have to opt in via Settings.
+    var dailyReminderEnabled: Bool = false
+    var dailyReminderHour: Int = 19
+    var dailyReminderMinute: Int = 0
+    // Last streak length that the user has been shown a milestone celebration
+    // for. Prevents re-celebration when the user does multiple sessions on
+    // the same milestone day.
+    var lastCelebratedStreak: Int = 0
 
     init(
         dailyNewLimit: Int = 10,
@@ -253,5 +263,9 @@ final class AppSettings {
         self.activeLanguageCode = activeLanguageCode
         self.transliterationVisible = transliterationVisible
         self.useAIGradingAssist = useAIGradingAssist
+        self.dailyReminderEnabled = false
+        self.dailyReminderHour = 19
+        self.dailyReminderMinute = 0
+        self.lastCelebratedStreak = 0
     }
 }
