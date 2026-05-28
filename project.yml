@@ -25,6 +25,9 @@ targets:
     platform: iOS
     sources:
       - path: LanguageLearning
+        excludes:
+          - "**/* [0-9].*"      # Finder duplicates like "Info.generated 2.plist"
+          - "**/.DS_Store"
     dependencies:
       - package: swift-fsrs
         product: FSRS
