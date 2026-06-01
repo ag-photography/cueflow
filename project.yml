@@ -53,3 +53,23 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.alex.cueflow
         ENABLE_PREVIEWS: YES
         GENERATE_INFOPLIST_FILE: NO
+    scheme:
+      testTargets:
+        - LanguageLearningTests
+      gatherCoverageData: true
+
+  LanguageLearningTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: LanguageLearningTests
+    dependencies:
+      - target: LanguageLearning
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: "YES"
+        PRODUCT_BUNDLE_IDENTIFIER: com.alex.cueflow.tests
+        # Host the tests in the app so `@testable import LanguageLearning`
+        # can reach the app's internal domain types.
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/LanguageLearning.app/LanguageLearning"
+        BUNDLE_LOADER: "$(TEST_HOST)"

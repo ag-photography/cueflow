@@ -143,3 +143,4 @@ Scope: 3-4 screen welcome flow, Russian keyboard install walkthrough, goal-setti
 4. **First impression dominates.** Onboarding > sync > engagement features.
 5. **Ship the smallest cohesive thing.** Each build does one thing well rather than three things partially.
 6. **Real users > developer intuition.** Beta with external testers before launch is non-negotiable.
+7. **Keep the domain layer tested.** `LanguageLearningTests` covers grading (FuzzyMatcher/GraderService), the FSRS scheduler policy, and the import classifier (35 tests, run with ⌘U or `xcodebuild test`). Add to it when domain logic changes.

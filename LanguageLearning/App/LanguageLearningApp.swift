@@ -15,6 +15,14 @@ struct LanguageLearningApp: App {
                 configurations: configuration
             )
             self.container = container
+
+            // Unit tests host this app to reach its internal types; skip the
+            // (heavy, ~2000-phrase) seeding then so the test run stays fast and
+            // side-effect-free. The test target builds its own in-memory store.
+            if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+                return
+            }
+
             let setupContext = ModelContext(container)
             SeedData.seedIfNeeded(setupContext)
             // Backfill StudyCards for any new directions added in updates
