@@ -39,3 +39,7 @@ Carthage/Build/
 
 # Local TestFlight scratch
 *.ipa
+
+# Tutor PDFs dropped at project root for one-off imports
+Alex. *.pdf
+*.pdf
