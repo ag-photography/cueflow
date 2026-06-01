@@ -9,6 +9,12 @@ import UniformTypeIdentifiers
 /// Essen & Trinken, …). Preview is grouped by topic; commit creates any
 /// missing topics, attaches phrases, and activates the touched topics so
 /// the new vocabulary shows up in practice immediately.
+///
+/// NOTE: Intentionally Russian-specific (unlike the rest of the app, which is
+/// language-agnostic). The parser keys on Cyrillic↔Latin pairs found in the
+/// user's Russian tutor PDFs; new phrases are filed under Russian. Generalising
+/// to another script is a deliberate future decision — revisit only if the user
+/// gets tutor material in another language. See ROADMAP.md (Phase A+ note).
 struct PDFImportView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
