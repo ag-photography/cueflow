@@ -1,6 +1,6 @@
 # CueFlow — Roadmap to App Store
 
-**Current state:** build 24, on TestFlight (personal).
+**Current state:** build 25 — Phase A (foundation polish) complete, on TestFlight (personal).
 **Goal:** ship to App Store as a free, self-contained, privacy-first language-learning app for German speakers learning Russian (and Arabic).
 **Realistic timeline:** 3–4 months / ~18–20 more builds.
 
@@ -46,7 +46,7 @@
 - ✅ **22. Library overhaul** *(shipped)* — search field; filter by language + active/inactive status; per-topic detail screen (TopicDetailView) with mastery %, FSRS-state breakdown, due count, phrase list, rename; "Aktive Themen" chip-strip with toggle-off; bulk activate/deactivate on the filtered set; top-level phrase list now renders only while searching (was rendering all ~2000). *Note: per-**level** filter deferred — level isn't on the data model (A2/B1/B2 merged into semantic topics at seed time); revisit if a per-phrase level field is added.*
 - ✅ **23. Settings restructure** *(shipped)* — grouped into Sprache & Inhalte / Üben / Erinnerungen / Daten / (Entwickler) / Info; dev tools (Diagnose) hidden behind a `developerModeEnabled` flag unlocked by tapping the version footer 7×; app version/build shown in the footer.
 - ✅ **24. Visual coherence** *(shipped)* — Tippen/Sprechen prompt now sits on the same elevated card (surface/radius/shadow + serif scaling) as the flip card, so the prompt reads identically across all 3 modes; reveal slimmed (char-diff moved into the collapsed "Details & Abgleich" disclosure, answer is the focal point); rating row gains a "Vorschlag: X — bestätigen oder anpassen" heading and a white ring on the suggested choice.
-- **25. Accessibility + dark mode** — Dynamic Type support across all screens; VoiceOver labels on icon buttons; contrast WCAG AA verified; reduce-motion honored; dark mode screenshot-tested on every screen.
+- ✅ **25. Accessibility + dark mode** *(shipped)* — VoiceOver labels on icon-only buttons (header Fortschritt/Bibliothek, Vorlesen, Serie, Library/Onboarding controls); Dynamic Type — body/controls use semantic fonts; serif prompt + flip faces scale via capped `@ScaledMetric`; mode picker caps its growth so 3 segments keep fitting; Reduce Motion honored (flip rotation→cross-fade, reveal spring→fade, surprise praise); dark mode verified (fixed the onboarding badge: was using `surface0` which inverts to near-black on the teal — now a fixed cream `DS.onAccent`). Body text uses system semantic colours (AA by design).
 
 ### Phase B — Continuity (~3 weeks, builds 26-29)
 *Make it feel like a real iOS app across devices.*

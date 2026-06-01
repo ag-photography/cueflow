@@ -205,12 +205,12 @@ struct OnboardingView: View {
                     )
                 )
                 .overlay(
-                    Circle().stroke(DS.surface0.opacity(0.9), lineWidth: 5)
+                    Circle().stroke(DS.onAccent.opacity(0.9), lineWidth: 5)
                 )
                 .shadow(color: DS.accent.opacity(0.35), radius: 18, x: 0, y: 8)
             Text("C")
                 .font(.system(size: 88, weight: .bold, design: .serif))
-                .foregroundStyle(DS.surface0)
+                .foregroundStyle(DS.onAccent)
         }
         .frame(width: 136, height: 136)
         .accessibilityHidden(true)

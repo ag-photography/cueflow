@@ -23,6 +23,12 @@ enum DS {
     static let accent = Color(red: 0.08, green: 0.42, blue: 0.52)
     static let accentSoft = Color(red: 0.08, green: 0.42, blue: 0.52).opacity(0.12)
 
+    /// Fixed warm cream that does NOT flip in dark mode — for content layered
+    /// directly on the brand teal (e.g. the onboarding badge lettering), where
+    /// it must stay light in both appearances. `surface0` would invert to
+    /// near-black in dark and kill the contrast.
+    static let onAccent = Color(red: 0.97, green: 0.95, blue: 0.90)
+
     /// Surface scale. Warm cream in light mode (Babbel-style premium reading
     /// surface), deep neutral charcoal in dark mode. Avoids the stark
     /// iOS-default white that read as "system form".

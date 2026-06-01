@@ -7,6 +7,7 @@ import UIKit
 /// prompt card, distinct reveal layout, modern semantic rating buttons.
 struct PracticeView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query private var cards: [StudyCard]
     @Query private var reviews: [Review]
     @Query private var settings: [AppSettings]
@@ -28,6 +29,9 @@ struct PracticeView: View {
     @State private var surprisePraiseBanner: String?
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
+    // Lets the fixed-size serif prompt grow with Dynamic Type (capped so very
+    // large accessibility sizes don't push the input off-screen).
+    @ScaledMetric(relativeTo: .largeTitle) private var heroTypeScale: CGFloat = 1
 
     private let sessionTarget = 10
     private let transliterationGracePeriod = 200
@@ -144,8 +148,8 @@ struct PracticeView: View {
             if currentStreak > 0 {
                 streakChip
             }
-            headerIconButton(systemName: "chart.bar.fill") { showingProfile = true }
-            headerIconButton(systemName: "books.vertical") { showingLibrary = true }
+            headerIconButton(systemName: "chart.bar.fill", label: "Fortschritt") { showingProfile = true }
+            headerIconButton(systemName: "books.vertical", label: "Bibliothek") { showingLibrary = true }
         }
         .padding(.horizontal, DS.space.md)
         .padding(.vertical, DS.space.sm)
@@ -171,6 +175,8 @@ struct PracticeView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Serie: \(currentStreak) Tage")
+        .accessibilityHint("Öffnet den Fortschritt")
     }
 
     /// If today's streak is a milestone (3, 7, 14, 30, 100, 365) AND we
@@ -243,7 +249,7 @@ struct PracticeView: View {
         return streak
     }
 
-    private func headerIconButton(systemName: String, action: @escaping () -> Void) -> some View {
+    private func headerIconButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(.callout)
@@ -253,6 +259,7 @@ struct PracticeView: View {
                 .clipShape(Circle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(label)
     }
 
     private var modePicker: some View {
@@ -264,6 +271,9 @@ struct PracticeView: View {
         .padding(4)
         .background(DS.surface1)
         .clipShape(Capsule())
+        // Compact 3-way control (tab-bar-like): cap growth so the segments
+        // keep fitting at accessibility sizes. The reading content scales fully.
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 
     private func modePickerButton(direction: CardDirection) -> some View {
@@ -453,7 +463,8 @@ struct PracticeView: View {
         // radius / shadow, so the prompt reads identically across all three
         // modes — one unified "card" metaphor (build 24).
         let text = card.phrase?.sourceText ?? "—"
-        let size: CGFloat = text.count > 40 ? 22 : (text.count > 30 ? 28 : (text.count > 15 ? 34 : 42))
+        let base: CGFloat = text.count > 40 ? 22 : (text.count > 30 ? 28 : (text.count > 15 ? 34 : 42))
+        let size = base * min(heroTypeScale, 1.5)
         return Text(text)
             .font(.system(size: size, weight: .bold, design: .serif))
             .multilineTextAlignment(.center)
@@ -485,6 +496,7 @@ struct PracticeView: View {
                         .foregroundStyle(DS.gradePerfect)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Antwort vorlesen")
             }
             Text(card.phrase?.targetText ?? "")
                 .font(.system(.title2, design: .rounded, weight: .medium))
@@ -714,6 +726,7 @@ struct PracticeView: View {
                     .clipShape(Circle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel("Antwort vorlesen")
         }
         .padding(DS.space.md)
         .background(color.opacity(0.10))
@@ -723,8 +736,11 @@ struct PracticeView: View {
                 .stroke(color.opacity(0.25), lineWidth: 1)
         )
         .id(result.autoGrade)   // re-runs the appear-animation on grade change
-        .transition(.scale(scale: 0.85).combined(with: .opacity))
-        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: result.autoGrade)
+        .transition(reduceMotion ? .opacity : .scale(scale: 0.85).combined(with: .opacity))
+        .animation(
+            reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.7),
+            value: result.autoGrade
+        )
     }
 
     /// Big-typography answer card so the correct Russian is the focal point
@@ -1193,7 +1209,7 @@ struct PracticeView: View {
         guard Double.random(in: 0..<1) < 0.12 else { return }
         let praise = Self.surprisePraises.randomElement() ?? "🎯"
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.7)) {
+        withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.7)) {
             surprisePraiseBanner = praise
         }
         Task {

@@ -12,6 +12,8 @@ struct FlipCardView: View {
     let showTransliteration: Bool
     let onRate: (Int) -> Void   // 1 = Again, 3 = Good
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ScaledMetric(relativeTo: .largeTitle) private var faceTypeScale: CGFloat = 1
     @State private var flipped = false
     @State private var dragOffset: CGSize = .zero
     @State private var dismissed = false
@@ -32,7 +34,11 @@ struct FlipCardView: View {
                     let haptic = UIImpactFeedbackGenerator(style: .light)
                     haptic.impactOccurred()
                     let willReveal = !flipped
-                    withAnimation(.spring(response: 0.55, dampingFraction: 0.75)) {
+                    // Reduce Motion: faces still cross-fade (the rotation is
+                    // dropped below), and a flat ease replaces the spring bounce.
+                    withAnimation(reduceMotion
+                        ? .easeInOut(duration: 0.2)
+                        : .spring(response: 0.55, dampingFraction: 0.75)) {
                         flipped.toggle()
                     }
                     // Speak the Russian when revealing (not when flipping back).
@@ -60,7 +66,7 @@ struct FlipCardView: View {
             )
             .opacity(flipped ? 0 : 1)
             .rotation3DEffect(
-                .degrees(flipped ? 180 : 0),
+                .degrees(reduceMotion ? 0 : (flipped ? 180 : 0)),
                 axis: (x: 0, y: 1, z: 0),
                 perspective: 0.5
             )
@@ -72,7 +78,7 @@ struct FlipCardView: View {
             )
             .opacity(flipped ? 1 : 0)
             .rotation3DEffect(
-                .degrees(flipped ? 0 : -180),
+                .degrees(reduceMotion ? 0 : (flipped ? 0 : -180)),
                 axis: (x: 0, y: 1, z: 0),
                 perspective: 0.5
             )
@@ -80,8 +86,10 @@ struct FlipCardView: View {
     }
 
     private func face(text: String, subtitle: String?, showTapHint: Bool) -> some View {
-        // Length-aware font scaling so longer phrases wrap gracefully.
-        let size: CGFloat = text.count > 40 ? 22 : (text.count > 30 ? 28 : (text.count > 15 ? 34 : 42))
+        // Length-aware font scaling so longer phrases wrap gracefully; the
+        // capped ScaledMetric lets it grow with Dynamic Type too.
+        let base: CGFloat = text.count > 40 ? 22 : (text.count > 30 ? 28 : (text.count > 15 ? 34 : 42))
+        let size = base * min(faceTypeScale, 1.5)
         return VStack(spacing: DS.space.md) {
             Spacer()
             Text(text)
@@ -162,8 +170,10 @@ struct FlipCardView: View {
                         width: knewIt ? 600 : -600,
                         height: value.translation.height
                     )
-                    withAnimation(.easeOut(duration: 0.28)) {
-                        dragOffset = flyTo
+                    // Reduce Motion: fade the card out in place instead of
+                    // flinging it across the screen.
+                    withAnimation(.easeOut(duration: reduceMotion ? 0.18 : 0.28)) {
+                        if !reduceMotion { dragOffset = flyTo }
                         dismissed = true
                     }
                     // Cancel TTS as the card flies off so the Russian
