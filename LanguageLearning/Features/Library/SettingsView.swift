@@ -19,6 +19,7 @@ struct SettingsView: View {
     @State private var dailyReminderTime: Date = SettingsView.defaultReminderTime
     @State private var reminderPermissionDenied: Bool = false
     @State private var surpriseRewardsEnabled: Bool = true
+    @State private var showingOnboarding = false
 
     private static var defaultReminderTime: Date {
         var comps = DateComponents()
@@ -130,6 +131,17 @@ struct SettingsView: View {
                     Text("Fortschritt & Streak: oben rechts auf der Übungsseite (Diagramm-Icon). TestFlight-Updates erhalten deinen Fortschritt automatisch.")
                 }
 
+                Section {
+                    Button {
+                        save()   // don't lose unsaved edits behind the cover
+                        showingOnboarding = true
+                    } label: {
+                        Label("Einführung wiederholen", systemImage: "sparkles")
+                    }
+                } footer: {
+                    Text("Zeigt die Erstkonfiguration erneut — Tagesziel, Starter-Themen und die Tastatur-Anleitung.")
+                }
+
                 Section("Entwickler") {
                     NavigationLink {
                         TelemetryView()
@@ -143,6 +155,9 @@ struct SettingsView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Fertig") { save(); dismiss() }
                 }
+            }
+            .fullScreenCover(isPresented: $showingOnboarding) {
+                OnboardingView()
             }
             .onAppear { hydrate() }
         }

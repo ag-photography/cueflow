@@ -34,6 +34,9 @@ struct LanguageLearningApp: App {
             // Ship all bundled content into the store on first launch
             // (idempotent). Topics stay inactive — user activates in Library.
             SeedData.ensureAllBundledContent(setupContext)
+            // Don't re-onboard returning users: anyone who already has reviews
+            // when they update to the onboarding build is marked complete.
+            SeedData.markExistingUsersOnboarded(setupContext)
         } catch {
             fatalError("Failed to create ModelContainer: \(error)")
         }

@@ -1,6 +1,6 @@
 # CueFlow — Roadmap to App Store
 
-**Current state:** build 20, on TestFlight (personal).
+**Current state:** build 21, on TestFlight (personal).
 **Goal:** ship to App Store as a free, self-contained, privacy-first language-learning app for German speakers learning Russian (and Arabic).
 **Realistic timeline:** 3–4 months / ~18–20 more builds.
 
@@ -42,7 +42,7 @@
 ### Phase A — Foundation polish (~3-4 weeks, builds 21-25)
 *Make the existing app shippable. No new features.*
 
-- **21. Onboarding** — 3-4 screen first-launch walkthrough; Russian keyboard install flow; goal-setting micro-question; starter-topic selection; `hasCompletedOnboarding` flag in AppSettings; "Onboarding wiederholen" link in Settings.
+- ✅ **21. Onboarding** *(shipped)* — 5-screen first-launch walkthrough (Willkommen / So funktioniert's / Tagesziel / Starter-Themen / Russische Tastatur); `hasCompletedOnboarding` gate in RootView with `markExistingUsersOnboarded` so returning users skip it; "Einführung wiederholen" in Settings replays it non-destructively.
 - **22. Library overhaul** — search field, filter by language/active/level, per-topic detail screen with progress + mastery, "Aktive Themen" chip-strip at top with toggle-off, bulk activate/deactivate.
 - **23. Settings restructure** — proper section grouping (Sprache & Inhalte / Üben / Erinnerungen / Daten / Entwickler); dev tools hidden behind flag.
 - **24. Visual coherence** — unify card metaphor across all 3 modes; reveal screen slim (diff/details default-collapsed); micro-polish on rating buttons.

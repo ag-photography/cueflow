@@ -1,11 +1,29 @@
 import SwiftUI
+import SwiftData
 
-/// Single practice screen with an internal mode picker. Earlier versions used
-/// `TabView` page-style for swipe-to-switch, but the bottom page dots overlay
-/// the rating buttons and conflict with editing — the explicit segmented
-/// control at the top is clearer.
+/// Root gate: a fresh install sees the onboarding walkthrough; once
+/// `hasCompletedOnboarding` is set, every launch goes straight to practice.
+///
+/// The practice screen itself uses a custom header with an internal mode picker
+/// (an earlier `TabView` page-style put bottom page dots over the rating row),
+/// so RootView's only job is the onboarding/main decision.
 struct RootView: View {
+    @Query private var settings: [AppSettings]
+
+    private var hasOnboarded: Bool {
+        settings.first?.hasCompletedOnboarding ?? false
+    }
+
     var body: some View {
-        PracticeView()
+        Group {
+            if hasOnboarded {
+                PracticeView()
+                    .transition(.opacity)
+            } else {
+                OnboardingView()
+                    .transition(.opacity)
+            }
+        }
+        .animation(.easeInOut(duration: 0.4), value: hasOnboarded)
     }
 }

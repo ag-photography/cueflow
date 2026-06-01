@@ -35,6 +35,28 @@ enum SeedData {
         }
     }
 
+    /// Idempotent: marks anyone who was already using the app before the
+    /// onboarding build (build 21) as having completed onboarding, so a
+    /// TestFlight/App Store update doesn't drop returning users into the
+    /// first-launch walkthrough.
+    ///
+    /// Heuristic: if the store already holds any `Review`, the user has
+    /// practised before and is not a fresh install. A brand-new install has
+    /// zero reviews, so its `AppSettings` row keeps `hasCompletedOnboarding =
+    /// false` and the walkthrough shows. Runs every launch but only writes when
+    /// it actually flips the flag.
+    static func markExistingUsersOnboarded(_ context: ModelContext) {
+        guard let settings = (try? context.fetch(FetchDescriptor<AppSettings>()))?.first else { return }
+        guard !settings.hasCompletedOnboarding else { return }
+        var reviewCount = FetchDescriptor<Review>()
+        reviewCount.fetchLimit = 1
+        let hasReviews = ((try? context.fetch(reviewCount)) ?? []).isEmpty == false
+        if hasReviews {
+            settings.hasCompletedOnboarding = true
+            try? context.save()
+        }
+    }
+
     /// Inserts the default Russian language and the full starter pack on first
     /// launch with an empty store.
     static func seedIfNeeded(_ context: ModelContext) {

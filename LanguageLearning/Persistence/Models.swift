@@ -271,6 +271,11 @@ final class AppSettings {
     // surprise praise banner. Defaults to on; can be disabled if it gets
     // distracting from the calm reading-app feel.
     var surpriseRewardsEnabled: Bool = true
+    // First-launch onboarding gate. Defaults to false so a fresh install sees
+    // the walkthrough. Existing users (anyone who already has reviews when they
+    // update to the onboarding build) are flipped to true by
+    // SeedData.markExistingUsersOnboarded so they don't get re-onboarded.
+    var hasCompletedOnboarding: Bool = false
 
     init(
         dailyNewLimit: Int = 10,
@@ -287,5 +292,6 @@ final class AppSettings {
         self.dailyReminderMinute = 0
         self.lastCelebratedStreak = 0
         self.surpriseRewardsEnabled = true
+        self.hasCompletedOnboarding = false
     }
 }
