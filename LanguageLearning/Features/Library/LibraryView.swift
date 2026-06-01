@@ -1,28 +1,96 @@
 import SwiftUI
 import SwiftData
 
-/// Library: Topics + Phrases CRUD, paste-import, settings. Active topics drive
-/// new-card source for the scheduler.
+/// Library (overhauled in build 22): manage topics and content. Topics are the
+/// primary object — activating them drives the scheduler's new-card source.
+///
+/// - Search filters topics and phrases at once.
+/// - Active topics surface as a chip strip up top (tap a chip to deactivate).
+/// - Language + status filters narrow the topic list.
+/// - Each topic row toggles active inline and pushes a detail screen with
+///   mastery + its phrases.
+/// - Bulk activate/deactivate acts on the currently-filtered topics.
+/// - The full phrase list only renders while searching (the store holds ~2000
+///   phrases — rendering them all was needless work).
 struct LibraryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Topic.name) private var topics: [Topic]
     @Query(sort: \Phrase.createdAt, order: .reverse) private var phrases: [Phrase]
+    @Query(sort: \Language.code) private var languages: [Language]
+
+    @State private var searchText = ""
+    @State private var languageFilter = ""          // "" = all languages
+    @State private var activeFilter: ActiveFilter = .all
+    @State private var selectedTopic: Topic?
 
     @State private var showingPasteImport = false
     @State private var showingPDFImport = false
     @State private var showingSettings = false
     @State private var phraseInEditor: Phrase?
     @State private var creatingPhrase = false
-    @State private var topicInEditor: Topic?
     @State private var creatingTopic = false
+
+    private enum ActiveFilter: Hashable { case all, active, inactive }
+
+    private let phraseResultCap = 60
+
+    // MARK: - Derived
+
+    /// Languages that actually have topics — drives whether the language filter
+    /// is worth showing at all.
+    private var languagesWithTopics: [Language] {
+        languages.filter { lang in topics.contains { $0.language?.code == lang.code } }
+    }
+
+    private var activeTopics: [Topic] {
+        topics.filter(\.isActive)
+    }
+
+    private var filteredTopics: [Topic] {
+        topics.filter { topic in
+            (languageFilter.isEmpty || topic.language?.code == languageFilter)
+            && {
+                switch activeFilter {
+                case .all: return true
+                case .active: return topic.isActive
+                case .inactive: return !topic.isActive
+                }
+            }()
+            && (searchText.isEmpty || topic.name.localizedCaseInsensitiveContains(searchText))
+        }
+    }
+
+    private var filteredPhrases: [Phrase] {
+        guard !searchText.isEmpty else { return [] }
+        return phrases.filter { phrase in
+            (languageFilter.isEmpty || phrase.language?.code == languageFilter)
+            && (phrase.sourceText.localizedCaseInsensitiveContains(searchText)
+                || phrase.targetText.localizedCaseInsensitiveContains(searchText)
+                || (phrase.transliteration?.localizedCaseInsensitiveContains(searchText) ?? false))
+        }
+    }
+
+    private var showLanguageBadges: Bool {
+        languageFilter.isEmpty && languagesWithTopics.count > 1
+    }
 
     var body: some View {
         NavigationStack {
             List {
+                if !activeTopics.isEmpty {
+                    activeTopicsSection
+                }
+                filterSection
                 topicsSection
-                phrasesSection
+                if !searchText.isEmpty {
+                    phrasesSection
+                }
             }
             .navigationTitle("Bibliothek")
+            .searchable(text: $searchText, prompt: "Themen & Phrasen suchen")
+            .navigationDestination(item: $selectedTopic) { topic in
+                TopicDetailView(topic: topic)
+            }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -30,32 +98,10 @@ struct LibraryView: View {
                     } label: {
                         Image(systemName: "gear")
                     }
+                    .accessibilityLabel("Einstellungen")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button {
-                            creatingPhrase = true
-                        } label: {
-                            Label("Phrase hinzufügen", systemImage: "plus.bubble")
-                        }
-                        Button {
-                            creatingTopic = true
-                        } label: {
-                            Label("Thema hinzufügen", systemImage: "tag")
-                        }
-                        Button {
-                            showingPasteImport = true
-                        } label: {
-                            Label("Stapel-Import", systemImage: "square.and.arrow.down.on.square")
-                        }
-                        Button {
-                            showingPDFImport = true
-                        } label: {
-                            Label("PDF importieren", systemImage: "doc.text.magnifyingglass")
-                        }
-                    } label: {
-                        Image(systemName: "plus")
-                    }
+                    addMenu
                 }
             }
             .sheet(isPresented: $showingPasteImport) { PasteImportView() }
@@ -64,79 +110,270 @@ struct LibraryView: View {
             .sheet(isPresented: $creatingPhrase) { PhraseEditorView(phrase: nil) }
             .sheet(item: $phraseInEditor) { phrase in PhraseEditorView(phrase: phrase) }
             .sheet(isPresented: $creatingTopic) { TopicEditorView(topic: nil) }
-            .sheet(item: $topicInEditor) { topic in TopicEditorView(topic: topic) }
         }
     }
 
-    private var topicsSection: some View {
-        Section("Themen") {
-            if topics.isEmpty {
-                Text("Noch keine Themen.")
-                    .foregroundStyle(.secondary)
-            } else {
-                ForEach(topics) { topic in
-                    Button {
-                        topicInEditor = topic
-                    } label: {
-                        HStack {
-                            Text(topic.name)
-                                .foregroundStyle(Color.primary)
-                            Spacer()
-                            if topic.isActive {
-                                Text("Aktiv")
-                                    .font(.caption)
-                                    .foregroundStyle(.tint)
-                            }
-                            Text("\(topic.phrases.count)")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
+    // MARK: - Active chip strip
+
+    private var activeTopicsSection: some View {
+        Section("Aktive Themen") {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DS.space.sm) {
+                    ForEach(activeTopics) { topic in
+                        activeChip(topic)
                     }
                 }
-                .onDelete { offsets in
-                    for index in offsets { context.delete(topics[index]) }
-                    try? context.save()
+                .padding(.horizontal, DS.space.md)
+                .padding(.vertical, 2)
+            }
+            .listRowInsets(EdgeInsets())
+        }
+    }
+
+    private func activeChip(_ topic: Topic) -> some View {
+        Button {
+            withAnimation { topic.isActive = false; try? context.save() }
+        } label: {
+            HStack(spacing: 6) {
+                Text(topic.name)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(DS.accent)
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(DS.accent.opacity(0.6))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(DS.accentSoft)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(topic.name) deaktivieren")
+    }
+
+    // MARK: - Filters
+
+    @ViewBuilder
+    private var filterSection: some View {
+        Section {
+            if languagesWithTopics.count > 1 {
+                Picker("Sprache", selection: $languageFilter) {
+                    Text("Alle Sprachen").tag("")
+                    ForEach(languagesWithTopics, id: \.code) { lang in
+                        Text(lang.germanLabel).tag(lang.code)
+                    }
                 }
+                .pickerStyle(.menu)
+            }
+            Picker("Status", selection: $activeFilter) {
+                Text("Alle").tag(ActiveFilter.all)
+                Text("Aktiv").tag(ActiveFilter.active)
+                Text("Inaktiv").tag(ActiveFilter.inactive)
+            }
+            .pickerStyle(.segmented)
+        }
+    }
+
+    // MARK: - Topics
+
+    private var topicsSection: some View {
+        Section {
+            if filteredTopics.isEmpty {
+                Text(topicsEmptyMessage)
+                    .foregroundStyle(.secondary)
+            } else {
+                ForEach(filteredTopics) { topic in
+                    topicRow(topic)
+                        .swipeActions(edge: .trailing) {
+                            Button(role: .destructive) {
+                                context.delete(topic)
+                                try? context.save()
+                            } label: {
+                                Label("Löschen", systemImage: "trash")
+                            }
+                        }
+                        .swipeActions(edge: .leading) {
+                            Button {
+                                topic.isActive.toggle()
+                                try? context.save()
+                            } label: {
+                                Label(topic.isActive ? "Deaktivieren" : "Aktivieren",
+                                      systemImage: topic.isActive ? "circle" : "checkmark.circle")
+                            }
+                            .tint(DS.accent)
+                        }
+                }
+            }
+        } header: {
+            HStack {
+                Text("Themen (\(filteredTopics.count))")
+                Spacer()
+                bulkMenu
             }
         }
     }
 
+    private func topicRow(_ topic: Topic) -> some View {
+        HStack(spacing: DS.space.md) {
+            Button {
+                topic.isActive.toggle()
+                try? context.save()
+            } label: {
+                Image(systemName: topic.isActive ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(topic.isActive ? DS.accent : DS.textTertiary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(topic.isActive ? "\(topic.name), aktiv" : "\(topic.name), inaktiv")
+
+            Button {
+                selectedTopic = topic
+            } label: {
+                HStack(spacing: DS.space.sm) {
+                    Text(topic.name)
+                        .foregroundStyle(Color.primary)
+                    Spacer()
+                    if showLanguageBadges, let label = topic.language?.germanLabel {
+                        Text(label)
+                            .font(.caption2.weight(.medium))
+                            .foregroundStyle(DS.textSecondary)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(DS.surface2)
+                            .clipShape(Capsule())
+                    }
+                    Text("\(topic.phrases.count)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(DS.textTertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var bulkMenu: some View {
+        Menu {
+            Button {
+                setActive(true, on: filteredTopics)
+            } label: {
+                Label("Alle aktivieren", systemImage: "checkmark.circle")
+            }
+            Button {
+                setActive(false, on: filteredTopics)
+            } label: {
+                Label("Alle deaktivieren", systemImage: "circle")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.body)
+        }
+        .textCase(nil)
+        .accessibilityLabel("Stapelaktionen")
+    }
+
+    private func setActive(_ active: Bool, on list: [Topic]) {
+        withAnimation {
+            for topic in list { topic.isActive = active }
+            try? context.save()
+        }
+    }
+
+    // MARK: - Phrases (search results only)
+
     private var phrasesSection: some View {
-        Section("Phrasen (\(phrases.count))") {
-            if phrases.isEmpty {
-                Text("Füge 5 Phrasen hinzu, um zu starten.")
+        Section("Phrasen (\(filteredPhrases.count))") {
+            if filteredPhrases.isEmpty {
+                Text("Keine passenden Phrasen.")
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(phrases) { phrase in
+                ForEach(filteredPhrases.prefix(phraseResultCap)) { phrase in
                     Button {
                         phraseInEditor = phrase
                     } label: {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(phrase.sourceText)
-                                .foregroundStyle(Color.primary)
-                            Text(phrase.targetText)
-                                .font(.subheadline)
-                                .foregroundStyle(.secondary)
-                            if !phrase.topics.isEmpty {
-                                HStack(spacing: 4) {
-                                    ForEach(phrase.topics) { topic in
-                                        Text(topic.name)
-                                            .font(.caption2)
-                                            .padding(.horizontal, 6)
-                                            .padding(.vertical, 2)
-                                            .background(Color.secondary.opacity(0.15))
-                                            .clipShape(Capsule())
-                                    }
-                                }
-                            }
+                        phraseResultRow(phrase)
+                    }
+                    .buttonStyle(.plain)
+                    .swipeActions(edge: .trailing) {
+                        Button(role: .destructive) {
+                            context.delete(phrase)
+                            try? context.save()
+                        } label: {
+                            Label("Löschen", systemImage: "trash")
                         }
                     }
                 }
-                .onDelete { offsets in
-                    for index in offsets { context.delete(phrases[index]) }
-                    try? context.save()
+                if filteredPhrases.count > phraseResultCap {
+                    Text("… und \(filteredPhrases.count - phraseResultCap) weitere. Suche verfeinern.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
+        }
+    }
+
+    private func phraseResultRow(_ phrase: Phrase) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(phrase.sourceText)
+                .foregroundStyle(Color.primary)
+            Text(phrase.targetText)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            if !phrase.topics.isEmpty {
+                HStack(spacing: 4) {
+                    ForEach(phrase.topics) { topic in
+                        Text(topic.name)
+                            .font(.caption2)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(Color.secondary.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                }
+            }
+        }
+        .contentShape(Rectangle())
+    }
+
+    // MARK: - Add menu
+
+    private var addMenu: some View {
+        Menu {
+            Button {
+                creatingPhrase = true
+            } label: {
+                Label("Phrase hinzufügen", systemImage: "plus.bubble")
+            }
+            Button {
+                creatingTopic = true
+            } label: {
+                Label("Thema hinzufügen", systemImage: "tag")
+            }
+            Button {
+                showingPasteImport = true
+            } label: {
+                Label("Stapel-Import", systemImage: "square.and.arrow.down.on.square")
+            }
+            Button {
+                showingPDFImport = true
+            } label: {
+                Label("PDF importieren", systemImage: "doc.text.magnifyingglass")
+            }
+        } label: {
+            Image(systemName: "plus")
+        }
+        .accessibilityLabel("Hinzufügen")
+    }
+
+    private var topicsEmptyMessage: String {
+        if !searchText.isEmpty { return "Nichts gefunden für \(searchText)." }
+        switch activeFilter {
+        case .active: return "Keine aktiven Themen. Aktiviere eines, um neue Karten zu bekommen."
+        case .inactive: return "Keine inaktiven Themen."
+        case .all: return "Noch keine Themen."
         }
     }
 }
