@@ -51,6 +51,15 @@ final class TTSService {
         }
     }
 
+    /// Cancel any in-flight utterance — called when the user moves to the
+    /// next card so a half-finished reveal doesn't keep speaking over the
+    /// new prompt.
+    func stop() {
+        if synthesizer.isSpeaking {
+            synthesizer.stopSpeaking(at: .immediate)
+        }
+    }
+
     /// Make sure the device plays TTS even if the ringer switch is on silent.
     /// The speech-recognition service flips the category to `.record` while
     /// listening; we need to flip it back before each utterance so reveal-time

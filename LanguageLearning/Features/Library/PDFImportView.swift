@@ -204,6 +204,11 @@ struct PDFImportView: View {
                 language: language,
                 topics: [topic]
             )
+            // Tutor PDF content is treated as homework: priority-surface it
+            // for 14 days so the user drills new lecture vocab before
+            // anything else, then it relaxes into the regular schedule.
+            phrase.isPriority = true
+            phrase.priorityUntil = Calendar.current.date(byAdding: .day, value: 14, to: .now)
             context.insert(phrase)
             for direction in CardDirection.allCases {
                 context.insert(StudyCard(phrase: phrase, direction: direction))

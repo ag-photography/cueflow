@@ -23,6 +23,11 @@ struct LanguageLearningApp: App {
             // Migrate old "Wortliste A2/B1/B2" mega-topics into POS-split
             // topics (idempotent — no-op once migrated).
             SeedData.migrateVocabTopicsToPOS(setupContext)
+            // Migrate POS-split topics ("A2 Substantive", "B1 Verben", …)
+            // into semantic topics aligned with the curated starter pack
+            // (Familie, Verben, Essen & Trinken, …). Idempotent — no-op
+            // once migrated.
+            SeedData.migrateVocabTopicsToSemantic(setupContext)
             // Ensure all supported language records exist (Russian, Arabic).
             // Adds missing ones without touching content for existing ones.
             SeedData.ensureSupportedLanguages(setupContext)

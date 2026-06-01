@@ -91,6 +91,13 @@ final class Phrase {
     var topics: [Topic] = []
     var language: Language?
     var createdAt: Date
+    /// Homework boost: when a phrase is imported from a tutor lecture, mark
+    /// it priority so the scheduler surfaces it ahead of regular vocab while
+    /// the boost window is active.
+    var isPriority: Bool = false
+    /// Date after which the priority boost expires. nil = no boost. Defaults
+    /// to ~2 weeks from import for lecture material.
+    var priorityUntil: Date? = nil
 
     @Relationship(deleteRule: .cascade, inverse: \StudyCard.phrase)
     var cards: [StudyCard] = []
@@ -117,6 +124,14 @@ final class Phrase {
         s.precomposedStringWithCanonicalMapping
             .lowercased()
             .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Is the priority flag still in effect (and not yet expired)? Computed,
+    /// not persisted, so we don't need a daily cleanup job.
+    var isPriorityActive: Bool {
+        guard isPriority else { return false }
+        if let until = priorityUntil, until < .now { return false }
+        return true
     }
 }
 

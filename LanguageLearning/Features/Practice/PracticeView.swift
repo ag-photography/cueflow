@@ -660,51 +660,102 @@ struct PracticeView: View {
     ) -> some View {
         ScrollView {
             VStack(spacing: DS.space.md) {
-                HStack {
-                    gradeChip(for: result.autoGrade)
-                    Spacer()
-                    Button {
-                        tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2)
-                    } label: {
-                        Image(systemName: "speaker.wave.2.fill")
-                            .font(.title3)
-                            .foregroundStyle(DS.accent)
-                            .frame(width: 40, height: 40)
-                            .background(DS.accentSoft)
-                            .clipShape(Circle())
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.top, DS.space.sm)
-
-                DiffView(expected: card.phrase?.targetText ?? "", actual: userAnswer)
-                    .padding(DS.space.md)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(DS.surface1)
-                    .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
-
+                revealHero(card: card, result: result)
+                revealAnswerCard(card: card, result: result)
                 if shouldShowTransliteration, let translit = card.phrase?.transliteration {
                     Text(translit)
                         .font(.footnote)
                         .foregroundStyle(DS.textTertiary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-
                 detailsDisclosure(result: result)
-
-                Text("Wie gut wusstest du es?")
+                Text("Bewertung anpassen")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(DS.textSecondary)
                     .textCase(.uppercase)
                     .tracking(0.5)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top, DS.space.sm)
-
                 ratingButtons(card: card, result: result, userAnswer: userAnswer, responseTimeMs: responseTimeMs)
             }
             .padding(.vertical, DS.space.md)
         }
         .onAppear { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) }
+    }
+
+    /// Big grade-themed hero panel — animates in with a spring on appear so
+    /// the result lands with more punch than the old small chip. Tinted by
+    /// grade colour, large icon + label, speaker control on the right.
+    private func revealHero(card: StudyCard, result: GradeResult) -> some View {
+        let color = gradeColor(for: result.autoGrade)
+        return HStack(spacing: DS.space.md) {
+            Image(systemName: gradeIcon(for: result.autoGrade))
+                .font(.system(size: 36, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 56, height: 56)
+                .background(color.opacity(0.18))
+                .clipShape(Circle())
+            VStack(alignment: .leading, spacing: 2) {
+                Text(result.autoGrade.label)
+                    .font(.system(size: 26, weight: .bold, design: .serif))
+                    .foregroundStyle(DS.textPrimary)
+                Text(revealSubtitle(for: result.autoGrade))
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+            }
+            Spacer()
+            Button {
+                tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2)
+            } label: {
+                Image(systemName: "speaker.wave.2.fill")
+                    .font(.title3)
+                    .foregroundStyle(DS.accent)
+                    .frame(width: 44, height: 44)
+                    .background(DS.accentSoft)
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(DS.space.md)
+        .background(color.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: DS.radius.lg)
+                .stroke(color.opacity(0.25), lineWidth: 1)
+        )
+        .id(result.autoGrade)   // re-runs the appear-animation on grade change
+        .transition(.scale(scale: 0.85).combined(with: .opacity))
+        .animation(.spring(response: 0.45, dampingFraction: 0.7), value: result.autoGrade)
+    }
+
+    /// Big-typography answer card so the correct Russian is the focal point
+    /// after the grade. The diff sits below it, smaller, as a debug aid.
+    private func revealAnswerCard(card: StudyCard, result: GradeResult) -> some View {
+        VStack(spacing: DS.space.sm) {
+            Text(card.phrase?.targetText ?? "")
+                .font(.system(.title2, design: .serif, weight: .semibold))
+                .foregroundStyle(DS.textPrimary)
+                .multilineTextAlignment(.center)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
+            DiffView(expected: card.phrase?.targetText ?? "", actual: result.normalizedActual)
+                .padding(.top, 4)
+        }
+        .padding(DS.space.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DS.surface1)
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+    }
+
+    private func revealSubtitle(for grade: AutoGrade) -> String {
+        switch grade {
+        case .perfect:  return "Sauber gewusst."
+        case .hesitant: return "Richtig, aber gezögert."
+        case .minor:    return "Fast — kleine Abweichung."
+        case .wrong:    return "Daneben — kommt wieder."
+        case .studied:  return "Abgeschrieben — zählt als Übung."
+        }
     }
 
     private func detailsDisclosure(result: GradeResult) -> some View {
@@ -1171,6 +1222,9 @@ struct PracticeView: View {
     }
 
     private func advance() {
+        // Cancel any in-flight TTS so a half-finished reveal doesn't keep
+        // speaking after the next prompt has already appeared.
+        tts.stop()
         let limit = settings.first?.dailyNewLimit ?? 10
         showingGradeDetails = false
         if let next = scheduler.nextCard(from: cardsForActiveLanguage, direction: mode, reviews: reviews, dailyNewLimit: limit) {

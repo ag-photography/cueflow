@@ -166,6 +166,9 @@ struct FlipCardView: View {
                         dragOffset = flyTo
                         dismissed = true
                     }
+                    // Cancel TTS as the card flies off so the Russian
+                    // doesn't keep speaking over the next prompt.
+                    TTSService.shared.stop()
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                         onRate(rating)
                     }

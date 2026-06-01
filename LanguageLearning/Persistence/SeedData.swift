@@ -64,15 +64,15 @@ enum SeedData {
     /// Loads a level pack (A2/B1/B2) from the bundled OpenRussian.org dataset.
     /// CC BY-SA 4.0 — see `openrussian-vocab.json` for the source attribution.
     ///
-    /// Phrases are split into POS-specific topics ("A2 Substantive", "A2
-    /// Verben", "A2 Adjektive", "A2 Sonstige") rather than dumped into one
-    /// big "Wortliste A2" bag — matches the grouping style of the curated
-    /// starter pack.
+    /// Each entry is run through `PhraseClassifier` and dropped into the
+    /// matching semantic topic (Familie, Verben, Essen & Trinken, …) — the
+    /// same topic structure the curated starter pack uses. Entries the
+    /// classifier can't place fall back to a bare POS bucket ("Substantive",
+    /// "Verben", "Adjektive", …) so they're still groupable, just not
+    /// semantically tagged.
     ///
     /// Idempotent: skips phrases that already exist by exact (`de`, `ru`)
-    /// signature. Stress-marked Cyrillic goes into `transliteration` as a
-    /// pronunciation hint; `targetText` stores the bare form so grading
-    /// matches what the user actually types.
+    /// signature.
     @discardableResult
     static func addVocabLevel(
         _ context: ModelContext,
@@ -95,7 +95,7 @@ enum SeedData {
             guard !sigs.contains(signature) else { continue }
             sigs.insert(signature)
 
-            let topicName = "\(level) \(posToGermanLabel(entry.pos))"
+            let topicName = semanticTopicName(de: entry.de, ru: entry.ru, pos: entry.pos)
             let topicResult = ensureTopic(
                 name: topicName,
                 language: russian,
@@ -119,6 +119,75 @@ enum SeedData {
         }
         try? context.save()
         return (added, entries.count, topicsAdded > 0)
+    }
+
+    /// One-shot migration from the POS-split level topics ("A2 Substantive",
+    /// "B1 Verben", "B2 Adjektive", …) — introduced in build 10 — to semantic
+    /// topics aligned with the curated starter pack. Each phrase gets
+    /// reclassified via `PhraseClassifier`; unmappable phrases land in bare
+    /// POS buckets ("Substantive", "Verben", …) so the user has fewer, more
+    /// meaningful topics. Idempotent: no-op once migrated.
+    @discardableResult
+    static func migrateVocabTopicsToSemantic(_ context: ModelContext) -> Int {
+        let allTopics = (try? context.fetch(FetchDescriptor<Topic>())) ?? []
+        let levelPrefixes = ["A2 ", "B1 ", "B2 "]
+        let oldTopics = allTopics.filter { topic in
+            levelPrefixes.contains { topic.name.hasPrefix($0) }
+        }
+        guard !oldTopics.isEmpty else { return 0 }
+
+        guard let payload = loadVocabPayload() else { return 0 }
+        // ru-bare → pos lookup across all levels
+        var posByRu: [String: String] = [:]
+        for (_, entries) in payload {
+            for entry in entries { posByRu[entry.ru] = entry.pos }
+        }
+
+        let russian = ensureRussianLanguage(context: context)
+        var topicCache = buildTopicCache(context: context)
+
+        var moved = 0
+        for oldTopic in oldTopics {
+            let snapshot = oldTopic.phrases
+            for phrase in snapshot {
+                let pos = posByRu[phrase.targetText] ?? "other"
+                let newTopicName = semanticTopicName(
+                    de: phrase.sourceText,
+                    ru: phrase.targetText,
+                    pos: pos
+                )
+                let newTopic = ensureTopic(
+                    name: newTopicName,
+                    language: russian,
+                    context: context,
+                    cache: &topicCache,
+                    isActive: oldTopic.isActive
+                ).topic
+                phrase.topics.removeAll { $0.persistentModelID == oldTopic.persistentModelID }
+                if !phrase.topics.contains(where: { $0.persistentModelID == newTopic.persistentModelID }) {
+                    phrase.topics.append(newTopic)
+                }
+                moved += 1
+            }
+        }
+        for oldTopic in oldTopics where oldTopic.phrases.isEmpty {
+            context.delete(oldTopic)
+        }
+        try? context.save()
+        return moved
+    }
+
+    /// Picks the topic name for a (de, ru, pos) triple: first tries
+    /// PhraseClassifier (semantic), falls back to the bare POS label
+    /// ("Substantive", "Verben", "Adjektive", …) if the classifier
+    /// returns Allgemein — so unmapped vocab is grouped by POS rather
+    /// than dumped into one giant Allgemein bucket.
+    private static func semanticTopicName(de: String, ru: String, pos: String) -> String {
+        let semantic = PhraseClassifier.classify(de: de, ru: ru)
+        if semantic != "Allgemein" { return semantic }
+        // Allgemein fallback → POS bucket for vocab that doesn't fit
+        // a semantic group. Better than mega-Allgemein.
+        return posToGermanLabel(pos)
     }
 
     /// One-shot migration from the old "Wortliste A2/B1/B2" mega-topics to
