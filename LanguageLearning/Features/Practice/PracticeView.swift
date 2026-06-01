@@ -83,7 +83,16 @@ struct PracticeView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, DS.space.md)
         }
-        .background(DS.surface0)
+        .background(
+            // Subtle top-to-bottom warmth so the prompt card floats on depth
+            // rather than flat cream. Header sits on the surface0 top stop, so
+            // there's no seam.
+            LinearGradient(
+                colors: [DS.surface0, DS.surface2.opacity(0.55)],
+                startPoint: .top, endPoint: .bottom
+            )
+            .ignoresSafeArea()
+        )
         .sheet(isPresented: $showingLibrary, onDismiss: { advance() }) {
             LibraryView()
         }
@@ -477,9 +486,7 @@ struct PracticeView: View {
             .frame(maxWidth: .infinity)
             .padding(.horizontal, DS.space.lg)
             .padding(.vertical, DS.space.xxl)
-            .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
-            .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: 6)
+            .dsFlashcardSurface()
     }
 
     private func answerCard(card: StudyCard) -> some View {

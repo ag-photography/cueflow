@@ -2,12 +2,10 @@ import SwiftUI
 import SwiftData
 import Charts
 
-/// User-facing progress screen. Shows what the SRS schedule already knows
-/// but isn't surfaced anywhere in the practice loop: streak, today's count,
-/// total reviews, breakdown of cards by FSRS state, per-topic progress.
-///
-/// Purpose: give the user a felt sense of forward motion so the "I keep
-/// seeing the same phrases" feeling has a counter-narrative.
+/// User-facing progress screen. Surfaces what the SRS schedule knows but the
+/// practice loop doesn't show: streak, today's count, mastery mix, weekly
+/// rhythm, per-topic progress. Redesigned (build 28) around a streak hero and a
+/// mastery ring so it reads as a felt "dashboard", not a stats dump.
 struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var cards: [StudyCard]
@@ -15,23 +13,33 @@ struct ProfileView: View {
     @Query(sort: \Topic.name) private var topics: [Topic]
     @Query(sort: \Language.code) private var languages: [Language]
 
+    private let flame = LinearGradient(
+        colors: [Color(red: 0.97, green: 0.45, blue: 0.17), Color(red: 0.98, green: 0.66, blue: 0.22)],
+        startPoint: .top, endPoint: .bottom
+    )
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: DS.space.lg) {
-                    heroSection
-                    todaySection
+                    streakHero
+                    miniStatsRow
+                    masterySection
                     weeklyChart
                     if languages.count > 1 {
                         perLanguage
                     }
-                    libraryBreakdown
                     topicProgress
                 }
                 .padding(.horizontal, DS.space.md)
+                .padding(.top, DS.space.sm)
                 .padding(.bottom, DS.space.xl)
             }
-            .background(DS.surface0)
+            .background(
+                LinearGradient(colors: [DS.surface0, DS.surface2.opacity(0.5)],
+                               startPoint: .top, endPoint: .bottom)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Fortschritt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -42,43 +50,79 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Sections
+    // MARK: - Streak hero
 
-    private var heroSection: some View {
+    private var streakHero: some View {
+        VStack(spacing: DS.space.md) {
+            HStack(spacing: DS.space.md) {
+                ZStack {
+                    Circle().fill(flame)
+                        .shadow(color: Color(red: 0.97, green: 0.45, blue: 0.17).opacity(0.4), radius: 10, y: 4)
+                    Image(systemName: "flame.fill")
+                        .font(.system(size: 30, weight: .bold))
+                        .foregroundStyle(.white)
+                }
+                .frame(width: 68, height: 68)
+
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("\(currentStreak)")
+                        .font(.system(size: 52, weight: .bold, design: .rounded))
+                        .foregroundStyle(DS.textPrimary)
+                        .monospacedDigit()
+                    Text(streakLabel)
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textSecondary)
+                }
+                Spacer()
+            }
+
+            if let next = nextMilestone(after: currentStreak), currentStreak > 0 {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack {
+                        Text("Nächstes Ziel")
+                        Spacer()
+                        Text("noch \(next - currentStreak) \(next - currentStreak == 1 ? "Tag" : "Tage") bis \(next)")
+                    }
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(DS.textSecondary)
+                    ProgressCapsule(fraction: Double(currentStreak) / Double(next),
+                                    fill: AnyShapeStyle(flame))
+                        .frame(height: 7)
+                }
+            } else if currentStreak == 0 {
+                Text("Übe heute eine Runde, um die Serie zu starten.")
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(DS.space.lg)
+        .background(DS.surface1)
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
+        .modifier(DS.Elevation(level: 2))
+    }
+
+    private var miniStatsRow: some View {
         HStack(spacing: DS.space.md) {
-            heroTile(
-                value: "\(currentStreak)",
-                label: streakLabel,
-                icon: "flame.fill",
-                color: .orange
-            )
-            heroTile(
-                value: "\(reviewedToday)",
-                label: "heute",
-                icon: "checkmark.circle.fill",
-                color: DS.gradePerfect
-            )
-            heroTile(
-                value: "\(dueNow)",
-                label: "fällig",
-                icon: "clock.fill",
-                color: DS.accent
-            )
+            miniStat(value: reviewedToday, label: "heute geübt",
+                     icon: "checkmark.circle.fill", color: DS.gradePerfect)
+            miniStat(value: dueNow, label: "jetzt fällig",
+                     icon: "clock.fill", color: DS.accent)
+            miniStat(value: reviews.count, label: "insgesamt",
+                     icon: "tray.full.fill", color: DS.textSecondary)
         }
     }
 
-    private func heroTile(value: String, label: String, icon: String, color: Color) -> some View {
+    private func miniStat(value: Int, label: String, icon: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Image(systemName: icon)
-                .font(.callout)
-                .foregroundStyle(color)
-            Text(value)
-                .font(.system(size: 34, weight: .bold, design: .rounded))
+            Image(systemName: icon).font(.footnote).foregroundStyle(color)
+            Text("\(value)")
+                .font(.system(size: 26, weight: .bold, design: .rounded))
                 .foregroundStyle(DS.textPrimary)
                 .monospacedDigit()
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(DS.textSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text(label).font(.caption2).foregroundStyle(DS.textSecondary).lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DS.space.md)
@@ -86,59 +130,41 @@ struct ProfileView: View {
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
     }
 
-    private var todaySection: some View {
+    // MARK: - Mastery ring
+
+    private var masterySection: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Heute")
-            VStack(spacing: 8) {
-                statRow("Reviews", "\(reviewedToday)")
-                statRow("Neue Karten", "\(newToday)")
-                statRow("Genauigkeit", accuracyTodayString)
+            sectionHeader("Beherrschung")
+            HStack(spacing: DS.space.lg) {
+                MasteryRing(
+                    mastered: reviewCount, learning: learningCount,
+                    relearning: relearningCount, new: newCount
+                )
+                .frame(width: 124, height: 124)
+
+                VStack(alignment: .leading, spacing: DS.space.sm) {
+                    legendRow(color: DS.accent, label: "Gemeistert", count: reviewCount)
+                    legendRow(color: DS.gradeMinor, label: "Im Lernen", count: learningCount)
+                    legendRow(color: DS.gradeWrong, label: "Nachlernen", count: relearningCount)
+                    legendRow(color: DS.textTertiary.opacity(0.55), label: "Neu", count: newCount)
+                }
+                Spacer(minLength: 0)
             }
             .padding(DS.space.md)
+            .frame(maxWidth: .infinity)
             .background(DS.surface1)
             .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
         }
     }
 
-    private var libraryBreakdown: some View {
-        VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Deine Bibliothek")
-            VStack(spacing: DS.space.sm) {
-                stateBar(label: "Neu", count: newCount, total: cards.count, color: DS.textTertiary)
-                stateBar(label: "Im Lernen", count: learningCount, total: cards.count, color: DS.gradeMinor)
-                stateBar(label: "In Wiederholung", count: reviewCount, total: cards.count, color: DS.accent)
-                stateBar(label: "Nachlernen", count: relearningCount, total: cards.count, color: DS.gradeWrong)
-            }
-            .padding(DS.space.md)
-            .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
-
-            HStack {
-                Text("Gesamt: \(cards.count) Karten")
-                Spacer()
-                Text("\(reviews.count) Reviews insgesamt")
-            }
-            .font(.caption)
-            .foregroundStyle(DS.textTertiary)
-        }
-    }
-
-    private var topicProgress: some View {
-        VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Themen")
-            VStack(spacing: 6) {
-                ForEach(topicsWithCards, id: \.id) { topic in
-                    topicRow(topic: topic)
-                }
-                if topicsWithCards.isEmpty {
-                    Text("Noch keine Themen mit Karten.")
-                        .font(.subheadline)
-                        .foregroundStyle(DS.textSecondary)
-                }
-            }
-            .padding(DS.space.md)
-            .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+    private func legendRow(color: Color, label: String, count: Int) -> some View {
+        HStack(spacing: DS.space.sm) {
+            Circle().fill(color).frame(width: 9, height: 9)
+            Text(label).font(.subheadline).foregroundStyle(DS.textPrimary)
+            Spacer()
+            Text("\(count)")
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(DS.textSecondary)
         }
     }
 
@@ -150,21 +176,26 @@ struct ProfileView: View {
             Chart(weeklyData) { day in
                 BarMark(
                     x: .value("Tag", day.date, unit: .day),
-                    y: .value("Karten", day.count)
+                    y: .value("Karten", day.count),
+                    width: .fixed(20)
                 )
-                .foregroundStyle(day.count > 0 ? DS.accent : DS.surface2)
-                .cornerRadius(4)
+                .clipShape(RoundedRectangle(cornerRadius: 5))
+                .foregroundStyle(
+                    day.count > 0
+                    ? LinearGradient(colors: [DS.accent, DS.accent.opacity(0.55)],
+                                     startPoint: .top, endPoint: .bottom)
+                    : LinearGradient(colors: [DS.surface2, DS.surface2], startPoint: .top, endPoint: .bottom)
+                )
             }
-            .frame(height: 140)
+            .frame(height: 150)
             .chartXAxis {
                 AxisMarks(values: .stride(by: .day)) { _ in
-                    AxisValueLabel(format: .dateTime.weekday(.narrow))
-                        .font(.caption2)
+                    AxisValueLabel(format: .dateTime.weekday(.narrow)).font(.caption2)
                 }
             }
             .chartYAxis {
                 AxisMarks { _ in
-                    AxisGridLine()
+                    AxisGridLine().foregroundStyle(DS.textTertiary.opacity(0.2))
                     AxisValueLabel().font(.caption2)
                 }
             }
@@ -183,6 +214,26 @@ struct ProfileView: View {
                     if count > 0 {
                         statRow(lang.germanLabel, "\(count)")
                     }
+                }
+            }
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        }
+    }
+
+    private var topicProgress: some View {
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            sectionHeader("Themen")
+            VStack(spacing: DS.space.md) {
+                ForEach(topicsWithCards.prefix(8), id: \.id) { topic in
+                    topicRow(topic: topic)
+                }
+                if topicsWithCards.isEmpty {
+                    Text("Noch keine Themen mit Karten.")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
             .padding(DS.space.md)
@@ -222,53 +273,26 @@ struct ProfileView: View {
         .font(.subheadline)
     }
 
-    private func stateBar(label: String, count: Int, total: Int, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(label).font(.subheadline)
-                Spacer()
-                Text("\(count)").font(.subheadline.monospacedDigit()).foregroundStyle(DS.textSecondary)
-            }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(DS.surface2)
-                    Capsule()
-                        .fill(color)
-                        .frame(width: total > 0 ? geo.size.width * CGFloat(count) / CGFloat(total) : 0)
-                }
-            }
-            .frame(height: 6)
-        }
-    }
-
     private func topicRow(topic: Topic) -> some View {
         let total = topic.phrases.count * CardDirection.allCases.count
         let learnedCount = cardsForTopic(topic).filter { $0.state == .review }.count
-        return VStack(alignment: .leading, spacing: 4) {
+        return VStack(alignment: .leading, spacing: 5) {
             HStack {
                 if topic.isActive {
-                    Image(systemName: "circle.fill")
-                        .font(.system(size: 6))
-                        .foregroundStyle(DS.accent)
+                    Circle().fill(DS.accent).frame(width: 6, height: 6)
                 }
                 Text(topic.name)
                     .font(.subheadline.weight(topic.isActive ? .semibold : .regular))
+                    .foregroundStyle(DS.textPrimary)
                 Spacer()
                 Text("\(learnedCount)/\(total)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(DS.textSecondary)
             }
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(DS.surface2)
-                    Capsule()
-                        .fill(DS.accent)
-                        .frame(width: total > 0 ? geo.size.width * CGFloat(learnedCount) / CGFloat(total) : 0)
-                }
-            }
-            .frame(height: 4)
+            ProgressCapsule(fraction: total > 0 ? Double(learnedCount) / Double(total) : 0,
+                            fill: AnyShapeStyle(DS.accent))
+                .frame(height: 5)
         }
-        .padding(.vertical, 4)
     }
 
     // MARK: - Derived data
@@ -282,26 +306,19 @@ struct ProfileView: View {
     private var startOfToday: Date { Calendar.current.startOfDay(for: .now) }
     private var reviewsToday: [Review] { reviews.filter { $0.timestamp >= startOfToday } }
     private var reviewedToday: Int { reviewsToday.count }
-    private var newToday: Int { reviewsToday.filter(\.wasNew).count }
 
-    private var accuracyTodayString: String {
-        guard !reviewsToday.isEmpty else { return "—" }
-        let correct = reviewsToday.filter { $0.rating >= 3 }.count
-        let pct = Int(Double(correct) / Double(reviewsToday.count) * 100)
-        return "\(pct) %  (\(correct)/\(reviewsToday.count))"
+    private func nextMilestone(after streak: Int) -> Int? {
+        [3, 7, 14, 30, 100, 365].first { $0 > streak }
     }
 
     private var currentStreak: Int {
-        // Walk backwards from today: each consecutive calendar day with at
-        // least one review counts. Stop at the first day with no review.
-        // Today itself counts only if there's been a review today.
         let cal = Calendar.current
         var day = cal.startOfDay(for: .now)
         var streak = 0
         while true {
             let next = cal.date(byAdding: .day, value: 1, to: day) ?? day
-            let count = reviews.contains { $0.timestamp >= day && $0.timestamp < next }
-            if !count { break }
+            let hit = reviews.contains { $0.timestamp >= day && $0.timestamp < next }
+            if !hit { break }
             streak += 1
             day = cal.date(byAdding: .day, value: -1, to: day) ?? day
         }
@@ -330,6 +347,75 @@ struct ProfileView: View {
         return cards.filter {
             guard let phrase = $0.phrase else { return false }
             return phraseIDs.contains(phrase.persistentModelID)
+        }
+    }
+}
+
+// MARK: - Mastery ring
+
+/// Donut of the four FSRS states with the mastered-percentage in the middle.
+private struct MasteryRing: View {
+    let mastered: Int
+    let learning: Int
+    let relearning: Int
+    let new: Int
+
+    private var total: Int { max(1, mastered + learning + relearning + new) }
+    private var masteredPct: Int { Int((Double(mastered) / Double(total) * 100).rounded()) }
+
+    private var segments: [(start: Double, end: Double, color: Color)] {
+        let ordered: [(Int, Color)] = [
+            (mastered, DS.accent),
+            (learning, DS.gradeMinor),
+            (relearning, DS.gradeWrong),
+            (new, DS.textTertiary.opacity(0.5)),
+        ]
+        var acc = 0.0
+        return ordered.compactMap { count, color in
+            guard count > 0 else { return nil }
+            let start = acc
+            acc += Double(count) / Double(total)
+            return (start, acc, color)
+        }
+    }
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(DS.surface2, lineWidth: 16)
+            ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
+                Circle()
+                    .trim(from: seg.start, to: seg.end)
+                    .stroke(seg.color, style: StrokeStyle(lineWidth: 16, lineCap: .butt))
+                    .rotationEffect(.degrees(-90))
+            }
+            VStack(spacing: 0) {
+                Text("\(masteredPct)%")
+                    .font(.system(size: 28, weight: .bold, design: .rounded))
+                    .foregroundStyle(DS.accent)
+                    .monospacedDigit()
+                Text("gemeistert")
+                    .font(.caption2)
+                    .foregroundStyle(DS.textSecondary)
+            }
+        }
+    }
+}
+
+// MARK: - Progress capsule
+
+/// Rounded progress track used by the streak hero and topic rows.
+private struct ProgressCapsule: View {
+    let fraction: Double
+    let fill: AnyShapeStyle
+
+    var body: some View {
+        GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(DS.surface2)
+                Capsule()
+                    .fill(fill)
+                    .frame(width: geo.size.width * min(max(fraction, 0), 1))
+            }
         }
     }
 }

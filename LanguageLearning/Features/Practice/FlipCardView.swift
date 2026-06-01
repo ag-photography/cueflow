@@ -113,9 +113,7 @@ struct FlipCardView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(DS.surface1)
-        .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
-        .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: 6)
+        .dsFlashcardSurface()
     }
 
     // MARK: - Edge hints

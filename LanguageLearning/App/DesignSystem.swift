@@ -130,4 +130,28 @@ extension View {
             .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
             .modifier(DS.Elevation(level: 2))
     }
+
+    /// The premium "flashcard" surface shared by the practice prompt and the
+    /// flip-card faces: continuous corners, a subtle top highlight (lit-from-
+    /// above), and a layered shadow — a soft teal-tinted ambient glow plus a
+    /// tighter contact shadow. One definition so all three modes read identically.
+    func dsFlashcardSurface() -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .fill(DS.surface1)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 26, style: .continuous)
+                    .stroke(
+                        LinearGradient(
+                            colors: [Color.white.opacity(0.45), Color.white.opacity(0)],
+                            startPoint: .top, endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
+            )
+            .shadow(color: DS.accent.opacity(0.10), radius: 22, x: 0, y: 12)
+            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+    }
 }
