@@ -10,9 +10,14 @@ struct PasteImportView: View {
     @Query private var existingTopics: [Topic]
     @Query private var languages: [Language]
 
-    @State private var rawText: String = ""
+    @State private var rawText: String
     @State private var separator: String = "="
-    @State private var order: LineOrder = .deRu
+    @State private var order: LineOrder
+
+    init(initialText: String = "", initialOrder: LineOrder = .deRu) {
+        self._rawText = State(initialValue: initialText)
+        self._order = State(initialValue: initialOrder)
+    }
 
     private var parsedLines: [ParsedLine] {
         rawText

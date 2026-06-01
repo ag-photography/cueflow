@@ -9,6 +9,7 @@ struct LibraryView: View {
     @Query(sort: \Phrase.createdAt, order: .reverse) private var phrases: [Phrase]
 
     @State private var showingPasteImport = false
+    @State private var showingPDFImport = false
     @State private var showingSettings = false
     @State private var phraseInEditor: Phrase?
     @State private var creatingPhrase = false
@@ -47,12 +48,18 @@ struct LibraryView: View {
                         } label: {
                             Label("Stapel-Import", systemImage: "square.and.arrow.down.on.square")
                         }
+                        Button {
+                            showingPDFImport = true
+                        } label: {
+                            Label("PDF importieren", systemImage: "doc.text.magnifyingglass")
+                        }
                     } label: {
                         Image(systemName: "plus")
                     }
                 }
             }
             .sheet(isPresented: $showingPasteImport) { PasteImportView() }
+            .sheet(isPresented: $showingPDFImport) { PDFImportView() }
             .sheet(isPresented: $showingSettings) { SettingsView() }
             .sheet(isPresented: $creatingPhrase) { PhraseEditorView(phrase: nil) }
             .sheet(item: $phraseInEditor) { phrase in PhraseEditorView(phrase: phrase) }
