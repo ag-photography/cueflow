@@ -449,9 +449,11 @@ struct PracticeView: View {
     private func heroPrompt(card: StudyCard) -> some View {
         // Serif typography (Apple "New York" via design: .serif) for a
         // premium reading-app feel — borrowed from Babbel's headline style.
-        // Scales down for longer phrases so wrapping stays graceful.
+        // Same size scaling as FlipCardView's faces, and the same surface /
+        // radius / shadow, so the prompt reads identically across all three
+        // modes — one unified "card" metaphor (build 24).
         let text = card.phrase?.sourceText ?? "—"
-        let size: CGFloat = text.count > 40 ? 24 : (text.count > 30 ? 30 : (text.count > 15 ? 38 : 46))
+        let size: CGFloat = text.count > 40 ? 22 : (text.count > 30 ? 28 : (text.count > 15 ? 34 : 42))
         return Text(text)
             .font(.system(size: size, weight: .bold, design: .serif))
             .multilineTextAlignment(.center)
@@ -459,8 +461,11 @@ struct PracticeView: View {
             .lineLimit(nil)
             .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity)
-            .padding(.horizontal, DS.space.md)
-            .padding(.vertical, DS.space.lg)
+            .padding(.horizontal, DS.space.lg)
+            .padding(.vertical, DS.space.xxl)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
+            .shadow(color: .black.opacity(0.10), radius: 14, x: 0, y: 6)
     }
 
     private func answerCard(card: StudyCard) -> some View {
@@ -668,14 +673,8 @@ struct PracticeView: View {
                         .foregroundStyle(DS.textTertiary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                detailsDisclosure(result: result)
-                Text("Bewertung anpassen")
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(DS.textSecondary)
-                    .textCase(.uppercase)
-                    .tracking(0.5)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top, DS.space.sm)
+                detailsDisclosure(card: card, result: result)
+                ratingHeading(suggested: result.autoGrade.suggestedRating)
                 ratingButtons(card: card, result: result, userAnswer: userAnswer, responseTimeMs: responseTimeMs)
             }
             .padding(.vertical, DS.space.md)
@@ -729,23 +728,19 @@ struct PracticeView: View {
     }
 
     /// Big-typography answer card so the correct Russian is the focal point
-    /// after the grade. The diff sits below it, smaller, as a debug aid.
+    /// after the grade. The character-level diff now lives in the collapsed
+    /// Details disclosure below (build 24 — slimmer reveal).
     private func revealAnswerCard(card: StudyCard, result: GradeResult) -> some View {
-        VStack(spacing: DS.space.sm) {
-            Text(card.phrase?.targetText ?? "")
-                .font(.system(.title2, design: .serif, weight: .semibold))
-                .foregroundStyle(DS.textPrimary)
-                .multilineTextAlignment(.center)
-                .lineLimit(nil)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity)
-            DiffView(expected: card.phrase?.targetText ?? "", actual: result.normalizedActual)
-                .padding(.top, 4)
-        }
-        .padding(DS.space.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(DS.surface1)
-        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        Text(card.phrase?.targetText ?? "")
+            .font(.system(.title2, design: .serif, weight: .semibold))
+            .foregroundStyle(DS.textPrimary)
+            .multilineTextAlignment(.center)
+            .lineLimit(nil)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity)
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
     }
 
     private func revealSubtitle(for grade: AutoGrade) -> String {
@@ -758,23 +753,26 @@ struct PracticeView: View {
         }
     }
 
-    private func detailsDisclosure(result: GradeResult) -> some View {
+    private func detailsDisclosure(card: StudyCard, result: GradeResult) -> some View {
         DisclosureGroup(isExpanded: $showingGradeDetails) {
-            VStack(alignment: .leading, spacing: 6) {
-                detailRow("Erwartet", result.normalizedExpected)
-                detailRow("Eingabe", result.normalizedActual)
-                detailRow("Tier", "\(result.tier)")
-                if result.editedWords > 0 {
-                    detailRow("Wörter mit Abweichung", "\(result.editedWords)")
-                    detailRow("Zeichenänderungen", "\(result.totalEdits)")
+            VStack(alignment: .leading, spacing: DS.space.sm) {
+                DiffView(expected: card.phrase?.targetText ?? "", actual: result.normalizedActual)
+                VStack(alignment: .leading, spacing: 6) {
+                    detailRow("Erwartet", result.normalizedExpected)
+                    detailRow("Eingabe", result.normalizedActual)
+                    detailRow("Tier", "\(result.tier)")
+                    if result.editedWords > 0 {
+                        detailRow("Wörter mit Abweichung", "\(result.editedWords)")
+                        detailRow("Zeichenänderungen", "\(result.totalEdits)")
+                    }
                 }
+                .font(.caption.monospaced())
+                .foregroundStyle(DS.textSecondary)
             }
-            .font(.caption.monospaced())
-            .foregroundStyle(DS.textSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, DS.space.sm)
         } label: {
-            Text("Details")
+            Text("Details & Abgleich")
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(DS.textSecondary)
         }
@@ -800,6 +798,20 @@ struct PracticeView: View {
             .init(rating: 3, label: "Gut", symbol: "checkmark", color: DS.gradePerfect),
             .init(rating: 4, label: "Leicht", symbol: "sparkles", color: DS.accent),
         ]
+    }
+
+    /// Names the auto-grade's suggested rating and frames the row as
+    /// "confirm or adjust" — clearer than the old bare "Bewertung anpassen".
+    private func ratingHeading(suggested: Int) -> some View {
+        let label = ratingSpecs.first { $0.rating == suggested }?.label ?? "Gut"
+        return (
+            Text("Vorschlag: ").foregroundStyle(DS.textSecondary)
+            + Text(label).foregroundStyle(DS.textPrimary).bold()
+            + Text(" — bestätigen oder anpassen").foregroundStyle(DS.textTertiary)
+        )
+        .font(.caption)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.top, DS.space.sm)
     }
 
     private func ratingButtons(
@@ -848,6 +860,15 @@ struct PracticeView: View {
             .padding(.vertical, 16)
             .background(isSuggested ? spec.color : spec.color.opacity(0.12))
             .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .overlay(
+                // White ring on the suggested choice makes it read as the
+                // primary "tap to confirm"; a faint tint defines the others.
+                RoundedRectangle(cornerRadius: DS.radius.md)
+                    .stroke(
+                        isSuggested ? Color.white.opacity(0.55) : spec.color.opacity(0.18),
+                        lineWidth: isSuggested ? 2 : 1
+                    )
+            )
             .shadow(
                 color: isSuggested ? spec.color.opacity(0.25) : .clear,
                 radius: 4,
@@ -856,6 +877,7 @@ struct PracticeView: View {
             )
         }
         .buttonStyle(.plain)
+        .accessibilityHint(isSuggested ? "Vorgeschlagene Bewertung" : "")
     }
 
     private func gradeChip(for grade: AutoGrade) -> some View {
