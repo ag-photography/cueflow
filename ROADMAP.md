@@ -1,6 +1,6 @@
 # CueFlow — Roadmap to App Store
 
-**Current state:** build 22, on TestFlight (personal).
+**Current state:** build 23, on TestFlight (personal).
 **Goal:** ship to App Store as a free, self-contained, privacy-first language-learning app for German speakers learning Russian (and Arabic).
 **Realistic timeline:** 3–4 months / ~18–20 more builds.
 
@@ -44,7 +44,7 @@
 
 - ✅ **21. Onboarding** *(shipped)* — 5-screen first-launch walkthrough (Willkommen / So funktioniert's / Tagesziel / Starter-Themen / Russische Tastatur); `hasCompletedOnboarding` gate in RootView with `markExistingUsersOnboarded` so returning users skip it; "Einführung wiederholen" in Settings replays it non-destructively.
 - ✅ **22. Library overhaul** *(shipped)* — search field; filter by language + active/inactive status; per-topic detail screen (TopicDetailView) with mastery %, FSRS-state breakdown, due count, phrase list, rename; "Aktive Themen" chip-strip with toggle-off; bulk activate/deactivate on the filtered set; top-level phrase list now renders only while searching (was rendering all ~2000). *Note: per-**level** filter deferred — level isn't on the data model (A2/B1/B2 merged into semantic topics at seed time); revisit if a per-phrase level field is added.*
-- **23. Settings restructure** — proper section grouping (Sprache & Inhalte / Üben / Erinnerungen / Daten / Entwickler); dev tools hidden behind flag.
+- ✅ **23. Settings restructure** *(shipped)* — grouped into Sprache & Inhalte / Üben / Erinnerungen / Daten / (Entwickler) / Info; dev tools (Diagnose) hidden behind a `developerModeEnabled` flag unlocked by tapping the version footer 7×; app version/build shown in the footer.
 - **24. Visual coherence** — unify card metaphor across all 3 modes; reveal screen slim (diff/details default-collapsed); micro-polish on rating buttons.
 - **25. Accessibility + dark mode** — Dynamic Type support across all screens; VoiceOver labels on icon buttons; contrast WCAG AA verified; reduce-motion honored; dark mode screenshot-tested on every screen.
 

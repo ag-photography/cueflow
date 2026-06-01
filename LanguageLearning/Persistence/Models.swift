@@ -276,6 +276,10 @@ final class AppSettings {
     // update to the onboarding build) are flipped to true by
     // SeedData.markExistingUsersOnboarded so they don't get re-onboarded.
     var hasCompletedOnboarding: Bool = false
+    // Developer tools (Diagnose/Telemetry) stay hidden until unlocked by
+    // tapping the version footer in Settings. Off by default; persisted so it
+    // survives across launches once unlocked.
+    var developerModeEnabled: Bool = false
 
     init(
         dailyNewLimit: Int = 10,
@@ -293,5 +297,6 @@ final class AppSettings {
         self.lastCelebratedStreak = 0
         self.surpriseRewardsEnabled = true
         self.hasCompletedOnboarding = false
+        self.developerModeEnabled = false
     }
 }

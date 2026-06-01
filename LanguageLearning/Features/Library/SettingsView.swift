@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 struct SettingsView: View {
     @Environment(\.modelContext) private var context
@@ -20,6 +21,7 @@ struct SettingsView: View {
     @State private var reminderPermissionDenied: Bool = false
     @State private var surpriseRewardsEnabled: Bool = true
     @State private var showingOnboarding = false
+    @State private var devTapCount = 0
 
     private static var defaultReminderTime: Date {
         var comps = DateComponents()
@@ -42,18 +44,25 @@ struct SettingsView: View {
     var body: some View {
         NavigationStack {
             Form {
+                // MARK: Sprache & Inhalte
                 Section {
                     Picker("Aktive Sprache", selection: $activeLanguageCode) {
                         ForEach(languages, id: \.code) { lang in
                             Text(lang.germanLabel).tag(lang.code)
                         }
                     }
+                    Picker("Transliteration", selection: $transliterationVisible) {
+                        ForEach(TransliterationMode.allCases, id: \.self) { mode in
+                            Text(mode.label).tag(mode)
+                        }
+                    }
                 } header: {
-                    Text("Sprache")
+                    Text("Sprache & Inhalte")
                 } footer: {
-                    Text("Phrasen anderer Sprachen werden ausgeblendet, bis du sie hier auswählst. Russisch & Arabisch werden unterstützt – Vokabular fügst du per Stapel-Import oder einzeln hinzu.")
+                    Text("Phrasen anderer Sprachen werden ausgeblendet, bis du sie hier auswählst. Russisch & Arabisch werden unterstützt. Transliteration zeigt die Lautschrift unter der Antwort.")
                 }
 
+                // MARK: Üben
                 Section {
                     Stepper(value: $dailyNewLimit, in: 0...50) {
                         HStack {
@@ -63,10 +72,15 @@ struct SettingsView: View {
                                 .foregroundStyle(.secondary)
                         }
                     }
+                    Toggle("KI-Bewertungshilfe", isOn: $useAIGradingAssist)
+                    Toggle("Überraschungs-Belohnungen", isOn: $surpriseRewardsEnabled)
+                } header: {
+                    Text("Üben")
                 } footer: {
-                    Text("Begrenzt, wie viele neue Karten pro Tag eingeführt werden. Wiederholungen sind unbegrenzt.")
+                    Text("Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Überraschungs-Belohnungen sind eine gelegentliche Mini-Feier nach richtigen Antworten.")
                 }
 
+                // MARK: Erinnerungen
                 Section {
                     Toggle("Tägliche Erinnerung", isOn: $dailyReminderEnabled)
                         .onChange(of: dailyReminderEnabled) { _, newValue in
@@ -96,41 +110,43 @@ struct SettingsView: View {
                             .foregroundStyle(.orange)
                     }
                 } header: {
-                    Text("Erinnerung")
+                    Text("Erinnerungen")
                 } footer: {
                     Text("Eine sanfte tägliche Erinnerung zur gewählten Zeit. Keine Streak-Panik, keine FOMO. Jederzeit ausschaltbar.")
                 }
 
-                Section("Transliteration") {
-                    Picker("Anzeigen", selection: $transliterationVisible) {
-                        ForEach(TransliterationMode.allCases, id: \.self) { mode in
-                            Text(mode.label).tag(mode)
-                        }
-                    }
-                }
-
-                Section {
-                    Toggle("KI-Bewertungshilfe", isOn: $useAIGradingAssist)
-                } footer: {
-                    Text("Nutzt Apples On-Device-Sprachmodell, um Tier-2-Bewertungen zu verfeinern (iOS 26+, nur auf Apple-Intelligence-fähigen Geräten).")
-                }
-
-                Section {
-                    Toggle("Überraschungs-Belohnungen", isOn: $surpriseRewardsEnabled)
-                } footer: {
-                    Text("Gelegentliche Mini-Feier nach einer richtigen Antwort (ca. jede 8. Karte). Reines Spaß-Element — wenn's nervt, ausschalten.")
-                }
-
+                // MARK: Daten
                 Section {
                     NavigationLink {
                         BackupView()
                     } label: {
                         Label("Sicherung & Export", systemImage: "externaldrive.badge.icloud")
                     }
+                } header: {
+                    Text("Daten")
                 } footer: {
                     Text("Fortschritt & Streak: oben rechts auf der Übungsseite (Diagramm-Icon). TestFlight-Updates erhalten deinen Fortschritt automatisch.")
                 }
 
+                // MARK: Entwickler (hidden until unlocked)
+                if developerModeEnabled {
+                    Section {
+                        NavigationLink {
+                            TelemetryView()
+                        } label: {
+                            Label("Diagnose", systemImage: "chart.bar.doc.horizontal")
+                        }
+                        Button(role: .destructive) {
+                            setDeveloperMode(false)
+                        } label: {
+                            Label("Entwicklermodus ausblenden", systemImage: "eye.slash")
+                        }
+                    } header: {
+                        Text("Entwickler")
+                    }
+                }
+
+                // MARK: Info
                 Section {
                     Button {
                         save()   // don't lose unsaved edits behind the cover
@@ -139,15 +155,7 @@ struct SettingsView: View {
                         Label("Einführung wiederholen", systemImage: "sparkles")
                     }
                 } footer: {
-                    Text("Zeigt die Erstkonfiguration erneut — Tagesziel, Starter-Themen und die Tastatur-Anleitung.")
-                }
-
-                Section("Entwickler") {
-                    NavigationLink {
-                        TelemetryView()
-                    } label: {
-                        Label("Diagnose", systemImage: "chart.bar.doc.horizontal")
-                    }
+                    versionFooter
                 }
             }
             .navigationTitle("Einstellungen")
@@ -233,6 +241,44 @@ struct SettingsView: View {
         row.activeLanguageCode = activeLanguageCode
         row.surpriseRewardsEnabled = surpriseRewardsEnabled
         try? context.save()
+    }
+
+    // MARK: - Developer mode
+
+    private var developerModeEnabled: Bool {
+        settings.first?.developerModeEnabled ?? false
+    }
+
+    private func setDeveloperMode(_ on: Bool) {
+        ensureSettingsRow().developerModeEnabled = on
+        try? context.save()
+        devTapCount = 0
+    }
+
+    /// App-version line that doubles as the hidden unlock: seven taps reveal the
+    /// Entwickler section (classic iOS "tap to unlock dev tools" pattern).
+    private var versionFooter: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Zeigt die Erstkonfiguration erneut — Tagesziel, Starter-Themen und Tastatur-Anleitung.")
+            Text(appVersionString)
+                .foregroundStyle(.tertiary)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    guard !developerModeEnabled else { return }
+                    devTapCount += 1
+                    if devTapCount >= 7 {
+                        UINotificationFeedbackGenerator().notificationOccurred(.success)
+                        setDeveloperMode(true)
+                    }
+                }
+        }
+    }
+
+    private var appVersionString: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = info?["CFBundleVersion"] as? String ?? "—"
+        return "CueFlow \(version) (Build \(build))"
     }
 }
 
