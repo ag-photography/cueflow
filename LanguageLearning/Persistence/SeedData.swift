@@ -21,6 +21,20 @@ enum SeedData {
         return added
     }
 
+    /// Idempotent: makes sure every piece of content that ships *inside* the
+    /// app bundle is present in the store — A1 Russian + A1 Arabic curated
+    /// packs and the full OpenRussian A2/B1/B2 wordlists. Topics are all
+    /// inactive by default; the user activates what they want to drill in
+    /// Library. Called on every launch — does work only on the first one
+    /// (and after future content updates).
+    static func ensureAllBundledContent(_ context: ModelContext) {
+        _ = addStarterPack(context)        // RU A1 (~250 curated phrases)
+        _ = addArabicStarter(context)       // AR A1 (~115 curated phrases)
+        for level in ["A2", "B1", "B2"] {
+            _ = addVocabLevel(context, level: level)   // OpenRussian per level
+        }
+    }
+
     /// Inserts the default Russian language and the full starter pack on first
     /// launch with an empty store.
     static func seedIfNeeded(_ context: ModelContext) {

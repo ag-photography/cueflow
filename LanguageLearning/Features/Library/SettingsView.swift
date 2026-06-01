@@ -121,32 +121,6 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    starterPackRow
-                } header: {
-                    Text("Starter-Vokabular (A1) – Russisch")
-                } footer: {
-                    Text("Ca. 250 kuratierte A1-Sätze in 23 Themen (Begrüßung, Familie, Verben, Adjektive, …).")
-                }
-
-                Section {
-                    arabicStarterRow
-                } header: {
-                    Text("Starter-Vokabular (A1) – Arabisch")
-                } footer: {
-                    Text("Ca. 115 A1-Phrasen in Lateinschrift (Transliteration) – die arabische Schrift wird darunter angezeigt. So kannst du sofort mit der deutschen Tastatur tippen, ohne erst das arabische Alphabet zu lernen.")
-                }
-
-                Section {
-                    vocabRow(level: "A2")
-                    vocabRow(level: "B1")
-                    vocabRow(level: "B2")
-                } header: {
-                    Text("Wortlisten (OpenRussian.org)")
-                } footer: {
-                    Text("Häufigste russische Wörter mit deutschen Übersetzungen. Jede Stufe landet als eigenes Thema in der Bibliothek (inaktiv) – aktiviere sie dort, wenn du soweit bist. Daten: openrussian.org (CC BY-SA 4.0).")
-                }
-
-                Section {
                     NavigationLink {
                         BackupView()
                     } label: {
@@ -171,17 +145,6 @@ struct SettingsView: View {
                 }
             }
             .onAppear { hydrate() }
-            .alert(
-                "Starter-Vokabular",
-                isPresented: Binding(
-                    get: { starterPackResult != nil },
-                    set: { if !$0 { starterPackResult = nil } }
-                )
-            ) {
-                Button("OK") { starterPackResult = nil }
-            } message: {
-                Text(starterPackResult ?? "")
-            }
         }
     }
 
@@ -241,122 +204,6 @@ struct SettingsView: View {
         let row = AppSettings()
         context.insert(row)
         return row
-    }
-
-    // MARK: - Load-state rows
-
-    private var starterPackRow: some View {
-        let loaded = starterPackLoadedCount
-        let isLoaded = loaded >= starterPackTotal * 9 / 10
-        return Group {
-            if isLoaded {
-                HStack {
-                    Label("Geladen", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Spacer()
-                    Text("\(loaded)/\(starterPackTotal)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-            } else if loaded > 0 {
-                Button {
-                    let result = SeedData.addStarterPack(context)
-                    starterPackResult = "Hinzugefügt: \(result.phrasesAdded) Karten."
-                } label: {
-                    HStack {
-                        Label("Teilweise geladen – Rest laden", systemImage: "arrow.down.circle")
-                        Spacer()
-                        Text("\(loaded)/\(starterPackTotal)")
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                }
-            } else {
-                Button {
-                    let result = SeedData.addStarterPack(context)
-                    starterPackResult = "Hinzugefügt: \(result.phrasesAdded) Karten, \(result.topicsAdded) neue Themen."
-                } label: {
-                    HStack {
-                        Label("Laden", systemImage: "tray.and.arrow.down")
-                        Spacer()
-                        Text("\(starterPackTotal)")
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                }
-            }
-        }
-    }
-
-    private func vocabRow(level: String) -> some View {
-        let expected = vocabExpected[level] ?? 0
-        let loaded = phrases.filter { phrase in
-            phrase.topics.contains { $0.name.hasPrefix("\(level) ") }
-        }.count
-        let isLoaded = loaded >= expected * 9 / 10
-        return Group {
-            if isLoaded {
-                HStack {
-                    Label("Wortliste \(level)", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Spacer()
-                    Text("\(loaded)/\(expected)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-            } else {
-                Button {
-                    let result = SeedData.addVocabLevel(context, level: level)
-                    starterPackResult = "Wortliste \(level): \(result.phrasesAdded) Karten hinzugefügt."
-                } label: {
-                    HStack {
-                        Label("Wortliste \(level) laden", systemImage: loaded > 0 ? "arrow.down.circle" : "books.vertical")
-                        Spacer()
-                        Text(loaded > 0 ? "\(loaded)/\(expected)" : "\(expected)")
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                }
-            }
-        }
-    }
-
-    private var starterPackLoadedCount: Int {
-        phrases.filter { phrase in
-            phrase.topics.contains { starterTopicNames.contains($0.name) }
-        }.count
-    }
-
-    private var arabicStarterRow: some View {
-        let loaded = phrases.filter { phrase in
-            phrase.topics.contains { $0.name.hasSuffix("(AR)") }
-        }.count
-        let isLoaded = loaded >= arabicStarterTotal * 9 / 10
-        return Group {
-            if isLoaded {
-                HStack {
-                    Label("Arabisch-Starter geladen", systemImage: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                    Spacer()
-                    Text("\(loaded)/\(arabicStarterTotal)")
-                        .foregroundStyle(.secondary)
-                        .monospacedDigit()
-                }
-            } else {
-                Button {
-                    let result = SeedData.addArabicStarter(context)
-                    starterPackResult = "Arabisch-Starter: \(result.phrasesAdded) Karten hinzugefügt, \(result.topicsAdded) neue Themen."
-                } label: {
-                    HStack {
-                        Label(loaded > 0 ? "Rest laden" : "Laden", systemImage: loaded > 0 ? "arrow.down.circle" : "tray.and.arrow.down")
-                        Spacer()
-                        Text(loaded > 0 ? "\(loaded)/\(arabicStarterTotal)" : "\(arabicStarterTotal)")
-                            .foregroundStyle(.secondary)
-                            .monospacedDigit()
-                    }
-                }
-            }
-        }
     }
 
     private func save() {
