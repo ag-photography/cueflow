@@ -9,10 +9,26 @@ struct PasteImportView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var existingTopics: [Topic]
     @Query private var languages: [Language]
+    @Query private var settings: [AppSettings]
 
     @State private var rawText: String
     @State private var separator: String = "="
     @State private var order: LineOrder
+
+    /// Imported phrases are filed under the active target language.
+    private var targetLanguage: Language? {
+        let code = settings.first?.activeLanguageCode ?? "ru"
+        return languages.first { $0.code == code } ?? languages.first
+    }
+    private var targetLabel: String { targetLanguage?.germanLabel ?? "Zielsprache" }
+    private var targetCode: String { (targetLanguage?.code ?? "ru").uppercased() }
+
+    private func orderLabel(_ ord: LineOrder) -> String {
+        switch ord {
+        case .deRu: return "Deutsch → \(targetLabel)"
+        case .ruDe: return "\(targetLabel) → Deutsch"
+        }
+    }
 
     init(initialText: String = "", initialOrder: LineOrder = .deRu) {
         self._rawText = State(initialValue: initialText)
@@ -37,8 +53,8 @@ struct PasteImportView: View {
     private var validLines: [ParsedLine] { parsedLines.filter { $0.isValid } }
 
     private var formatHintText: String {
-        let leftLabel = order == .deRu ? "Deutsch" : "Russisch"
-        let rightLabel = order == .deRu ? "Russisch" : "Deutsch"
+        let leftLabel = order == .deRu ? "Deutsch" : targetLabel
+        let rightLabel = order == .deRu ? targetLabel : "Deutsch"
         return "Pro Zeile: \(leftLabel) \(separator) \(rightLabel) | Themenname (optional)"
     }
 
@@ -48,7 +64,7 @@ struct PasteImportView: View {
                 Section {
                     Picker("Reihenfolge", selection: $order) {
                         ForEach(LineOrder.allCases) { ord in
-                            Text(ord.label).tag(ord)
+                            Text(orderLabel(ord)).tag(ord)
                         }
                     }
                     Picker("Trennzeichen", selection: $separator) {
@@ -101,7 +117,7 @@ struct PasteImportView: View {
                         .font(.subheadline.weight(.medium))
                 }
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
-                    Text("RU")
+                    Text(targetCode)
                         .font(.caption2.monospaced())
                         .foregroundStyle(.secondary)
                     Text(line.target ?? "")
@@ -128,7 +144,7 @@ struct PasteImportView: View {
     }
 
     private func commit() {
-        guard let language = languages.first(where: { $0.code == "ru" }) ?? languages.first else { return }
+        guard let language = targetLanguage else { return }
         var topicCache: [String: Topic] = Dictionary(uniqueKeysWithValues: existingTopics.map { ($0.name, $0) })
 
         for line in validLines {
@@ -161,15 +177,9 @@ struct PasteImportView: View {
 }
 
 enum LineOrder: String, CaseIterable, Identifiable {
-    case deRu
-    case ruDe
+    case deRu   // German first, target language second
+    case ruDe   // target language first, German second
     var id: String { rawValue }
-    var label: String {
-        switch self {
-        case .deRu: return "Deutsch → Russisch"
-        case .ruDe: return "Russisch → Deutsch"
-        }
-    }
 }
 
 private struct ParsedLine: Identifiable {
@@ -177,7 +187,7 @@ private struct ParsedLine: Identifiable {
     let raw: String
     /// Always German — regardless of the side the user typed it on.
     let source: String?
-    /// Always Russian.
+    /// Always the target language (the one being learned).
     let target: String?
     let topic: String?
 
@@ -202,20 +212,20 @@ private struct ParsedLine: Identifiable {
             : nil
 
         // Canonicalise: regardless of typed order, store German in `source`
-        // and Russian in `target`. The Phrase model is direction-agnostic at
-        // storage, but the practice loop expects sourceText = prompt language.
+        // and the target language in `target`. The Phrase model is direction-
+        // agnostic at storage, but the practice loop expects sourceText = prompt.
         let german: String
-        let russian: String
+        let target: String
         switch order {
         case .deRu:
             german = lhs
-            russian = rhs
+            target = rhs
         case .ruDe:
             german = rhs
-            russian = lhs
+            target = lhs
         }
         self.source = german.isEmpty ? nil : german
-        self.target = russian.isEmpty ? nil : russian
+        self.target = target.isEmpty ? nil : target
         self.topic = (topic?.isEmpty ?? true) ? nil : topic
     }
 }

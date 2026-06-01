@@ -7,8 +7,15 @@ struct TopicEditorView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query private var languages: [Language]
+    @Query private var settings: [AppSettings]
 
     let topic: Topic?
+
+    /// New topics are filed under the active target language (not hardcoded ru).
+    private var activeLanguage: Language? {
+        let code = settings.first?.activeLanguageCode ?? "ru"
+        return languages.first { $0.code == code } ?? languages.first
+    }
 
     @State private var name: String = ""
     @State private var isActive: Bool = false
@@ -50,8 +57,7 @@ struct TopicEditorView: View {
             topic.name = name
             topic.isActive = isActive
         } else {
-            let language = languages.first(where: { $0.code == "ru" }) ?? languages.first
-            let topic = Topic(name: name, language: language, isActive: isActive)
+            let topic = Topic(name: name, language: activeLanguage, isActive: isActive)
             context.insert(topic)
         }
         try? context.save()

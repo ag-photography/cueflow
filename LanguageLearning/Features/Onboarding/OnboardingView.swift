@@ -2,10 +2,12 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// First-launch walkthrough (build 21). A small, paged flow that introduces the
-/// app, sets a daily goal, activates a few starter topics, and walks through
-/// installing the Russian keyboard. Adult tone — no mascots, no pressure — and
-/// every choice has a sensible default so "Überspringen" is always safe.
+/// First-launch walkthrough (build 21; made language-agnostic in build 26). A
+/// small, paged flow that introduces the app, lets the user pick which language
+/// to learn, sets a daily goal, activates a few starter topics, and — only for
+/// languages typed in a non-Latin script — walks through installing the
+/// keyboard. Adult tone — no mascots, no pressure — and every choice has a
+/// sensible default so "Überspringen" is always safe.
 ///
 /// Shown two ways:
 ///   • First launch — RootView renders this when `hasCompletedOnboarding` is
@@ -21,6 +23,7 @@ struct OnboardingView: View {
     @Query private var languages: [Language]
 
     @State private var index = 0
+    @State private var selectedLanguageCode = ""        // "" until hydrated
     @State private var selectedDailyLimit = 10
     @State private var selectedTopicIDs: Set<PersistentIdentifier> = []
     @State private var didHydrate = false
@@ -43,34 +46,65 @@ struct OnboardingView: View {
     // MARK: - Page model
 
     private enum Page: Hashable {
-        case welcome, howItWorks, goal, topics, keyboard
+        case welcome, language, howItWorks, goal, topics, keyboard
     }
 
-    /// The keyboard page only appears when the active language is typed in a
-    /// non-Latin script (Russian → Cyrillic). The Arabic starter practises Latin
-    /// transliteration, so it needs no keyboard setup.
-    private var needsKeyboardSetup: Bool { activeCode == "ru" }
+    /// Languages the user can learn (everything except German, the UI language).
+    private var learnableLanguages: [Language] {
+        languages
+            .filter { $0.code != "de" }
+            .sorted { $0.germanLabel.localizedCompare($1.germanLabel) == .orderedAscending }
+    }
+
+    /// The keyboard page only appears when the active language's practice target
+    /// is written in a non-Latin script (Russian → Cyrillic needs the keyboard;
+    /// the Arabic starter practises Latin transliteration, so it doesn't). Data-
+    /// driven so a future language slots in without code changes.
+    private var needsKeyboardSetup: Bool {
+        guard let lang = activeLanguage else { return false }
+        let sample = lang.phrases.first { !$0.targetText.isEmpty }?.targetText ?? ""
+        // Anything above the combining-marks block (U+036F) is non-Latin here —
+        // Cyrillic (U+0400+), Arabic (U+0600+), etc. Latin (incl. accented
+        // transliteration) stays below it.
+        return sample.unicodeScalars.contains { $0.value > 0x036F && CharacterSet.letters.contains($0) }
+    }
 
     private var pages: [Page] {
-        var p: [Page] = [.welcome, .howItWorks, .goal, .topics]
+        var p: [Page] = [.welcome]
+        if learnableLanguages.count > 1 { p.append(.language) }
+        p += [.howItWorks, .goal, .topics]
         if needsKeyboardSetup { p.append(.keyboard) }
         return p
     }
 
     private var isLastPage: Bool { index >= pages.count - 1 }
 
-    private var activeCode: String { settings.first?.activeLanguageCode ?? "ru" }
+    /// Reflects the in-flight language choice immediately (before `finish()`
+    /// writes it), so the topic page and keyboard gating react as the user picks.
+    private var activeCode: String {
+        selectedLanguageCode.isEmpty ? (settings.first?.activeLanguageCode ?? "ru") : selectedLanguageCode
+    }
 
     private var activeLanguage: Language? {
         languages.first { $0.code == activeCode }
     }
 
-    /// Curated starter topics that actually exist for the active language,
-    /// in `starterTopicNames` order.
+    /// Curated starter topics that exist for the active language, in
+    /// `starterTopicNames` order. Topics for non-default languages carry a
+    /// " (XX)" suffix (e.g. "Begrüßung (AR)") to avoid name collisions, so we
+    /// match on the base name — the same curated set works for every language.
     private var shownTopics: [Topic] {
         let inLang = topics.filter { $0.language?.code == activeCode }
-        let byName = Dictionary(inLang.map { ($0.name, $0) }, uniquingKeysWith: { a, _ in a })
-        return starterTopicNames.compactMap { byName[$0] }
+        let byBase = Dictionary(inLang.map { (Self.baseTopicName($0.name), $0) },
+                                uniquingKeysWith: { a, _ in a })
+        return starterTopicNames.compactMap { byBase[$0] }
+    }
+
+    /// Strips a trailing " (XX)" language suffix so "Begrüßung (AR)" → "Begrüßung".
+    private static func baseTopicName(_ name: String) -> String {
+        name.replacingOccurrences(
+            of: #"\s*\([A-Z]{2}\)$"#, with: "", options: .regularExpression
+        )
     }
 
     // MARK: - Body
@@ -90,6 +124,10 @@ struct OnboardingView: View {
         }
         .background(DS.surface0.ignoresSafeArea())
         .onAppear(perform: hydrateOnce)
+        .onChange(of: selectedLanguageCode) { _, _ in
+            // New language → its starter topics differ, so re-seed the picks.
+            rehydrateTopicSelection()
+        }
     }
 
     // MARK: - Chrome
@@ -166,6 +204,7 @@ struct OnboardingView: View {
     private func pageBody(_ page: Page) -> some View {
         switch page {
         case .welcome:    welcomePage
+        case .language:   languagePage
         case .howItWorks: howItWorksPage
         case .goal:       goalPage
         case .topics:     topicsPage
@@ -182,7 +221,7 @@ struct OnboardingView: View {
                     .font(.system(size: 40, weight: .bold, design: .serif))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(DS.textPrimary)
-                Text("Dein ruhiger Übungsraum für \(languageAccusative). Kein Schnickschnack, kein Maskottchen — nur du, deine Vokabeln und ein System, das weiß, wann du sie wiederholen musst.")
+                Text("Dein ruhiger Übungsraum für deine neue Sprache. Kein Schnickschnack, kein Maskottchen — nur du, deine Vokabeln und ein System, das weiß, wann du sie wiederholen musst.")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(DS.textSecondary)
@@ -214,6 +253,53 @@ struct OnboardingView: View {
         }
         .frame(width: 136, height: 136)
         .accessibilityHidden(true)
+    }
+
+    private var languagePage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.space.lg) {
+                pageHeader(
+                    title: "Welche Sprache?",
+                    subtitle: "Womit möchtest du anfangen? Du kannst später jederzeit in den Einstellungen wechseln."
+                )
+                VStack(spacing: DS.space.sm) {
+                    ForEach(learnableLanguages, id: \.code) { lang in
+                        languageOptionRow(lang)
+                    }
+                }
+            }
+            .padding(.horizontal, DS.space.lg)
+            .padding(.bottom, DS.space.lg)
+        }
+    }
+
+    private func languageOptionRow(_ lang: Language) -> some View {
+        let selected = activeCode == lang.code
+        return Button {
+            UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            selectedLanguageCode = lang.code
+        } label: {
+            HStack(spacing: DS.space.md) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(lang.germanLabel)
+                        .font(.headline)
+                        .foregroundStyle(selected ? .white : DS.textPrimary)
+                    Text(lang.name)   // native name, e.g. Русский / العربية
+                        .font(.subheadline)
+                        .foregroundStyle(selected ? Color.white.opacity(0.85) : DS.textSecondary)
+                }
+                Spacer()
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.title3)
+                    .foregroundStyle(selected ? .white : DS.textTertiary)
+            }
+            .padding(DS.space.md)
+            .background(selected ? DS.accent : DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(lang.germanLabel)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private var howItWorksPage: some View {
@@ -361,13 +447,13 @@ struct OnboardingView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.space.lg) {
                 pageHeader(
-                    title: "Russische Tastatur",
-                    subtitle: "Zum Tippen brauchst du die kyrillische Tastatur. So fügst du sie in iOS hinzu:"
+                    title: "\(keyboardLanguageLabel)e Tastatur",
+                    subtitle: "Zum Tippen brauchst du eine Tastatur für \(keyboardLanguageLabel). So fügst du sie in iOS hinzu:"
                 )
                 VStack(spacing: DS.space.sm) {
                     keyboardStep(1, "Öffne die iOS-Einstellungen.")
                     keyboardStep(2, "Allgemein → Tastatur → Tastaturen.")
-                    keyboardStep(3, "Tastatur hinzufügen → Russisch wählen.")
+                    keyboardStep(3, "Tastatur hinzufügen → \(keyboardLanguageLabel) wählen.")
                     keyboardStep(4, "Beim Tippen mit 🌐 zwischen den Tastaturen wechseln.")
                 }
                 Button {
@@ -475,8 +561,9 @@ struct OnboardingView: View {
 
     // MARK: - Copy helpers
 
-    /// "Russisch" / "Arabisch" in the accusative-friendly welcome sentence.
-    private var languageAccusative: String {
+    /// German language name used in the keyboard-page copy. "Russisch" + "e
+    /// Tastatur" → "Russische Tastatur"; "Arabisch" → "Arabische Tastatur".
+    private var keyboardLanguageLabel: String {
         activeLanguage?.germanLabel ?? "Russisch"
     }
 
@@ -485,11 +572,17 @@ struct OnboardingView: View {
     private func hydrateOnce() {
         guard !didHydrate else { return }
         let row = settings.first
+        selectedLanguageCode = row?.activeLanguageCode ?? "ru"
         selectedDailyLimit = row?.dailyNewLimit ?? 10
-        // Pre-select whatever is already active among the shown starter topics
-        // (the seeded defaults on first launch; the user's current picks on replay).
-        selectedTopicIDs = Set(shownTopics.filter(\.isActive).map(\.persistentModelID))
+        rehydrateTopicSelection()
         didHydrate = true
+    }
+
+    /// Pre-selects whatever is already active among the active language's shown
+    /// starter topics (the seeded defaults on first launch; the user's current
+    /// picks on replay). Re-run when the language choice changes.
+    private func rehydrateTopicSelection() {
+        selectedTopicIDs = Set(shownTopics.filter(\.isActive).map(\.persistentModelID))
     }
 
     private func finish() {
@@ -498,9 +591,12 @@ struct OnboardingView: View {
             context.insert(s)
             return s
         }()
+        if !selectedLanguageCode.isEmpty {
+            row.activeLanguageCode = selectedLanguageCode
+        }
         row.dailyNewLimit = selectedDailyLimit
         // Apply topic choices only to the curated set we actually showed — other
-        // topics (e.g. A2/B1/B2 vocab) keep whatever state they had.
+        // topics (e.g. A2/B1/B2 vocab, the other language) keep their state.
         for topic in shownTopics {
             topic.isActive = selectedTopicIDs.contains(topic.persistentModelID)
         }

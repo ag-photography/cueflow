@@ -9,8 +9,17 @@ struct PhraseEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var allTopics: [Topic]
     @Query private var languages: [Language]
+    @Query private var settings: [AppSettings]
 
     let phrase: Phrase?
+
+    /// The phrase's own language when editing; the active language when creating.
+    /// Drives the target-field label and the language a new phrase is filed under.
+    private var targetLanguage: Language? {
+        if let phrase, let lang = phrase.language { return lang }
+        let code = settings.first?.activeLanguageCode ?? "ru"
+        return languages.first { $0.code == code } ?? languages.first
+    }
 
     @State private var sourceText: String = ""
     @State private var targetText: String = ""
@@ -26,7 +35,7 @@ struct PhraseEditorView: View {
                 Section("Deutsch") {
                     TextField("Quelltext", text: $sourceText, axis: .vertical)
                 }
-                Section("Russisch") {
+                Section(targetLanguage?.germanLabel ?? "Zielsprache") {
                     TextField("Zieltext", text: $targetText, axis: .vertical)
                         .autocorrectionDisabled()
                 }
@@ -135,7 +144,7 @@ struct PhraseEditorView: View {
             phrase.topics = topics
             phrase.acceptedAlternatives = alternatives
         } else {
-            let language = languages.first(where: { $0.code == "ru" }) ?? languages.first
+            let language = targetLanguage
             let phrase = Phrase(
                 sourceText: sourceText,
                 targetText: targetText,
