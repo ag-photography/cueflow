@@ -419,7 +419,10 @@ struct PracticeView: View {
 
             inputArea(revealed: revealed)
 
-            if !revealed {
+            // Typing mode keeps this in the keyboard accessory bar (see
+            // typingInputSection) so it can't hide behind the keyboard; other
+            // modes show it inline here.
+            if !revealed && mode != .typeDeToRu {
                 Button {
                     showStudyMode()
                 } label: {
@@ -533,9 +536,10 @@ struct PracticeView: View {
 
     @ViewBuilder
     private func typingInputSection(revealed: Bool) -> some View {
-        // Single column, no keyboard accessory bar. Return on the keyboard
-        // submits (`.submitLabel(.go)` shows "Los"). The full-width Prüfen
-        // button is the visible fallback when the keyboard is dismissed.
+        // Return on the keyboard submits (`.submitLabel(.go)` shows "Los"); the
+        // full-width Prüfen button is the visible fallback. "Ich weiß es nicht"
+        // lives in the keyboard accessory bar so it can't hide behind the
+        // keyboard (it has nowhere to go in the non-scrolling prompt layout).
         VStack(spacing: DS.space.sm) {
             TextField(activeLanguage?.inputPlaceholder ?? "Antwort tippen…", text: $input)
                 .font(.title3)
@@ -558,6 +562,20 @@ struct PracticeView: View {
                 .submitLabel(.go)
                 .focused($inputFocused)
                 .onSubmit { submit(revealed: revealed) }
+                .toolbar {
+                    if !revealed {
+                        ToolbarItemGroup(placement: .keyboard) {
+                            Spacer()
+                            Button {
+                                showStudyMode()
+                            } label: {
+                                Text("Ich weiß es nicht")
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(DS.accent)
+                            }
+                        }
+                    }
+                }
 
             primaryButton(
                 title: "Prüfen",

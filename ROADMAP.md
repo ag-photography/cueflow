@@ -1,6 +1,6 @@
 # CueFlow — Roadmap to App Store
 
-**Current state:** build 26 — Phase A (foundation polish) complete + language-agnostic pass, on TestFlight (personal).
+**Current state:** build 27 — Phase A complete + language-agnostic pass + keyboard-accessory fix, on TestFlight (personal).
 **Goal:** ship to App Store as a free, self-contained, privacy-first language-learning app for German speakers learning Russian (and Arabic).
 **Realistic timeline:** 3–4 months / ~18–20 more builds.
 
@@ -53,10 +53,10 @@
 
 - ✅ **26. Language-agnostic** *(shipped)* — onboarding gains a language-choice step (RU/AR with native names); starter-topic matching strips the " (XX)" suffix so the curated set resolves per language; the keyboard page is now data-driven (only shows when the target is non-Latin script — Russian Cyrillic yes, Arabic Latin-transliteration no) with language-neutral copy. Manual/paste/topic content entry (PhraseEditor, PasteImportView, TopicEditorView) files under the **active** language with adaptive labels instead of hardcoded "Russisch". *Still Russian-specific by design: PDF tutor-import (Cyrillic/Latin pair parsing) — revisit if Arabic tutor material appears.*
 
-### Phase B — Continuity (~3 weeks, builds 27-30)
-*Make it feel like a real iOS app across devices. (Build numbers +1 after the build-26 i18n pass.)*
+### Phase B — Continuity (~3 weeks)
+*Make it feel like a real iOS app across devices. (Build numbers are approximate — bug-fix builds between features shift them; next feature build is ~28.)*
 
-- **27. iCloud sync** — SwiftData + CloudKit configuration; conflict resolution strategy; iCloud account check on launch; gracefully handles iCloud-disabled.
+- **iCloud sync** — SwiftData + CloudKit configuration; conflict resolution strategy; iCloud account check on launch; gracefully handles iCloud-disabled.
 - **27. iPad layout** — adaptive sizing; multi-column where useful (Library + Practice side-by-side on iPad); regular-size class respect.
 - **28. Backup restore** — bidirectional JSON; file picker; idempotent merge on (de, ru) signature; conflict UI when target collides with existing.
 - **29. Home Screen widget** — Lock Screen + Home Screen complications showing "X cards due today"; tap-to-launch-practice; small/medium sizes.
