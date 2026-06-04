@@ -83,6 +83,25 @@ struct SchedulerServiceTests {
         #expect(next == nil)
     }
 
+    @Test func newCardsAreIntroducedNewestFirst() throws {
+        let ctx = try makeContext()
+        let topic = Topic(name: "Tutor", isActive: true)
+        ctx.insert(topic)
+        // Older "seeded" phrase vs a newer "just added" one.
+        let older = Phrase(sourceText: "alt", targetText: "старый", topics: [topic])
+        older.createdAt = Date.now.addingTimeInterval(-10_000)
+        let newer = Phrase(sourceText: "neu", targetText: "новый", topics: [topic])
+        newer.createdAt = Date.now
+        ctx.insert(older); ctx.insert(newer)
+        let olderCard = StudyCard(phrase: older, direction: .typeDeToRu)
+        let newerCard = StudyCard(phrase: newer, direction: .typeDeToRu)
+        ctx.insert(olderCard); ctx.insert(newerCard)
+
+        let next = scheduler.nextCard(from: [olderCard, newerCard], direction: .typeDeToRu,
+                                      reviews: [], dailyNewLimit: 10)
+        #expect(next === newerCard)
+    }
+
     @Test func priorityNewCardIgnoresInactiveTopic() throws {
         let ctx = try makeContext()
         // Homework boost: a priority phrase surfaces even if its topic is off.

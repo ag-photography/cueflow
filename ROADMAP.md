@@ -1,6 +1,6 @@
 # CueFlow — Roadmap to App Store
 
-**Current state:** build 28 — Phase A complete + i18n pass + practice/Profile visual refresh, on TestFlight (personal).
+**Current state:** build 29 — Phase A complete + i18n + visual refresh + domain tests + scheduler fix (new content surfaces), on TestFlight (personal).
 **Goal:** ship to App Store as a free, self-contained, privacy-first language-learning app for German speakers learning Russian (and Arabic).
 **Realistic timeline:** 3–4 months / ~18–20 more builds.
 

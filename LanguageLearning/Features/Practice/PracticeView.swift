@@ -27,6 +27,9 @@ struct PracticeView: View {
     @State private var showingGradeDetails: Bool = false
     @State private var savedAlternativeBanner: String?
     @State private var surprisePraiseBanner: String?
+    // Set when the user taps "Weiter mit neuen Karten" on the daily-limit
+    // screen — lifts the new-card cap for the rest of this mode's session.
+    @State private var newCardsUnlocked = false
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
     // Lets the fixed-size serif prompt grow with Dynamic Type (capped so very
@@ -104,6 +107,8 @@ struct PracticeView: View {
         }
         .onChange(of: mode) { _, _ in
             // Switching modes resets the current card — keep state coherent.
+            // Each mode decides the daily-limit override independently.
+            newCardsUnlocked = false
             resetSession()
             phase = .loading
             input = ""
@@ -112,6 +117,7 @@ struct PracticeView: View {
         .onChange(of: settings.first?.activeLanguageCode) { _, _ in
             // Active language switch: reset session, update speech locale,
             // reload the first card for the new language.
+            newCardsUnlocked = false
             resetSession()
             phase = .loading
             input = ""
@@ -958,7 +964,55 @@ struct PracticeView: View {
 
     // MARK: - Empty
 
+    @ViewBuilder
     private var emptyContent: some View {
+        if stoppedByDailyLimit {
+            dailyLimitContent
+        } else {
+            allDoneContent
+        }
+    }
+
+    /// Hit the daily new-card target, but more new cards are waiting — be honest
+    /// about why, and let the user keep going instead of implying they're "out".
+    private var dailyLimitContent: some View {
+        VStack(spacing: DS.space.md) {
+            Spacer()
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 60))
+                .foregroundStyle(DS.accent)
+            Text("Tagesziel erreicht")
+                .font(.title2.weight(.semibold))
+            Text("Du hast heute \(newCardsDoneToday) neue Karten gelernt. Es warten noch \(availableNewCount) in deinen aktiven Themen.")
+                .font(.subheadline)
+                .foregroundStyle(DS.textSecondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, DS.space.lg)
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                newCardsUnlocked = true
+                resetSession()
+                phase = .loading
+            } label: {
+                Label("Weiter mit neuen Karten", systemImage: "arrow.right.circle.fill")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, DS.space.lg)
+                    .padding(.vertical, 14)
+                    .background(Capsule().fill(DS.accent))
+                    .shadow(color: DS.accent.opacity(0.3), radius: 8, y: 4)
+            }
+            .buttonStyle(.plain)
+            Text("Das Tageslimit kannst du in den Einstellungen ändern (Üben → Neue Karten pro Tag).")
+                .font(.caption)
+                .foregroundStyle(DS.textTertiary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, DS.space.lg)
+            Spacer()
+        }
+    }
+
+    private var allDoneContent: some View {
         VStack(spacing: DS.space.md) {
             Spacer()
             Image(systemName: "checkmark.circle")
@@ -966,7 +1020,7 @@ struct PracticeView: View {
                 .foregroundStyle(DS.accent)
             Text("Alles erledigt!")
                 .font(.title2.weight(.semibold))
-            Text("Keine fälligen Karten. Komm später wieder, oder importiere neue Vokabeln.")
+            Text("Keine fälligen Karten und keine neuen in deinen aktiven Themen. Aktiviere ein Thema oder importiere neue Vokabeln in der Bibliothek.")
                 .font(.subheadline)
                 .foregroundStyle(DS.textSecondary)
                 .multilineTextAlignment(.center)
@@ -1288,13 +1342,44 @@ struct PracticeView: View {
         // Cancel any in-flight TTS so a half-finished reveal doesn't keep
         // speaking after the next prompt has already appeared.
         tts.stop()
-        let limit = settings.first?.dailyNewLimit ?? 10
         showingGradeDetails = false
-        if let next = scheduler.nextCard(from: cardsForActiveLanguage, direction: mode, reviews: reviews, dailyNewLimit: limit) {
+        if let next = scheduler.nextCard(from: cardsForActiveLanguage, direction: mode, reviews: reviews, dailyNewLimit: effectiveDailyLimit) {
             phase = .prompt(next)
         } else {
             phase = .empty
         }
+    }
+
+    /// The configured daily new-card limit — unless the user has tapped
+    /// "keep going" this session, in which case it's lifted.
+    private var effectiveDailyLimit: Int {
+        newCardsUnlocked ? .max : (settings.first?.dailyNewLimit ?? 10)
+    }
+
+    /// New cards still available to introduce in the current mode (active
+    /// topics or priority/homework), regardless of the daily cap.
+    private var availableNewCount: Int {
+        cardsForActiveLanguage.filter {
+            $0.direction == mode && $0.state == .new
+            && (($0.phrase?.topics.contains(where: { $0.isActive }) ?? false)
+                || ($0.phrase?.isPriorityActive ?? false))
+        }.count
+    }
+
+    /// New cards already introduced today in the current mode.
+    private var newCardsDoneToday: Int {
+        let cal = Calendar.current
+        return reviews.filter {
+            $0.wasNew && cal.isDateInToday($0.timestamp) && $0.card?.direction == mode
+        }.count
+    }
+
+    /// The empty screen is the daily-limit screen (not "truly out") when new
+    /// cards remain but the cap has been hit and not yet lifted.
+    private var stoppedByDailyLimit: Bool {
+        !newCardsUnlocked
+            && availableNewCount > 0
+            && newCardsDoneToday >= (settings.first?.dailyNewLimit ?? 10)
     }
 
     private func showSavedBanner(for answer: String) {

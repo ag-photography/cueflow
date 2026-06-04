@@ -15,6 +15,12 @@ struct SchedulerService {
     /// priority. If none are due, falls back to a `new` card from cards whose
     /// topic is currently active, capped by `dailyNewLimit` minus the count of
     /// new-card reviews already made today (tracked via `Review.wasNew`).
+    ///
+    /// New cards are introduced **newest-first** (by `Phrase.createdAt`): the
+    /// content you just added — tutor lessons, fresh imports — surfaces before
+    /// the bundled starter pack, which was all created at first launch. Without
+    /// this, just-activated topics sat at the back of an oldest-first queue and
+    /// could take weeks to reach behind the seeded content.
     func nextCard(
         from cards: [StudyCard],
         direction: CardDirection? = nil,
@@ -47,16 +53,17 @@ struct SchedulerService {
 
         // 3. Priority new cards before regular new cards. Priority cards
         //    ignore the active-topic filter — homework should show up even
-        //    if the user hasn't manually activated the topic.
+        //    if the user hasn't manually activated the topic. Newest first.
         let priorityNew = scoped
             .filter { $0.state == .new && ($0.phrase?.isPriorityActive ?? false) }
-            .sorted { ($0.phrase?.createdAt ?? .distantPast) < ($1.phrase?.createdAt ?? .distantPast) }
+            .sorted { ($0.phrase?.createdAt ?? .distantPast) > ($1.phrase?.createdAt ?? .distantPast) }
         if let next = priorityNew.first { return next }
 
-        // 4. Regular new cards (only from active topics).
+        // 4. Regular new cards (only from active topics). Newest first, so
+        //    freshly-added/-activated content is what you see next.
         let activeNew = scoped
             .filter { $0.state == .new && ($0.phrase?.topics.contains(where: { $0.isActive }) ?? false) }
-            .sorted { ($0.phrase?.createdAt ?? .distantPast) < ($1.phrase?.createdAt ?? .distantPast) }
+            .sorted { ($0.phrase?.createdAt ?? .distantPast) > ($1.phrase?.createdAt ?? .distantPast) }
         return activeNew.first
     }
 
