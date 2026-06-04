@@ -1,6 +1,6 @@
 # CueFlow — Roadmap to App Store
 
-**Current state:** build 30 — Phase A complete + i18n + visual refresh + domain tests + scheduler fix + multiple-choice mode, on TestFlight (personal).
+**Current state:** build 31 — Phase A complete + i18n + visual refresh + domain tests + scheduler fix + multiple-choice mode + encouraging reveal, on TestFlight (personal).
 
 > **Engagement push (post-Phase-A, in progress):** making practice less monotonous and more effective via *exercise variety* — the genuinely-fun, non-manipulative half of what Duolingo does (we still refuse mascots/hearts/streak-panic; see below). Build 30 adds the **"Wählen"** multiple-choice mode (keyboard-free recognition, eases new words in). Next candidates: tap-the-tiles for sentences, richer correct/wrong feedback, and topics/lectures as a *journey* you complete (leans on the tutor-import differentiator).
 **Goal:** ship to App Store as a free, self-contained, privacy-first language-learning app for German speakers learning Russian (and Arabic).

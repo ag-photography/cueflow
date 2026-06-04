@@ -27,10 +27,10 @@ extension AutoGrade {
 
     var label: String {
         switch self {
-        case .perfect: return "Perfekt"
-        case .hesitant: return "Zögernd"
+        case .perfect: return "Sitzt!"
+        case .hesitant: return "Richtig"
         case .minor: return "Fast"
-        case .wrong: return "Falsch"
+        case .wrong: return "Noch nicht"   // growth-mindset, not "Falsch"
         case .studied: return "Geübt"
         }
     }

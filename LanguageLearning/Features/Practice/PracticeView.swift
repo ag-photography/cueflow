@@ -959,10 +959,10 @@ struct PracticeView: View {
     private func revealSubtitle(for grade: AutoGrade) -> String {
         switch grade {
         case .perfect:  return "Sauber gewusst."
-        case .hesitant: return "Richtig, aber gezögert."
-        case .minor:    return "Fast — kleine Abweichung."
-        case .wrong:    return "Daneben — kommt wieder."
-        case .studied:  return "Abgeschrieben — zählt als Übung."
+        case .hesitant: return "Richtig – nächstes Mal flüssiger."
+        case .minor:    return "Ganz nah dran!"
+        case .wrong:    return "Kein Stress – du siehst sie bald wieder."
+        case .studied:  return "Angeschaut – das zählt auch."
         }
     }
 
@@ -1121,9 +1121,9 @@ struct PracticeView: View {
     private func gradeIcon(for grade: AutoGrade) -> String {
         switch grade {
         case .perfect: return "checkmark.circle.fill"
-        case .hesitant: return "hourglass"
-        case .minor: return "exclamationmark.circle.fill"
-        case .wrong: return "xmark.circle.fill"
+        case .hesitant: return "checkmark.circle"
+        case .minor: return "checkmark.circle"        // "almost there", not a warning
+        case .wrong: return "arrow.counterclockwise"  // "comes back around", not an X
         case .studied: return "book.fill"
         }
     }
