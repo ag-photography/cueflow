@@ -13,7 +13,7 @@ struct PracticeView: View {
     @Query private var settings: [AppSettings]
     @Query private var languages: [Language]
 
-    @State private var mode: CardDirection = .typeDeToRu
+    @State private var mode: CardDirection = .speakDeToRu   // "Üben" (speak-focused)
     @State private var phase: Phase = .loading
     @State private var input: String = ""
     @State private var promptStart: Date?
@@ -1523,10 +1523,10 @@ struct PracticeView: View {
     }
 
     /// Show the card as multiple-choice now: always in "Wählen", and in "Üben"
-    /// (typeDeToRu) for brand-new cards — a gentle recognition step before we
-    /// ask the user to produce a word they've just met.
+    /// (speakDeToRu) for brand-new cards — a gentle recognition step before we
+    /// ask the user to *speak* a word they've just met.
     private func presentAsChoice(_ card: StudyCard) -> Bool {
-        mode == .chooseDeToRu || (mode == .typeDeToRu && card.state == .new)
+        mode == .chooseDeToRu || (mode == .speakDeToRu && card.state == .new)
     }
 
     /// The configured daily new-card limit — unless the user has tapped

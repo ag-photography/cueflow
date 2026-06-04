@@ -136,27 +136,28 @@ final class Phrase {
 }
 
 enum CardDirection: String, Codable, CaseIterable {
-    case flipDeToRu       // recognition: tap to reveal, swipe to rate
-    case chooseDeToRu     // recognition: pick the answer from 4 (no keyboard)
-    case typeDeToRu       // "Üben": smart-mix — exercise varies by card maturity
-                          // (new → multiple-choice, mature → typing), one schedule
-    case speakDeToRu      // spoken production
+    // Order here = the mode-picker order. "Üben" leads as the default.
+    case speakDeToRu      // "Üben": smart-mix, speaking-focused — exercise varies
+                          // by maturity (new → multiple-choice, mature → speak it)
+    case chooseDeToRu     // "Wählen": recognition, pick the answer from 4
+    case typeDeToRu       // "Tippen": written production (keyboard drill)
+    case flipDeToRu       // "Karten": recognition, tap to reveal, swipe to rate
 
     var displayName: String {
         switch self {
-        case .flipDeToRu: return "Karten"
+        case .speakDeToRu: return "Üben"
         case .chooseDeToRu: return "Wählen"
-        case .typeDeToRu: return "Üben"
-        case .speakDeToRu: return "Sprechen"
+        case .typeDeToRu: return "Tippen"
+        case .flipDeToRu: return "Karten"
         }
     }
 
     var displayIcon: String {
         switch self {
-        case .flipDeToRu: return "rectangle.on.rectangle"
+        case .speakDeToRu: return "graduationcap.fill"
         case .chooseDeToRu: return "checklist"
-        case .typeDeToRu: return "graduationcap.fill"
-        case .speakDeToRu: return "mic.fill"
+        case .typeDeToRu: return "keyboard"
+        case .flipDeToRu: return "rectangle.on.rectangle"
         }
     }
 }
