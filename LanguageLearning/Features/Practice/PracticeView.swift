@@ -30,6 +30,10 @@ struct PracticeView: View {
     // Set when the user taps "Weiter mit neuen Karten" on the daily-limit
     // screen — lifts the new-card cap for the rest of this mode's session.
     @State private var newCardsUnlocked = false
+    // "Wählen" (multiple-choice) mode: the four options for the current card and
+    // the option the user tapped (nil until they answer).
+    @State private var choiceOptions: [String] = []
+    @State private var choiceChosen: String? = nil
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
     // Lets the fixed-size serif prompt grow with Dynamic Type (capped so very
@@ -157,14 +161,17 @@ struct PracticeView: View {
     }
 
     private var headerBar: some View {
-        HStack(spacing: DS.space.sm) {
-            modePicker
-            Spacer()
-            if currentStreak > 0 {
-                streakChip
+        VStack(spacing: DS.space.sm) {
+            HStack(spacing: DS.space.sm) {
+                Spacer()
+                if currentStreak > 0 {
+                    streakChip
+                }
+                headerIconButton(systemName: "chart.bar.fill", label: "Fortschritt") { showingProfile = true }
+                headerIconButton(systemName: "books.vertical", label: "Bibliothek") { showingLibrary = true }
             }
-            headerIconButton(systemName: "chart.bar.fill", label: "Fortschritt") { showingProfile = true }
-            headerIconButton(systemName: "books.vertical", label: "Bibliothek") { showingLibrary = true }
+            // Own full-width row so all four exercise modes fit comfortably.
+            modePicker
         }
         .padding(.horizontal, DS.space.md)
         .padding(.vertical, DS.space.sm)
@@ -301,14 +308,16 @@ struct PracticeView: View {
             Text(direction.displayName)
                 .font(.caption.weight(.semibold))
                 .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 12)
+                .minimumScaleFactor(0.8)
+                .frame(maxWidth: .infinity)
                 .padding(.vertical, 8)
                 .foregroundStyle(fg)
                 .background(bg)
                 .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(direction.displayName)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     // MARK: - Phase content
@@ -321,6 +330,8 @@ struct PracticeView: View {
         case .prompt(let card):
             if mode == .flipDeToRu {
                 flipCardScreen(card: card)
+            } else if mode == .chooseDeToRu {
+                chooseCardScreen(card: card)
             } else {
                 promptContent(card: card, revealed: false)
             }
@@ -401,6 +412,161 @@ struct PracticeView: View {
         } else {
             phase = .loading
         }
+    }
+
+    // MARK: - Choose (multiple-choice) mode
+
+    private func chooseCardScreen(card: StudyCard) -> some View {
+        VStack(spacing: DS.space.lg) {
+            if let praise = surprisePraiseBanner { surpriseBanner(praise) }
+            topicChips(card: card)
+            heroPrompt(card: card)
+            Spacer(minLength: 0)
+            VStack(spacing: DS.space.sm) {
+                ForEach(choiceOptions, id: \.self) { option in
+                    choiceButton(card: card, option: option)
+                }
+            }
+        }
+        .padding(.vertical, DS.space.md)
+        .onAppear {
+            if promptStart == nil { promptStart = .now }
+        }
+    }
+
+    private func choiceButton(card: StudyCard, option: String) -> some View {
+        let isCorrect = card.phrase?.targetText == option
+        let answered = choiceChosen != nil
+        let isChosen = choiceChosen == option
+
+        // Colour states: neutral until answered; then the correct option goes
+        // green, a wrong pick goes red, and the rest dim back.
+        let fg: Color
+        let bg: Color
+        let border: Color
+        if !answered {
+            fg = DS.textPrimary; bg = DS.surface1; border = .clear
+        } else if isCorrect {
+            fg = DS.gradePerfect; bg = DS.gradePerfect.opacity(0.14); border = DS.gradePerfect
+        } else if isChosen {
+            fg = DS.gradeWrong; bg = DS.gradeWrong.opacity(0.14); border = DS.gradeWrong
+        } else {
+            fg = DS.textTertiary; bg = DS.surface1.opacity(0.5); border = .clear
+        }
+
+        return Button {
+            selectChoice(card: card, option: option)
+        } label: {
+            HStack(spacing: DS.space.sm) {
+                Text(option)
+                    .font(.system(.title3, design: .rounded, weight: .medium))
+                    .foregroundStyle(fg)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if answered && isCorrect {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(DS.gradePerfect)
+                } else if answered && isChosen {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(DS.gradeWrong)
+                }
+            }
+            .padding(.horizontal, DS.space.lg)
+            .padding(.vertical, DS.space.md)
+            .frame(maxWidth: .infinity)
+            .background(bg)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.radius.md)
+                    .stroke(border, lineWidth: 2)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(answered)
+        .accessibilityHint(answered ? "" : "Antwortoption")
+    }
+
+    private func selectChoice(card: StudyCard, option: String) {
+        guard choiceChosen == nil else { return }
+        let elapsedMs = Int((promptStart.map { Date.now.timeIntervalSince($0) } ?? 0) * 1000)
+        let correct = card.phrase?.targetText == option
+        withAnimation(.easeOut(duration: 0.2)) { choiceChosen = option }
+        if correct {
+            UINotificationFeedbackGenerator().notificationOccurred(.success)
+        } else {
+            UINotificationFeedbackGenerator().notificationOccurred(.error)
+        }
+        tts.speak(card.phrase?.targetText ?? "",
+                  language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1)
+
+        // Brief feedback dwell — longer when wrong so the correct answer registers.
+        let dwell: UInt64 = correct ? 850_000_000 : 1_700_000_000
+        Task {
+            try? await Task.sleep(nanoseconds: dwell)
+            await MainActor.run {
+                recordChoiceReview(card: card, correct: correct, responseTimeMs: elapsedMs)
+            }
+        }
+    }
+
+    private func recordChoiceReview(card: StudyCard, correct: Bool, responseTimeMs: Int) {
+        let rating = correct ? (responseTimeMs <= 4000 ? 4 : 3) : 1
+        do {
+            let wasNew = card.state == .new
+            try scheduler.record(rating: rating, on: card)
+            let review = Review(
+                card: card,
+                rating: rating,
+                autoGradeRating: rating,
+                userAnswer: choiceChosen ?? "",
+                mode: card.direction,
+                responseTimeMs: responseTimeMs,
+                gradeTier: 0,   // recognition, no character grading
+                wasNew: wasNew
+            )
+            context.insert(review)
+            try context.save()
+        } catch {
+            print("Failed to record choice review: \(error)")
+        }
+
+        choiceChosen = nil
+        promptStart = nil
+        sessionCount += 1
+        if correct {
+            sessionCorrect += 1
+            maybeTriggerSurprisePraise()
+        }
+
+        if sessionCount >= sessionTarget {
+            showingSessionSummary = true
+        } else {
+            phase = .loading
+        }
+    }
+
+    /// Builds 4 options for a choose card: the correct answer plus three
+    /// distractors sampled from the active-language pool. Samples (rather than
+    /// scanning every card and faulting its topics) so it stays fast even with
+    /// thousands of cards.
+    private func makeChoiceOptions(for card: StudyCard, pool: [StudyCard]) -> [String] {
+        guard let phrase = card.phrase else { return [] }
+        let correct = phrase.targetText
+        let phraseID = phrase.persistentModelID
+        var candidates: [String] = []
+        var seen: Set<String> = [correct]
+        var attempts = 0
+        while candidates.count < 10 && attempts < 50 {
+            attempts += 1
+            guard let c = pool.randomElement(),
+                  let p = c.phrase, p.persistentModelID != phraseID else { continue }
+            let target = p.targetText
+            if !target.isEmpty, !seen.contains(target) {
+                seen.insert(target)
+                candidates.append(target)
+            }
+        }
+        return MultipleChoice.options(correct: correct, from: candidates, distractors: 3)
     }
 
     private var loadingView: some View {
@@ -540,9 +706,9 @@ struct PracticeView: View {
             typingInputSection(revealed: revealed)
         case .speakDeToRu:
             speakInputSection(revealed: revealed)
-        case .flipDeToRu:
-            // Flip mode renders FlipCardView at the screen level, no
-            // separate input area is needed.
+        case .flipDeToRu, .chooseDeToRu:
+            // These modes render their own full screen (FlipCardView /
+            // chooseCardScreen), so there's no shared input area.
             EmptyView()
         }
     }
@@ -1343,7 +1509,12 @@ struct PracticeView: View {
         // speaking after the next prompt has already appeared.
         tts.stop()
         showingGradeDetails = false
-        if let next = scheduler.nextCard(from: cardsForActiveLanguage, direction: mode, reviews: reviews, dailyNewLimit: effectiveDailyLimit) {
+        choiceChosen = nil
+        let pool = cardsForActiveLanguage   // compute the language scan once
+        if let next = scheduler.nextCard(from: pool, direction: mode, reviews: reviews, dailyNewLimit: effectiveDailyLimit) {
+            if mode == .chooseDeToRu {
+                choiceOptions = makeChoiceOptions(for: next, pool: pool)
+            }
             phase = .prompt(next)
         } else {
             phase = .empty

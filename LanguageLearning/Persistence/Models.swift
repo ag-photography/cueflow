@@ -137,12 +137,14 @@ final class Phrase {
 
 enum CardDirection: String, Codable, CaseIterable {
     case flipDeToRu       // recognition: tap to reveal, swipe to rate
+    case chooseDeToRu     // recognition: pick the answer from 4 (no keyboard)
     case typeDeToRu       // written production
     case speakDeToRu      // spoken production
 
     var displayName: String {
         switch self {
         case .flipDeToRu: return "Karten"
+        case .chooseDeToRu: return "Wählen"
         case .typeDeToRu: return "Tippen"
         case .speakDeToRu: return "Sprechen"
         }
@@ -151,6 +153,7 @@ enum CardDirection: String, Codable, CaseIterable {
     var displayIcon: String {
         switch self {
         case .flipDeToRu: return "rectangle.on.rectangle"
+        case .chooseDeToRu: return "checklist"
         case .typeDeToRu: return "keyboard"
         case .speakDeToRu: return "mic.fill"
         }
