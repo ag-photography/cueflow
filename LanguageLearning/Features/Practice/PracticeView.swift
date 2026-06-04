@@ -30,6 +30,9 @@ struct PracticeView: View {
     // Set when the user taps "Weiter mit neuen Karten" on the daily-limit
     // screen — lifts the new-card cap for the rest of this mode's session.
     @State private var newCardsUnlocked = false
+    // "Ich kann gerade nicht sprechen": pauses the speak step for this session
+    // and falls back to keyboard-free multiple-choice on the same schedule.
+    @State private var speechMuted = false
     // "Wählen" (multiple-choice) mode: the four options for the current card and
     // the option the user tapped (nil until they answer).
     @State private var choiceOptions: [String] = []
@@ -113,6 +116,7 @@ struct PracticeView: View {
             // Switching modes resets the current card — keep state coherent.
             // Each mode decides the daily-limit override independently.
             newCardsUnlocked = false
+            speechMuted = false
             resetSession()
             phase = .loading
             input = ""
@@ -122,6 +126,7 @@ struct PracticeView: View {
             // Active language switch: reset session, update speech locale,
             // reload the first card for the new language.
             newCardsUnlocked = false
+            speechMuted = false
             resetSession()
             phase = .loading
             input = ""
@@ -420,6 +425,7 @@ struct PracticeView: View {
     private func chooseCardScreen(card: StudyCard) -> some View {
         VStack(spacing: DS.space.lg) {
             if let praise = surprisePraiseBanner { surpriseBanner(praise) }
+            if mode == .speakDeToRu && speechMuted { resumeSpeakingBanner }
             topicChips(card: card)
             heroPrompt(card: card)
             Spacer(minLength: 0)
@@ -433,6 +439,30 @@ struct PracticeView: View {
         .onAppear {
             if promptStart == nil { promptStart = .now }
         }
+    }
+
+    /// Shown while speaking is paused (the "I can't speak right now" fallback):
+    /// a calm reminder + one tap back to the speak step.
+    private var resumeSpeakingBanner: some View {
+        Button {
+            speechMuted = false
+            phase = .loading
+        } label: {
+            HStack(spacing: DS.space.sm) {
+                Image(systemName: "mic.slash.fill")
+                Text("Sprechen pausiert").font(.caption.weight(.medium))
+                Spacer()
+                Text("Wieder sprechen").font(.caption.weight(.semibold))
+                Image(systemName: "chevron.right").font(.caption2)
+            }
+            .foregroundStyle(DS.accent)
+            .padding(.horizontal, DS.space.md)
+            .padding(.vertical, 10)
+            .background(DS.accentSoft)
+            .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Sprechen pausiert. Tippen, um wieder zu sprechen.")
     }
 
     private func choiceButton(card: StudyCard, option: String) -> some View {
@@ -843,6 +873,23 @@ struct PracticeView: View {
                 )
             }
             .buttonStyle(.plain)
+
+            if !revealed && !speech.isRecording {
+                Button {
+                    // Pause speaking for this session; keep practising via
+                    // keyboard-free multiple-choice on the same cards.
+                    speech.clearTranscription()
+                    speechErrorMessage = nil
+                    speechMuted = true
+                    phase = .loading
+                } label: {
+                    Label("Ich kann gerade nicht sprechen", systemImage: "mic.slash")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(DS.textSecondary)
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+            }
         }
     }
 
@@ -1526,7 +1573,8 @@ struct PracticeView: View {
     /// (speakDeToRu) for brand-new cards — a gentle recognition step before we
     /// ask the user to *speak* a word they've just met.
     private func presentAsChoice(_ card: StudyCard) -> Bool {
-        mode == .chooseDeToRu || (mode == .speakDeToRu && card.state == .new)
+        mode == .chooseDeToRu
+            || (mode == .speakDeToRu && (card.state == .new || speechMuted))
     }
 
     /// The configured daily new-card limit — unless the user has tapped
