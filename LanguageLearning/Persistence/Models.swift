@@ -138,14 +138,15 @@ final class Phrase {
 enum CardDirection: String, Codable, CaseIterable {
     case flipDeToRu       // recognition: tap to reveal, swipe to rate
     case chooseDeToRu     // recognition: pick the answer from 4 (no keyboard)
-    case typeDeToRu       // written production
+    case typeDeToRu       // "Üben": smart-mix — exercise varies by card maturity
+                          // (new → multiple-choice, mature → typing), one schedule
     case speakDeToRu      // spoken production
 
     var displayName: String {
         switch self {
         case .flipDeToRu: return "Karten"
         case .chooseDeToRu: return "Wählen"
-        case .typeDeToRu: return "Tippen"
+        case .typeDeToRu: return "Üben"
         case .speakDeToRu: return "Sprechen"
         }
     }
@@ -154,7 +155,7 @@ enum CardDirection: String, Codable, CaseIterable {
         switch self {
         case .flipDeToRu: return "rectangle.on.rectangle"
         case .chooseDeToRu: return "checklist"
-        case .typeDeToRu: return "keyboard"
+        case .typeDeToRu: return "graduationcap.fill"
         case .speakDeToRu: return "mic.fill"
         }
     }

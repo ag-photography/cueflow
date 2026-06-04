@@ -1,8 +1,8 @@
 # CueFlow — Roadmap to App Store
 
-**Current state:** build 31 — Phase A complete + i18n + visual refresh + domain tests + scheduler fix + multiple-choice mode + encouraging reveal, on TestFlight (personal).
+**Current state:** build 32 — Phase A complete + i18n + visual refresh + tests + scheduler fix + multiple-choice + encouraging reveal + smart-mix "Üben" mode, on TestFlight (personal).
 
-> **Engagement push (post-Phase-A, in progress):** making practice less monotonous and more effective via *exercise variety* — the genuinely-fun, non-manipulative half of what Duolingo does (we still refuse mascots/hearts/streak-panic; see below). Build 30 adds the **"Wählen"** multiple-choice mode (keyboard-free recognition, eases new words in). Next candidates: tap-the-tiles for sentences, richer correct/wrong feedback, and topics/lectures as a *journey* you complete (leans on the tutor-import differentiator).
+> **Engagement push (post-Phase-A, in progress):** making practice less monotonous and more effective via *exercise variety* — the genuinely-fun, non-manipulative half of what Duolingo does (we still refuse mascots/hearts/streak-panic; see below). Build 30 added the **"Wählen"** multiple-choice mode. Build 31 made the reveal **encouraging** (growth-mindset: "Noch nicht", not "Falsch"). Build 32 turns the default mode into **"Üben"** — a *smart mix* that varies the exercise by card maturity (new → multiple-choice recognition, mature → typing), all on one schedule. Decided to mix exercise types within "Üben" rather than keep adding modes (picker doesn't scale). **Next:** slot **tap-the-tiles** into Üben's middle (learning) stage; richer correct/wrong feedback (sound/combo); then topics/lectures as a *journey* you complete (the tutor-import differentiator).
 **Goal:** ship to App Store as a free, self-contained, privacy-first language-learning app for German speakers learning Russian (and Arabic).
 **Realistic timeline:** 3–4 months / ~18–20 more builds.
 

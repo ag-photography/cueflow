@@ -330,7 +330,8 @@ struct PracticeView: View {
         case .prompt(let card):
             if mode == .flipDeToRu {
                 flipCardScreen(card: card)
-            } else if mode == .chooseDeToRu {
+            } else if presentAsChoice(card) {
+                // "Wählen" mode, or "Üben" easing a new card in via recognition.
                 chooseCardScreen(card: card)
             } else {
                 promptContent(card: card, revealed: false)
@@ -1512,13 +1513,20 @@ struct PracticeView: View {
         choiceChosen = nil
         let pool = cardsForActiveLanguage   // compute the language scan once
         if let next = scheduler.nextCard(from: pool, direction: mode, reviews: reviews, dailyNewLimit: effectiveDailyLimit) {
-            if mode == .chooseDeToRu {
+            if presentAsChoice(next) {
                 choiceOptions = makeChoiceOptions(for: next, pool: pool)
             }
             phase = .prompt(next)
         } else {
             phase = .empty
         }
+    }
+
+    /// Show the card as multiple-choice now: always in "Wählen", and in "Üben"
+    /// (typeDeToRu) for brand-new cards — a gentle recognition step before we
+    /// ask the user to produce a word they've just met.
+    private func presentAsChoice(_ card: StudyCard) -> Bool {
+        mode == .chooseDeToRu || (mode == .typeDeToRu && card.state == .new)
     }
 
     /// The configured daily new-card limit — unless the user has tapped
