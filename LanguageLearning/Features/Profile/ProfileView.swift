@@ -13,6 +13,11 @@ struct ProfileView: View {
     @Query(sort: \Topic.name) private var topics: [Topic]
     @Query(sort: \Language.code) private var languages: [Language]
 
+    // Speaking-volume scoreboard — shared with Sprint via UserDefaults.
+    @AppStorage("sprintBest") private var sprintBest: Int = 0
+    @AppStorage("spokenWordsCount") private var spokenWordsCountStored: Int = 0
+    @AppStorage("spokenWordsDayIndex") private var spokenWordsDayIndex: Int = 0
+
     private let flame = LinearGradient(
         colors: [Color(red: 0.97, green: 0.45, blue: 0.17), Color(red: 0.98, green: 0.66, blue: 0.22)],
         startPoint: .top, endPoint: .bottom
@@ -24,6 +29,7 @@ struct ProfileView: View {
                 VStack(spacing: DS.space.lg) {
                     streakHero
                     miniStatsRow
+                    speakingSection
                     masterySection
                     weeklyChart
                     if languages.count > 1 {
@@ -293,6 +299,135 @@ struct ProfileView: View {
                             fill: AnyShapeStyle(DS.accent))
                 .frame(height: 5)
         }
+    }
+
+    // MARK: - Speaking (the "speak a lot" scoreboard)
+
+    private var speakingSection: some View {
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            sectionHeader("Sprechen")
+            VStack(alignment: .leading, spacing: DS.space.md) {
+                VStack(alignment: .leading, spacing: 2) {
+                    HStack(alignment: .firstTextBaseline, spacing: DS.space.sm) {
+                        Image(systemName: "waveform")
+                            .font(.title3)
+                            .foregroundStyle(DS.accent)
+                        Text("\(spokenWordsTodayTotal)")
+                            .font(.system(size: 40, weight: .bold, design: .rounded))
+                            .monospacedDigit()
+                            .foregroundStyle(DS.textPrimary)
+                            .contentTransition(.numericText())
+                        Text("Wörter")
+                            .font(.headline)
+                            .foregroundStyle(DS.textSecondary)
+                        Spacer()
+                    }
+                    Text("heute laut gesprochen")
+                        .font(.caption)
+                        .foregroundStyle(DS.textSecondary)
+                }
+                Chart(spokenWeekly) { day in
+                    BarMark(
+                        x: .value("Tag", day.date, unit: .day),
+                        y: .value("Wörter", day.count),
+                        width: .fixed(20)
+                    )
+                    .clipShape(RoundedRectangle(cornerRadius: 5))
+                    .foregroundStyle(
+                        day.count > 0
+                        ? LinearGradient(colors: [DS.gradePerfect, DS.gradePerfect.opacity(0.55)],
+                                         startPoint: .top, endPoint: .bottom)
+                        : LinearGradient(colors: [DS.surface2, DS.surface2], startPoint: .top, endPoint: .bottom)
+                    )
+                }
+                .frame(height: 110)
+                .chartXAxis {
+                    AxisMarks(values: .stride(by: .day)) { _ in
+                        AxisValueLabel(format: .dateTime.weekday(.narrow)).font(.caption2)
+                    }
+                }
+                .chartYAxis {
+                    AxisMarks { _ in
+                        AxisGridLine().foregroundStyle(DS.textTertiary.opacity(0.2))
+                        AxisValueLabel().font(.caption2)
+                    }
+                }
+                Divider().overlay(DS.surface2)
+                HStack(spacing: DS.space.md) {
+                    Label(sprintBest > 0 ? "Sprint-Best: \(sprintBest)" : "Sprint: noch keiner",
+                          systemImage: "bolt.fill")
+                        .font(.caption.weight(.medium))
+                        .foregroundStyle(DS.gradeHesitant)
+                    Spacer()
+                    if let f = fluencyLabel {
+                        Label(f, systemImage: "gauge.with.dots.needle.67percent")
+                            .font(.caption.weight(.medium))
+                            .foregroundStyle(DS.textSecondary)
+                            .accessibilityLabel("Sprechtempo \(f)")
+                    }
+                }
+            }
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        }
+    }
+
+    // MARK: - Speaking scoreboard data
+
+    private var todayIndex: Int {
+        Int(Calendar.current.startOfDay(for: .now).timeIntervalSinceReferenceDate / 86_400)
+    }
+    private var sprintWordsToday: Int {
+        spokenWordsDayIndex == todayIndex ? spokenWordsCountStored : 0
+    }
+
+    /// Reviews where the user actually *spoke* — speak mode, and graded (tier ≥ 1).
+    /// Tier 0 is the multiple-choice recognition step shown for new cards in
+    /// "Üben", which isn't spoken output, so it's excluded.
+    private var spokenReviews: [Review] {
+        reviews.filter { $0.modeRaw == CardDirection.speakDeToRu.rawValue && $0.gradeTier >= 1 }
+    }
+    private func wordCount(_ s: String) -> Int {
+        s.split(whereSeparator: { $0 == " " || $0 == "\n" }).count
+    }
+    private var spokenWordsTodayPractice: Int {
+        spokenReviews.filter { $0.timestamp >= startOfToday }.reduce(0) { $0 + wordCount($1.userAnswer) }
+    }
+    private var spokenWordsTodayTotal: Int { spokenWordsTodayPractice + sprintWordsToday }
+
+    private var spokenWeekly: [DayStat] {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: .now)
+        return (0..<7).reversed().map { offset in
+            let date = cal.date(byAdding: .day, value: -offset, to: today) ?? today
+            let next = cal.date(byAdding: .day, value: 1, to: date) ?? date
+            let w = spokenReviews
+                .filter { $0.timestamp >= date && $0.timestamp < next }
+                .reduce(0) { $0 + wordCount($1.userAnswer) }
+            return DayStat(date: date, count: w)
+        }
+    }
+
+    private func avgSec(_ rs: [Review]) -> Double? {
+        let timed = rs.filter { $0.responseTimeMs > 0 }
+        guard !timed.isEmpty else { return nil }
+        return Double(timed.reduce(0) { $0 + $1.responseTimeMs }) / Double(timed.count) / 1000.0
+    }
+    /// Average spoken response time this week, with a ↓/↑ arrow vs. last week so
+    /// the user can *feel* fluency improving — the intrinsic reward.
+    private var fluencyLabel: String? {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: .now)
+        let weekAgo = cal.date(byAdding: .day, value: -6, to: today) ?? today
+        let twoWeeksAgo = cal.date(byAdding: .day, value: -13, to: today) ?? today
+        guard let thisWeek = avgSec(spokenReviews.filter { $0.timestamp >= weekAgo }) else { return nil }
+        let lastWeek = avgSec(spokenReviews.filter { $0.timestamp >= twoWeeksAgo && $0.timestamp < weekAgo })
+        if let prev = lastWeek, abs(prev - thisWeek) >= 0.1 {
+            let arrow = thisWeek < prev ? "↓" : "↑"
+            return String(format: "%@ %.1f s", arrow, thisWeek)
+        }
+        return String(format: "%.1f s", thisWeek)
     }
 
     // MARK: - Derived data

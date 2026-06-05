@@ -26,6 +26,10 @@ struct SprintView: View {
 
     @StateObject private var speech = SpeechRecognitionService()
     @AppStorage("sprintBest") private var best: Int = 0
+    // Speaking-volume scoreboard: a date-guarded daily tally of words spoken
+    // aloud, shared (via UserDefaults) with ProfileView's "Sprechen" section.
+    @AppStorage("spokenWordsCount") private var spokenWordsCount: Int = 0
+    @AppStorage("spokenWordsDayIndex") private var spokenWordsDayIndex: Int = 0
 
     @State private var phase: Phase = .intro
     @State private var pool: [Phrase] = []
@@ -389,10 +393,25 @@ struct SprintView: View {
 
     private func clearCurrent() {
         UINotificationFeedbackGenerator().notificationOccurred(.success)
+        if let said = currentPhrase?.targetText { recordSpokenWords(said) }
         withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
             cleared += 1
         }
         advance()
+    }
+
+    /// Day-bucket index (days since the reference date) so the tally auto-resets
+    /// at midnight without a cleanup job. Matches ProfileView's computation.
+    private var todayIndex: Int {
+        Int(Calendar.current.startOfDay(for: .now).timeIntervalSinceReferenceDate / 86_400)
+    }
+
+    private func recordSpokenWords(_ text: String) {
+        if spokenWordsDayIndex != todayIndex {
+            spokenWordsDayIndex = todayIndex
+            spokenWordsCount = 0
+        }
+        spokenWordsCount += max(1, text.split(separator: " ").count)
     }
 
     private func skip() {
