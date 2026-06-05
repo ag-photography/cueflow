@@ -931,8 +931,7 @@ struct PracticeView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 detailsDisclosure(card: card, result: result)
-                ratingHeading(suggested: result.autoGrade.suggestedRating)
-                ratingButtons(card: card, result: result, userAnswer: userAnswer, responseTimeMs: responseTimeMs)
+                revealActions(card: card, result: result, userAnswer: userAnswer, responseTimeMs: responseTimeMs)
             }
             .padding(.vertical, DS.space.md)
         }
@@ -1043,102 +1042,46 @@ struct PracticeView: View {
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
     }
 
-    // MARK: - Rating buttons
+    // MARK: - Reveal actions
 
-    private struct RatingSpec {
-        let rating: Int
-        let label: String
-        let symbol: String
-        let color: Color
-    }
-
-    private var ratingSpecs: [RatingSpec] {
-        [
-            .init(rating: 1, label: "Nochmal", symbol: "arrow.counterclockwise", color: DS.gradeWrong),
-            .init(rating: 2, label: "Schwer", symbol: "tortoise.fill", color: DS.gradeMinor),
-            .init(rating: 3, label: "Gut", symbol: "checkmark", color: DS.gradePerfect),
-            .init(rating: 4, label: "Leicht", symbol: "sparkles", color: DS.accent),
-        ]
-    }
-
-    /// Names the auto-grade's suggested rating and frames the row as
-    /// "confirm or adjust" — clearer than the old bare "Bewertung anpassen".
-    private func ratingHeading(suggested: Int) -> some View {
-        let label = ratingSpecs.first { $0.rating == suggested }?.label ?? "Gut"
-        return (
-            Text("Vorschlag: ").foregroundStyle(DS.textSecondary)
-            + Text(label).foregroundStyle(DS.textPrimary).bold()
-            + Text(" — bestätigen oder anpassen").foregroundStyle(DS.textTertiary)
-        )
-        .font(.caption)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, DS.space.sm)
-    }
-
-    private func ratingButtons(
+    /// One tap to accept the engine's auto-grade + a single contextual override —
+    /// instead of a 4-way self-rating decision after every card. The grade is
+    /// already shown in the hero ("Sitzt!" / "Fast" / "Noch nicht"); "Weiter"
+    /// applies it. Mirrors how Duolingo trusts its auto-grade and only surfaces
+    /// the "I was actually right" correction.
+    @ViewBuilder
+    private func revealActions(
         card: StudyCard,
         result: GradeResult,
         userAnswer: String,
         responseTimeMs: Int
     ) -> some View {
-        HStack(spacing: 8) {
-            ForEach(ratingSpecs, id: \.rating) { spec in
-                ratingButton(
-                    spec: spec,
-                    suggested: result.autoGrade.suggestedRating,
-                    onTap: {
-                        confirm(
-                            rating: spec.rating,
-                            card: card,
-                            result: result,
-                            userAnswer: userAnswer,
-                            responseTimeMs: responseTimeMs
-                        )
-                    }
-                )
+        let suggested = result.autoGrade.suggestedRating
+        let recalled = suggested >= 3   // perfect / hesitant = recalled it
+        VStack(spacing: DS.space.sm) {
+            primaryButton(title: "Weiter", disabled: false) {
+                confirm(rating: suggested, card: card, result: result,
+                        userAnswer: userAnswer, responseTimeMs: responseTimeMs)
             }
-        }
-    }
-
-    private func ratingButton(
-        spec: RatingSpec,
-        suggested: Int,
-        onTap: @escaping () -> Void
-    ) -> some View {
-        let isSuggested = spec.rating == suggested
-        return Button {
-            UIImpactFeedbackGenerator(style: .light).impactOccurred()
-            onTap()
-        } label: {
-            VStack(spacing: 4) {
-                Image(systemName: spec.symbol)
-                    .font(.title3)
-                Text(spec.label)
-                    .font(.caption.weight(.semibold))
+            // Contextual override: if it counted you right, let you mark it
+            // shaky (sooner); if it counted you wrong, let you claim it — which
+            // also saves your answer as an accepted alternative (in confirm()).
+            Button {
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                confirm(rating: recalled ? 2 : 3, card: card, result: result,
+                        userAnswer: userAnswer, responseTimeMs: responseTimeMs)
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: recalled ? "tortoise.fill" : "checkmark.circle")
+                    Text(recalled ? "War schwerer – früher zeigen" : "Ich lag richtig")
+                }
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(DS.textSecondary)
+                .padding(.vertical, 10)
             }
-            .foregroundStyle(isSuggested ? .white : spec.color)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .background(isSuggested ? spec.color : spec.color.opacity(0.12))
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
-            .overlay(
-                // White ring on the suggested choice makes it read as the
-                // primary "tap to confirm"; a faint tint defines the others.
-                RoundedRectangle(cornerRadius: DS.radius.md)
-                    .stroke(
-                        isSuggested ? Color.white.opacity(0.55) : spec.color.opacity(0.18),
-                        lineWidth: isSuggested ? 2 : 1
-                    )
-            )
-            .shadow(
-                color: isSuggested ? spec.color.opacity(0.25) : .clear,
-                radius: 4,
-                x: 0,
-                y: 2
-            )
+            .buttonStyle(.plain)
         }
-        .buttonStyle(.plain)
-        .accessibilityHint(isSuggested ? "Vorgeschlagene Bewertung" : "")
+        .padding(.top, DS.space.sm)
     }
 
     private func gradeChip(for grade: AutoGrade) -> some View {
