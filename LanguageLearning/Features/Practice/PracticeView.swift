@@ -19,6 +19,7 @@ struct PracticeView: View {
     @State private var promptStart: Date?
     @State private var showingLibrary = false
     @State private var showingProfile = false
+    @State private var showingSprint = false
     @State private var sessionCount: Int = 0
     @State private var sessionCorrect: Int = 0
     @State private var showingSessionSummary = false
@@ -109,6 +110,9 @@ struct PracticeView: View {
         .sheet(isPresented: $showingProfile) {
             ProfileView()
         }
+        .fullScreenCover(isPresented: $showingSprint) {
+            SprintView()
+        }
         .sheet(isPresented: $showingSessionSummary) {
             sessionSummarySheet
         }
@@ -172,6 +176,7 @@ struct PracticeView: View {
                 if currentStreak > 0 {
                     streakChip
                 }
+                sprintHeaderButton
                 headerIconButton(systemName: "chart.bar.fill", label: "Fortschritt") { showingProfile = true }
                 headerIconButton(systemName: "books.vertical", label: "Bibliothek") { showingLibrary = true }
             }
@@ -274,6 +279,23 @@ struct PracticeView: View {
             day = cal.date(byAdding: .day, value: -1, to: day) ?? day
         }
         return streak
+    }
+
+    /// Sprint entry — accent-tinted so it reads as a distinct "fun" action, not
+    /// just another grey nav icon. (Placement provisional: a session-summary
+    /// "want a fast round?" entry may suit it better than the busy header.)
+    private var sprintHeaderButton: some View {
+        Button { showingSprint = true } label: {
+            Image(systemName: "bolt.fill")
+                .font(.callout)
+                .foregroundStyle(DS.accent)
+                .frame(width: 36, height: 36)
+                .background(DS.accentSoft)
+                .clipShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Sprint")
+        .accessibilityHint("60-Sekunden-Sprechrunde")
     }
 
     private func headerIconButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
