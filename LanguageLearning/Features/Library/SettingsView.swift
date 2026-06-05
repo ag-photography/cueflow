@@ -46,16 +46,26 @@ struct SettingsView: View {
             Form {
                 // MARK: Sprache & Inhalte
                 Section {
-                    Picker("Aktive Sprache", selection: $activeLanguageCode) {
+                    // Featured: the active language is identity-level (it swaps
+                    // all content), so it anchors the screen — accent-tinted row.
+                    Picker(selection: $activeLanguageCode) {
                         ForEach(languages, id: \.code) { lang in
                             Text(lang.germanLabel).tag(lang.code)
                         }
+                    } label: {
+                        HStack(spacing: DS.space.sm) {
+                            Image(systemName: "globe").foregroundStyle(DS.accent)
+                            Text("Aktive Sprache")
+                        }
                     }
+                    .listRowBackground(DS.accentSoft)
+
                     Picker("Transliteration", selection: $transliterationVisible) {
                         ForEach(TransliterationMode.allCases, id: \.self) { mode in
                             Text(mode.label).tag(mode)
                         }
                     }
+                    .listRowBackground(DS.surface1)
                 } header: {
                     Text("Sprache & Inhalte")
                 } footer: {
@@ -79,6 +89,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Überraschungs-Belohnungen sind eine gelegentliche Mini-Feier nach richtigen Antworten.")
                 }
+                .listRowBackground(DS.surface1)
 
                 // MARK: Erinnerungen
                 Section {
@@ -114,6 +125,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("Eine sanfte tägliche Erinnerung zur gewählten Zeit. Keine Streak-Panik, keine FOMO. Jederzeit ausschaltbar.")
                 }
+                .listRowBackground(DS.surface1)
 
                 // MARK: Daten
                 Section {
@@ -127,6 +139,7 @@ struct SettingsView: View {
                 } footer: {
                     Text("Fortschritt & Streak: oben rechts auf der Übungsseite (Diagramm-Icon). TestFlight-Updates erhalten deinen Fortschritt automatisch.")
                 }
+                .listRowBackground(DS.surface1)
 
                 // MARK: Entwickler (hidden until unlocked)
                 if developerModeEnabled {
@@ -144,6 +157,7 @@ struct SettingsView: View {
                     } header: {
                         Text("Entwickler")
                     }
+                    .listRowBackground(DS.surface1)
                 }
 
                 // MARK: Info
@@ -157,7 +171,16 @@ struct SettingsView: View {
                 } footer: {
                     versionFooter
                 }
+                .listRowBackground(DS.surface1)
             }
+            .scrollContentBackground(.hidden)
+            .background(
+                LinearGradient(
+                    colors: [DS.surface0, DS.surface2.opacity(0.55)],
+                    startPoint: .top, endPoint: .bottom
+                )
+                .ignoresSafeArea()
+            )
             .navigationTitle("Einstellungen")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
