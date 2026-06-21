@@ -21,6 +21,24 @@ enum SeedData {
         return added
     }
 
+    /// Idempotent: fills in `exampleSentence` (and its translation/transliteration)
+    /// on any phrase that doesn't have one yet, from the bundled
+    /// `example-sentences.json` (matched by `de|||target`). Lets returning users —
+    /// whose phrases were seeded before this build, or before we shipped a
+    /// sentence for that word — pick up sentences on launch without a reinstall.
+    /// Only writes when it actually fills something in. Cheap: one fetch + an
+    /// in-memory dictionary lookup per phrase.
+    @discardableResult
+    static func backfillExampleSentences(_ context: ModelContext) -> Int {
+        let phrases = (try? context.fetch(FetchDescriptor<Phrase>())) ?? []
+        var filled = 0
+        for phrase in phrases where phrase.exampleSentence == nil {
+            if ExampleSentences.apply(to: phrase) { filled += 1 }
+        }
+        if filled > 0 { try? context.save() }
+        return filled
+    }
+
     /// Idempotent: makes sure every piece of content that ships *inside* the
     /// app bundle is present in the store — A1 Russian + A1 Arabic curated
     /// packs and the full OpenRussian A2/B1/B2 wordlists. Topics are all
@@ -147,6 +165,7 @@ enum SeedData {
                 topics: [topicResult.topic],
                 transliteration: entry.ru_a == entry.ru ? nil : entry.ru_a
             )
+            ExampleSentences.apply(to: phrase)
             context.insert(phrase)
             for direction in CardDirection.allCases {
                 context.insert(StudyCard(phrase: phrase, direction: direction))
@@ -389,6 +408,7 @@ enum SeedData {
                 topics: topics,
                 transliteration: spec.script     // Arabic script — display reference under the answer
             )
+            ExampleSentences.apply(to: phrase)
             context.insert(phrase)
             for direction in CardDirection.allCases {
                 context.insert(StudyCard(phrase: phrase, direction: direction))
@@ -635,6 +655,7 @@ enum SeedData {
                 language: language,
                 topics: topics
             )
+            ExampleSentences.apply(to: phrase)
             context.insert(phrase)
             for direction in CardDirection.allCases {
                 context.insert(StudyCard(phrase: phrase, direction: direction))

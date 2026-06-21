@@ -86,6 +86,20 @@ final class Phrase {
     var targetTextNormalized: String
     var transliteration: String?
     var notes: String?
+    /// A short target-language sentence that *uses* this word, shown as a
+    /// spoken "say it in a sentence" reinforcement while the card is still
+    /// young (see `PracticeView` maturity gate). Populated from the bundled
+    /// `example-sentences.json` at seed/backfill time; nil when we don't ship
+    /// a sentence for this entry (e.g. the phrase already is a sentence, or
+    /// it's user-imported vocab we haven't generated a sentence for). Optional
+    /// + default nil → additive lightweight SwiftData migration, no version bump.
+    var exampleSentence: String?
+    /// German translation of `exampleSentence`.
+    var exampleSentenceTranslation: String?
+    /// Pronunciation reference for `exampleSentence`: stress-marked Cyrillic for
+    /// Russian, Arabic script for Arabic. Mirrors how `transliteration` is used
+    /// on the headword itself. nil when not applicable.
+    var exampleSentenceTransliteration: String?
     var audioFileName: String?
     var acceptedAlternatives: [String] = []
     var topics: [Topic] = []

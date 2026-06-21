@@ -952,6 +952,9 @@ struct PracticeView: View {
                         .foregroundStyle(DS.textTertiary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                if shouldShowExampleSentence(card) {
+                    exampleSentenceCard(card: card)
+                }
                 detailsDisclosure(card: card, result: result)
                 revealActions(card: card, result: result, userAnswer: userAnswer, responseTimeMs: responseTimeMs)
             }
@@ -1023,6 +1026,90 @@ struct PracticeView: View {
             .padding(DS.space.md)
             .background(DS.surface1)
             .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+    }
+
+    /// FSRS stability (in days) at or above which a card counts as "really
+    /// sitting" — the spoken sentence reinforcement drops away past this. New
+    /// cards start at 0, so the sentence beat shows from the very first review
+    /// and fades out only once the word is genuinely durable (~3 weeks).
+    private let matureStabilityDays: Double = 21
+
+    /// Whether to append the spoken "say it in a sentence" beat to this reveal.
+    /// Only in Üben (the speaking mode), only while the card is still young, and
+    /// only when we actually ship a sentence for the word — otherwise the reveal
+    /// is unchanged. Matches the user's intent: keep the sentence there on every
+    /// review until the word is solid, then let it go.
+    private func shouldShowExampleSentence(_ card: StudyCard) -> Bool {
+        mode == .speakDeToRu
+            && card.stability < matureStabilityDays
+            && (card.phrase?.exampleSentence?.isEmpty == false)
+    }
+
+    /// The contextual sentence that *uses* the just-learned word, presented as a
+    /// "now say it out loud" reinforcement: the target sentence big, an optional
+    /// pronunciation line and the German translation, plus a speaker button to
+    /// hear it modelled. Tinted with the accent so it reads as an action ("do
+    /// this"), not just more reference text. More spoken output, concentrated on
+    /// the words that aren't solid yet.
+    @ViewBuilder
+    private func exampleSentenceCard(card: StudyCard) -> some View {
+        let phrase = card.phrase
+        let sentence = phrase?.exampleSentence ?? ""
+        let locale = phrase?.language?.ttsLocale ?? "ru-RU"
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            HStack(spacing: 6) {
+                Image(systemName: "mic.fill")
+                    .font(.caption.weight(.bold))
+                Text("Sag es im Satz")
+                    .font(.caption.weight(.bold))
+                    .textCase(.uppercase)
+                Spacer()
+                Button {
+                    tts.speak(sentence, language: locale, times: 1)
+                } label: {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.accent)
+                        .frame(width: 38, height: 38)
+                        .background(DS.surface0)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Satz vorlesen")
+            }
+            .foregroundStyle(DS.accent)
+
+            Text(sentence)
+                .font(.system(.title3, design: .serif, weight: .semibold))
+                .foregroundStyle(DS.textPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if shouldShowTransliteration,
+               let translit = phrase?.exampleSentenceTransliteration, !translit.isEmpty {
+                Text(translit)
+                    .font(.footnote)
+                    .foregroundStyle(DS.textTertiary)
+            }
+
+            if let translation = phrase?.exampleSentenceTranslation, !translation.isEmpty {
+                Text(translation)
+                    .font(.subheadline)
+                    .foregroundStyle(DS.textSecondary)
+            }
+
+            Text("Sprich den Satz einmal laut nach.")
+                .font(.caption)
+                .foregroundStyle(DS.textTertiary)
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DS.space.md)
+        .background(DS.accentSoft)
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        .overlay(
+            RoundedRectangle(cornerRadius: DS.radius.md)
+                .stroke(DS.accent.opacity(0.20), lineWidth: 1)
+        )
     }
 
     private func revealSubtitle(for grade: AutoGrade) -> String {

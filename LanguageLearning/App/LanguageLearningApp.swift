@@ -42,6 +42,9 @@ struct LanguageLearningApp: App {
             // Ship all bundled content into the store on first launch
             // (idempotent). Topics stay inactive — user activates in Library.
             SeedData.ensureAllBundledContent(setupContext)
+            // Fill in example sentences (the spoken "say it in a sentence" beat)
+            // on phrases seeded before this build. Idempotent — only fills gaps.
+            SeedData.backfillExampleSentences(setupContext)
             // Don't re-onboard returning users: anyone who already has reviews
             // when they update to the onboarding build is marked complete.
             SeedData.markExistingUsersOnboarded(setupContext)
