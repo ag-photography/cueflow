@@ -38,6 +38,9 @@ struct PracticeView: View {
     // the option the user tapped (nil until they answer).
     @State private var choiceOptions: [String] = []
     @State private var choiceChosen: String? = nil
+    // "Sag es im Satz" screen (after scoring, young cards only): flips true once
+    // the user has recorded the sentence at least once, which reveals "Weiter".
+    @State private var sentenceSpoken = false
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
     // Lets the fixed-size serif prompt grow with Dynamic Type (capped so very
@@ -58,6 +61,10 @@ struct PracticeView: View {
         case prompt(StudyCard)
         case study(StudyCard)
         case reveal(StudyCard, GradeResult, userAnswer: String, responseTimeMs: Int)
+        /// "Now you say it": after scoring a young card, a dedicated screen that
+        /// makes the user speak the example sentence out loud before continuing.
+        /// Unscored — the point is spoken volume, not accuracy.
+        case speakSentence(StudyCard)
         case empty
     }
 
@@ -367,6 +374,8 @@ struct PracticeView: View {
             promptContent(card: card, revealed: true)
         case .reveal(let card, let result, let answer, let elapsedMs):
             revealContent(card: card, result: result, userAnswer: answer, responseTimeMs: elapsedMs)
+        case .speakSentence(let card):
+            speakSentenceScreen(card: card)
         case .empty:
             emptyContent
         }
@@ -952,9 +961,6 @@ struct PracticeView: View {
                         .foregroundStyle(DS.textTertiary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                if shouldShowExampleSentence(card) {
-                    exampleSentenceCard(card: card)
-                }
                 detailsDisclosure(card: card, result: result)
                 revealActions(card: card, result: result, userAnswer: userAnswer, responseTimeMs: responseTimeMs)
             }
@@ -1034,11 +1040,11 @@ struct PracticeView: View {
     /// and fades out only once the word is genuinely durable (~3 weeks).
     private let matureStabilityDays: Double = 21
 
-    /// Whether to append the spoken "say it in a sentence" beat to this reveal.
-    /// Only in Üben (the speaking mode), only while the card is still young, and
-    /// only when we actually ship a sentence for the word — otherwise the reveal
-    /// is unchanged. Matches the user's intent: keep the sentence there on every
-    /// review until the word is solid, then let it go.
+    /// Whether to route through the spoken "say it in a sentence" screen after
+    /// scoring this card. Only in Üben (the speaking mode), only while the card
+    /// is still young, and only when we actually ship a sentence for the word.
+    /// Keeps the spoken sentence on every review until the word is solid, then
+    /// lets it go.
     private func shouldShowExampleSentence(_ card: StudyCard) -> Bool {
         mode == .speakDeToRu
             && card.stability < matureStabilityDays
@@ -1058,7 +1064,7 @@ struct PracticeView: View {
         let locale = phrase?.language?.ttsLocale ?? "ru-RU"
         VStack(alignment: .leading, spacing: DS.space.sm) {
             HStack(spacing: 6) {
-                Image(systemName: "mic.fill")
+                Image(systemName: "text.quote")
                     .font(.caption.weight(.bold))
                 Text("Sag es im Satz")
                     .font(.caption.weight(.bold))
@@ -1096,11 +1102,6 @@ struct PracticeView: View {
                     .font(.subheadline)
                     .foregroundStyle(DS.textSecondary)
             }
-
-            Text("Sprich den Satz einmal laut nach.")
-                .font(.caption)
-                .foregroundStyle(DS.textTertiary)
-                .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DS.space.md)
@@ -1110,6 +1111,106 @@ struct PracticeView: View {
             RoundedRectangle(cornerRadius: DS.radius.md)
                 .stroke(DS.accent.opacity(0.20), lineWidth: 1)
         )
+    }
+
+    /// "Now you say it." Shown after the score for a young card: the example
+    /// sentence, audio to model it, and a mic that makes the user actually speak
+    /// it aloud before moving on. Unscored — recording once is enough to reveal
+    /// "Weiter"; a quiet "Überspringen" covers can't-speak-right-now moments.
+    private func speakSentenceScreen(card: StudyCard) -> some View {
+        let phrase = card.phrase
+        let sentence = phrase?.exampleSentence ?? ""
+        let locale = phrase?.language?.ttsLocale ?? "ru-RU"
+        return VStack(spacing: DS.space.lg) {
+            VStack(spacing: 8) {
+                Image(systemName: "mic.fill")
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundStyle(DS.accent)
+                    .frame(width: 64, height: 64)
+                    .background(DS.accentSoft)
+                    .clipShape(Circle())
+                Text("Jetzt du – sprich den Satz")
+                    .font(.system(.title3, design: .serif, weight: .bold))
+                    .foregroundStyle(DS.textPrimary)
+                Text("Laut nachsprechen. Wird nicht bewertet – einfach sagen.")
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, DS.space.md)
+
+            exampleSentenceCard(card: card)
+
+            // Live transcription is feedback only ("the mic heard you"), never graded.
+            if !speech.transcription.isEmpty {
+                Text(speech.transcription)
+                    .font(.title3)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .padding(DS.space.md)
+                    .background(DS.surface1)
+                    .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            }
+            if let msg = speechErrorMessage {
+                Text(msg)
+                    .font(.footnote)
+                    .foregroundStyle(DS.gradeWrong)
+                    .multilineTextAlignment(.center)
+            }
+
+            Spacer(minLength: 0)
+
+            // The mic is the forcing function: toggle record/stop; stopping marks
+            // the sentence spoken, which reveals "Weiter".
+            Button {
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+                if speech.isRecording {
+                    speech.stop()
+                    sentenceSpoken = true
+                } else {
+                    startRecording()
+                }
+            } label: {
+                HStack(spacing: 8) {
+                    Image(systemName: speech.isRecording ? "stop.fill" : "mic.fill")
+                    Text(speech.isRecording
+                         ? "Stoppen"
+                         : (sentenceSpoken ? "Nochmal sprechen" : "Sprich den Satz"))
+                }
+                .font(.headline.weight(.bold))
+                .foregroundStyle(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 20)
+                .background(Capsule().fill(speech.isRecording ? DS.gradeWrong : DS.accent))
+                .shadow(
+                    color: (speech.isRecording ? DS.gradeWrong : DS.accent).opacity(0.30),
+                    radius: 8, x: 0, y: 4
+                )
+            }
+            .buttonStyle(.plain)
+
+            if sentenceSpoken && !speech.isRecording {
+                primaryButton(title: "Weiter", disabled: false) { finishSentence() }
+            } else {
+                Button {
+                    finishSentence()
+                } label: {
+                    Text("Überspringen")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(DS.textSecondary)
+                        .underline()
+                        .padding(.vertical, 8)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.vertical, DS.space.md)
+        .onAppear {
+            sentenceSpoken = false
+            speech.clearTranscription()
+            speechErrorMessage = nil
+            tts.speak(sentence, language: locale, times: 1)
+        }
     }
 
     private func revealSubtitle(for grade: AutoGrade) -> String {
@@ -1539,6 +1640,28 @@ struct PracticeView: View {
             maybeTriggerSurprisePraise()
         }
 
+        // Young card with a sentence we ship? Detour through the spoken
+        // "say it in a sentence" screen before advancing or ending the session.
+        // `record(...)` above already updated stability, so the gate uses the
+        // post-review value — a card that just matured won't get the detour.
+        if shouldShowExampleSentence(card) && !speechMuted {
+            sentenceSpoken = false
+            phase = .speakSentence(card)
+        } else if sessionCount >= sessionTarget {
+            showingSessionSummary = true
+        } else {
+            phase = .loading
+        }
+    }
+
+    /// Advance out of the "say it in a sentence" screen: same end-of-card
+    /// branch as `confirm`, just deferred until after the user has spoken.
+    private func finishSentence() {
+        speech.stop()
+        speech.clearTranscription()
+        speechErrorMessage = nil
+        tts.stop()
+        sentenceSpoken = false
         if sessionCount >= sessionTarget {
             showingSessionSummary = true
         } else {
