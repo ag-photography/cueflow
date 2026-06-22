@@ -1166,7 +1166,16 @@ struct PracticeView: View {
                 UIImpactFeedbackGenerator(style: .medium).impactOccurred()
                 if speech.isRecording {
                     speech.stop()
-                    sentenceSpoken = true
+                    // Unlock "Weiter" only if the mic actually picked you up
+                    // saying it — not on a half-second of silence. Still
+                    // unscored; "Überspringen" covers a mic that can't hear you.
+                    if sentenceRecognizedEnough(card) {
+                        sentenceSpoken = true
+                        speechErrorMessage = nil
+                    } else {
+                        sentenceSpoken = false
+                        speechErrorMessage = "Ich hab dich kaum gehört – sprich den ganzen Satz laut."
+                    }
                 } else {
                     startRecording()
                 }
@@ -1652,6 +1661,23 @@ struct PracticeView: View {
         } else {
             phase = .loading
         }
+    }
+
+    /// Did the recogniser actually pick up the user saying the sentence? We
+    /// don't check *correctness* — just that a few words were heard, so "Weiter"
+    /// can't be unlocked by tapping record→stop in silence. Lenient by design
+    /// (the sentence is usually 4–8 words, and on-device ASR drops some);
+    /// "Überspringen" stays as the escape when the mic genuinely can't hear you.
+    private func sentenceRecognizedEnough(_ card: StudyCard) -> Bool {
+        let heard = speech.transcription
+            .split(whereSeparator: { $0.isWhitespace })
+            .filter { !$0.isEmpty }
+            .count
+        let targetWords = (card.phrase?.exampleSentence ?? "")
+            .split(whereSeparator: { $0.isWhitespace })
+            .filter { !$0.isEmpty }
+            .count
+        return heard >= max(1, min(2, targetWords))
     }
 
     /// Advance out of the "say it in a sentence" screen: same end-of-card
