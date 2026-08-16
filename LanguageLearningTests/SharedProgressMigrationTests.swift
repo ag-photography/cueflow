@@ -6,6 +6,35 @@ import SwiftData
 @MainActor
 struct SharedProgressMigrationTests {
 
+    @Test func interactionGateRejectsDuplicateSubmission() {
+        var gate = PracticeInteractionGate()
+        let first = gate.begin(.grading)
+        let duplicateGrading = gate.begin(.grading)
+        let competingPersistence = gate.begin(.persistence)
+
+        #expect(first != nil)
+        #expect(duplicateGrading == nil)
+        #expect(competingPersistence == nil)
+        #expect(gate.isBusy)
+    }
+
+    @Test func interactionGateRejectsStaleAsyncCompletion() throws {
+        var gate = PracticeInteractionGate()
+        let staleCandidate = gate.begin(.choiceDelay)
+        let stale = try #require(staleCandidate)
+        gate.invalidate()
+        let currentCandidate = gate.begin(.persistence)
+        let current = try #require(currentCandidate)
+        let staleFinished = gate.finish(stale)
+
+        #expect(gate.accepts(stale) == false)
+        #expect(staleFinished == false)
+        #expect(gate.activeOperation == .persistence)
+        let currentFinished = gate.finish(current)
+        #expect(currentFinished)
+        #expect(gate.isBusy == false)
+    }
+
     @Test func supportedLanguagesComeFromReusablePackConfiguration() {
         #expect(LanguagePack.supported.map(\.code) == ["ru", "ar"])
         #expect(LanguagePack.configuration(for: "ru")?.ttsLocale == "ru-RU")

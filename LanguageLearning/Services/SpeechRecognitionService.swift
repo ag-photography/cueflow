@@ -20,6 +20,7 @@ final class SpeechRecognitionService: ObservableObject {
     private let audioEngine = AVAudioEngine()
     private var request: SFSpeechAudioBufferRecognitionRequest?
     private var task: SFSpeechRecognitionTask?
+    private var recognitionGeneration = UUID()
 
     private var recordingStart: Date?
     private var firstWordAt: Date?
@@ -36,6 +37,7 @@ final class SpeechRecognitionService: ObservableObject {
     /// a new SFSpeechRecognizer for the new locale. No-op if already on this locale.
     func setLocale(_ localeIdentifier: String) {
         guard localeIdentifier != currentLocale else { return }
+        if isRecording { stop() }
         currentLocale = localeIdentifier
         recognizer = SFSpeechRecognizer(locale: Locale(identifier: localeIdentifier))
     }
@@ -61,6 +63,7 @@ final class SpeechRecognitionService: ObservableObject {
     }
 
     func start() throws {
+        guard !isRecording else { return }
         guard let recognizer, recognizer.isAvailable else {
             throw NSError(domain: "Speech", code: -1,
                           userInfo: [NSLocalizedDescriptionKey: "Sprachmodell für \(currentLocale) nicht verfügbar."])
@@ -73,6 +76,8 @@ final class SpeechRecognitionService: ObservableObject {
         lastSpeechAt = nil
         longestPauseSec = 0
         lastError = nil
+        recognitionGeneration = UUID()
+        let generation = recognitionGeneration
 
         let session = AVAudioSession.sharedInstance()
         try session.setCategory(.record, mode: .measurement, options: .duckOthers)
@@ -95,7 +100,7 @@ final class SpeechRecognitionService: ObservableObject {
 
         task = recognizer.recognitionTask(with: request) { [weak self] result, error in
             Task { @MainActor in
-                guard let self else { return }
+                guard let self, self.recognitionGeneration == generation else { return }
                 if let result {
                     let now = Date.now
                     if self.firstWordAt == nil, !result.bestTranscription.formattedString.isEmpty {
@@ -124,6 +129,7 @@ final class SpeechRecognitionService: ObservableObject {
     }
 
     func stop() {
+        recognitionGeneration = UUID()
         if audioEngine.isRunning {
             audioEngine.stop()
             audioEngine.inputNode.removeTap(onBus: 0)

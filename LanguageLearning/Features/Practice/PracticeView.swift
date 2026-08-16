@@ -2,12 +2,54 @@ import SwiftUI
 import SwiftData
 import UIKit
 
+/// A small deterministic gate for the practice lifecycle. Every delayed or
+/// asynchronous result carries a generation token; changing card, mode,
+/// language, or screen invalidates it so stale work cannot mutate the session.
+struct PracticeInteractionGate {
+    enum Operation: Equatable {
+        case grading, choiceDelay, permission, persistence
+    }
+
+    struct Token: Equatable {
+        fileprivate let generation: UUID
+        let operation: Operation
+    }
+
+    private(set) var generation = UUID()
+    private(set) var activeOperation: Operation?
+
+    var isBusy: Bool { activeOperation != nil }
+
+    mutating func begin(_ operation: Operation) -> Token? {
+        guard activeOperation == nil else { return nil }
+        activeOperation = operation
+        return Token(generation: generation, operation: operation)
+    }
+
+    func accepts(_ token: Token) -> Bool {
+        token.generation == generation && token.operation == activeOperation
+    }
+
+    @discardableResult
+    mutating func finish(_ token: Token) -> Bool {
+        guard accepts(token) else { return false }
+        activeOperation = nil
+        return true
+    }
+
+    mutating func invalidate() {
+        generation = UUID()
+        activeOperation = nil
+    }
+}
+
 /// Practice screen — the core loop. Custom header at the top with a pill-style
 /// mode picker (no more bottom page dots overlaying the rating row). Hero
 /// prompt card, distinct reveal layout, modern semantic rating buttons.
 struct PracticeView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
     @Query private var cards: [StudyCard]
     @Query private var reviews: [Review]
     @Query private var settings: [AppSettings]
@@ -41,6 +83,13 @@ struct PracticeView: View {
     // "Sag es im Satz" screen (after scoring, young cards only): flips true once
     // the user has recorded the sentence at least once, which reveals "Weiter".
     @State private var sentenceSpoken = false
+    @State private var interactionGate = PracticeInteractionGate()
+    @State private var gradingTask: Task<Void, Never>?
+    @State private var choiceDelayTask: Task<Void, Never>?
+    @State private var permissionTask: Task<Void, Never>?
+    @State private var praiseTask: Task<Void, Never>?
+    @State private var savedBannerTask: Task<Void, Never>?
+    @State private var persistenceErrorMessage: String?
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
     // Lets the fixed-size serif prompt grow with Dynamic Type (capped so very
@@ -97,6 +146,11 @@ struct PracticeView: View {
         VStack(spacing: 0) {
             sessionProgressBar
             headerBar
+            if let persistenceErrorMessage {
+                persistenceErrorBanner(persistenceErrorMessage)
+                    .padding(.horizontal, DS.space.md)
+                    .padding(.top, DS.space.sm)
+            }
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, DS.space.md)
@@ -126,6 +180,7 @@ struct PracticeView: View {
         .onChange(of: mode) { _, _ in
             // Switching modes resets the current card — keep state coherent.
             // Each mode decides the daily-limit override independently.
+            invalidateInteraction()
             newCardsUnlocked = false
             speechMuted = false
             resetSession()
@@ -136,6 +191,7 @@ struct PracticeView: View {
         .onChange(of: settings.first?.activeLanguageCode) { _, _ in
             // Active language switch: reset session, update speech locale,
             // reload the first card for the new language.
+            invalidateInteraction()
             newCardsUnlocked = false
             speechMuted = false
             resetSession()
@@ -151,6 +207,10 @@ struct PracticeView: View {
                 speech.setLocale(locale)
             }
         }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase != .active { invalidateInteraction() }
+        }
+        .onDisappear { invalidateInteraction() }
     }
 
     // MARK: - Header
@@ -420,6 +480,10 @@ struct PracticeView: View {
     }
 
     private func recordFlipReview(card: StudyCard, rating: Int) {
+        guard case .prompt(let current) = phase,
+              current === card,
+              let token = interactionGate.begin(.persistence)
+        else { return }
         do {
             let wasNew = card.state == .new
             try scheduler.record(rating: rating, on: card)
@@ -436,8 +500,13 @@ struct PracticeView: View {
             )
             context.insert(review)
             try context.save()
+            interactionGate.finish(token)
+            persistenceErrorMessage = nil
         } catch {
-            print("Failed to record flip review: \(error)")
+            context.rollback()
+            interactionGate.finish(token)
+            showPersistenceError(error)
+            return
         }
 
         promptStart = nil
@@ -550,7 +619,11 @@ struct PracticeView: View {
     }
 
     private func selectChoice(card: StudyCard, option: String) {
-        guard choiceChosen == nil else { return }
+        guard case .prompt(let current) = phase,
+              current === card,
+              choiceChosen == nil,
+              let token = interactionGate.begin(.choiceDelay)
+        else { return }
         let elapsedMs = Int((promptStart.map { Date.now.timeIntervalSince($0) } ?? 0) * 1000)
         let correct = card.phrase?.targetText == option
         withAnimation(.easeOut(duration: 0.2)) { choiceChosen = option }
@@ -564,15 +637,35 @@ struct PracticeView: View {
 
         // Brief feedback dwell — longer when wrong so the correct answer registers.
         let dwell: UInt64 = correct ? 850_000_000 : 1_700_000_000
-        Task {
-            try? await Task.sleep(nanoseconds: dwell)
-            await MainActor.run {
-                recordChoiceReview(card: card, correct: correct, responseTimeMs: elapsedMs)
+        choiceDelayTask?.cancel()
+        choiceDelayTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: dwell)
+            } catch {
+                return
             }
+            guard interactionGate.accepts(token),
+                  case .prompt(let current) = phase,
+                  current === card
+            else { return }
+            recordChoiceReview(
+                card: card,
+                chosenAnswer: option,
+                correct: correct,
+                responseTimeMs: elapsedMs,
+                token: token
+            )
         }
     }
 
-    private func recordChoiceReview(card: StudyCard, correct: Bool, responseTimeMs: Int) {
+    private func recordChoiceReview(
+        card: StudyCard,
+        chosenAnswer: String,
+        correct: Bool,
+        responseTimeMs: Int,
+        token: PracticeInteractionGate.Token
+    ) {
+        guard interactionGate.accepts(token) else { return }
         let rating = correct ? (responseTimeMs <= 4000 ? 4 : 3) : 1
         do {
             let wasNew = card.state == .new
@@ -581,7 +674,7 @@ struct PracticeView: View {
                 card: card,
                 rating: rating,
                 autoGradeRating: rating,
-                userAnswer: choiceChosen ?? "",
+                userAnswer: chosenAnswer,
                 mode: mode,
                 responseTimeMs: responseTimeMs,
                 gradeTier: 0,   // recognition, no character grading
@@ -589,8 +682,14 @@ struct PracticeView: View {
             )
             context.insert(review)
             try context.save()
+            interactionGate.finish(token)
+            persistenceErrorMessage = nil
         } catch {
-            print("Failed to record choice review: \(error)")
+            context.rollback()
+            interactionGate.finish(token)
+            choiceChosen = nil
+            showPersistenceError(error)
+            return
         }
 
         choiceChosen = nil
@@ -816,8 +915,9 @@ struct PracticeView: View {
                 }
 
             primaryButton(
-                title: "Prüfen",
-                disabled: input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                title: interactionGate.activeOperation == .grading ? "Wird geprüft…" : "Prüfen",
+                disabled: input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                    || interactionGate.isBusy,
                 action: { submit(revealed: revealed) }
             )
         }
@@ -901,6 +1001,7 @@ struct PracticeView: View {
                 )
             }
             .buttonStyle(.plain)
+            .disabled(interactionGate.isBusy && !speech.isRecording)
 
             if !revealed && !speech.isRecording {
                 Button {
@@ -922,19 +1023,25 @@ struct PracticeView: View {
     }
 
     private func startRecording() {
+        guard let token = interactionGate.begin(.permission) else { return }
         speechErrorMessage = nil
         input = ""
-        Task {
+        permissionTask?.cancel()
+        permissionTask = Task { @MainActor in
             if speechAuthorized == nil {
                 speechAuthorized = await speech.requestAuthorization()
             }
+            guard !Task.isCancelled, interactionGate.accepts(token) else { return }
             guard speechAuthorized == true else {
+                interactionGate.finish(token)
                 speechErrorMessage = "Mikrofon- und Spracherkennungs-Berechtigung erforderlich."
                 return
             }
             do {
                 try speech.start()
+                interactionGate.finish(token)
             } catch {
+                interactionGate.finish(token)
                 speechErrorMessage = error.localizedDescription
             }
         }
@@ -1296,6 +1403,7 @@ struct PracticeView: View {
                 .padding(.vertical, 10)
             }
             .buttonStyle(.plain)
+            .disabled(interactionGate.isBusy)
         }
         .padding(.top, DS.space.sm)
     }
@@ -1518,13 +1626,72 @@ struct PracticeView: View {
         return candidates[abs(sessionCount.hashValue) % candidates.count]
     }
 
-    // MARK: - Logic (unchanged)
+    // MARK: - Deterministic lifecycle
+
+    private func invalidateInteraction() {
+        gradingTask?.cancel()
+        choiceDelayTask?.cancel()
+        permissionTask?.cancel()
+        gradingTask = nil
+        choiceDelayTask = nil
+        permissionTask = nil
+        interactionGate.invalidate()
+        choiceChosen = nil
+        if speech.isRecording { speech.stop() }
+        tts.stop()
+        persistenceErrorMessage = nil
+    }
+
+    private func phaseContains(_ card: StudyCard) -> Bool {
+        switch phase {
+        case .prompt(let current), .study(let current),
+             .reveal(let current, _, _, _), .speakSentence(let current):
+            return current === card
+        case .loading, .empty:
+            return false
+        }
+    }
+
+    private func showPersistenceError(_ error: Error) {
+        persistenceErrorMessage = "Dein Fortschritt konnte nicht gespeichert werden. Bitte versuche es erneut."
+        #if DEBUG
+        print("Failed to persist practice progress: \(error)")
+        #endif
+    }
+
+    private func persistenceErrorBanner(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: DS.space.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(DS.gradeWrong)
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(DS.textPrimary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                persistenceErrorMessage = nil
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(DS.textSecondary)
+            }
+            .accessibilityLabel("Fehlermeldung schließen")
+        }
+        .padding(DS.space.sm)
+        .background(DS.gradeWrong.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.sm))
+        .accessibilityElement(children: .combine)
+    }
+
+    // MARK: - Logic
 
     private func submit(revealed: Bool) {
+        guard let token = interactionGate.begin(.grading) else { return }
         let card: StudyCard
         switch phase {
         case .prompt(let c), .study(let c): card = c
-        default: return
+        default:
+            interactionGate.finish(token)
+            return
         }
         let elapsedMs = Int((promptStart.map { Date.now.timeIntervalSince($0) } ?? 0) * 1000)
         let expected = card.phrase?.targetText ?? ""
@@ -1533,7 +1700,8 @@ struct PracticeView: View {
         let useJudge = settings.first?.useAIGradingAssist == true
         inputFocused = false
 
-        Task {
+        gradingTask?.cancel()
+        gradingTask = Task { @MainActor in
             let baseline = await grader.gradeWithJudge(
                 german: card.phrase?.sourceText ?? "",
                 expected: expected,
@@ -1542,15 +1710,18 @@ struct PracticeView: View {
                 responseTimeMs: elapsedMs,
                 useJudge: useJudge
             )
-            await MainActor.run {
-                finalize(
-                    card: card,
-                    baseline: baseline,
-                    revealed: revealed,
-                    userAnswer: userAnswer,
-                    elapsedMs: elapsedMs
-                )
-            }
+            guard !Task.isCancelled,
+                  interactionGate.accepts(token),
+                  phaseContains(card)
+            else { return }
+            interactionGate.finish(token)
+            finalize(
+                card: card,
+                baseline: baseline,
+                revealed: revealed,
+                userAnswer: userAnswer,
+                elapsedMs: elapsedMs
+            )
         }
     }
 
@@ -1604,6 +1775,11 @@ struct PracticeView: View {
         userAnswer: String,
         responseTimeMs: Int
     ) {
+        guard case .reveal(let current, _, _, _) = phase,
+              current === card,
+              let token = interactionGate.begin(.persistence)
+        else { return }
+        var savedAlternative: String?
         do {
             let wasNew = card.state == .new
             try scheduler.record(rating: rating, on: card)
@@ -1614,7 +1790,7 @@ struct PracticeView: View {
                    normalized != phrase.targetTextNormalized,
                    !phrase.acceptedAlternatives.contains(where: { FuzzyMatcher.normalize($0) == normalized }) {
                     phrase.acceptedAlternatives.append(userAnswer)
-                    showSavedBanner(for: userAnswer)
+                    savedAlternative = userAnswer
                 }
             }
 
@@ -1630,9 +1806,15 @@ struct PracticeView: View {
             )
             context.insert(review)
             try context.save()
+            interactionGate.finish(token)
+            persistenceErrorMessage = nil
         } catch {
-            print("Failed to record review: \(error)")
+            context.rollback()
+            interactionGate.finish(token)
+            showPersistenceError(error)
+            return
         }
+        if let savedAlternative { showSavedBanner(for: savedAlternative) }
 
         input = ""
         speech.clearTranscription()
@@ -1703,12 +1885,15 @@ struct PracticeView: View {
         withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.7)) {
             surprisePraiseBanner = praise
         }
-        Task {
-            try? await Task.sleep(nanoseconds: 2_500_000_000)
-            await MainActor.run {
-                withAnimation(.easeOut(duration: 0.3)) {
-                    surprisePraiseBanner = nil
-                }
+        praiseTask?.cancel()
+        praiseTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: 2_500_000_000)
+            } catch {
+                return
+            }
+            withAnimation(.easeOut(duration: 0.3)) {
+                surprisePraiseBanner = nil
             }
         }
     }
@@ -1735,7 +1920,7 @@ struct PracticeView: View {
     private static let surprisePraises: [String] = [
         "🎯  Sauber!",
         "💫  Auf Flammen.",
-        "🔥  Drei am Stück.",
+        "🔥  Starker Abruf.",
         "⭐  Das hat gesessen.",
         "✨  Im Fluss.",
         "🚀  Du fliegst.",
@@ -1753,7 +1938,7 @@ struct PracticeView: View {
     private func advance() {
         // Cancel any in-flight TTS so a half-finished reveal doesn't keep
         // speaking after the next prompt has already appeared.
-        tts.stop()
+        invalidateInteraction()
         showingGradeDetails = false
         choiceChosen = nil
         let pool = cardsForActiveLanguage   // compute the language scan once
@@ -1811,12 +1996,15 @@ struct PracticeView: View {
         withAnimation(.easeInOut(duration: 0.25)) {
             savedAlternativeBanner = answer
         }
-        Task {
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
-            await MainActor.run {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    savedAlternativeBanner = nil
-                }
+        savedBannerTask?.cancel()
+        savedBannerTask = Task { @MainActor in
+            do {
+                try await Task.sleep(nanoseconds: 3_000_000_000)
+            } catch {
+                return
+            }
+            withAnimation(.easeInOut(duration: 0.25)) {
+                savedAlternativeBanner = nil
             }
         }
     }
