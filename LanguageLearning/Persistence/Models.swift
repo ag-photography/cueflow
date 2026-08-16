@@ -1,6 +1,37 @@
 import Foundation
 import SwiftData
 
+/// Runtime capabilities for a bundled language. Adding a language should be a
+/// single configuration entry rather than another set of switches throughout
+/// the app. Content remains independently bundled and versioned.
+struct LanguagePack: Equatable, Sendable {
+    let code: String
+    let nativeName: String
+    let germanLabel: String
+    let ttsLocale: String
+    let speechLocale: String
+    let isRTL: Bool
+    let defaultTransliterationVisible: Bool
+
+    static let russian = LanguagePack(
+        code: "ru", nativeName: "Русский", germanLabel: "Russisch",
+        ttsLocale: "ru-RU", speechLocale: "ru-RU", isRTL: false,
+        defaultTransliterationVisible: true
+    )
+
+    static let arabic = LanguagePack(
+        code: "ar", nativeName: "العربية", germanLabel: "Arabisch",
+        ttsLocale: "ar-SA", speechLocale: "ar-SA", isRTL: true,
+        defaultTransliterationVisible: true
+    )
+
+    static let supported: [LanguagePack] = [.russian, .arabic]
+
+    static func configuration(for code: String) -> LanguagePack? {
+        supported.first { $0.code == code }
+    }
+}
+
 @Model
 final class Language {
     @Attribute(.unique) var code: String
@@ -26,28 +57,20 @@ final class Language {
         self.defaultTransliterationVisible = defaultTransliterationVisible
     }
 
+    var configuration: LanguagePack? { LanguagePack.configuration(for: code) }
+
     /// AVFoundation TTS locale identifier (e.g. "ru-RU", "ar-SA").
     var ttsLocale: String {
-        switch code {
-        case "ru": return "ru-RU"
-        case "ar": return "ar-SA"          // Modern Standard Arabic
-        case "de": return "de-DE"
-        default: return code
-        }
+        configuration?.ttsLocale ?? code
     }
 
     /// SFSpeechRecognizer locale identifier.
-    var speechLocale: String { ttsLocale }
+    var speechLocale: String { configuration?.speechLocale ?? ttsLocale }
 
     /// User-facing German name (e.g. "Russisch", "Arabisch"). Distinct from
     /// `name` which holds the language's native name.
     var germanLabel: String {
-        switch code {
-        case "ru": return "Russisch"
-        case "ar": return "Arabisch"
-        case "de": return "Deutsch"
-        default: return name
-        }
+        configuration?.germanLabel ?? (code == "de" ? "Deutsch" : name)
     }
 
     var inputPlaceholder: String { "Auf \(germanLabel) tippen…" }
@@ -181,6 +204,10 @@ enum LearningState: String, Codable {
     case learning
     case review
     case relearning
+
+    /// Whether the learner has attempted this phrase at least once. FSRS
+    /// `review` means the item is in long-term scheduling, not "mastered".
+    var isIntroduced: Bool { self != .new }
 }
 
 @Model

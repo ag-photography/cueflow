@@ -6,6 +6,44 @@ import SwiftData
 @MainActor
 struct SharedProgressMigrationTests {
 
+    @Test func supportedLanguagesComeFromReusablePackConfiguration() {
+        #expect(LanguagePack.supported.map(\.code) == ["ru", "ar"])
+        #expect(LanguagePack.configuration(for: "ru")?.ttsLocale == "ru-RU")
+        #expect(LanguagePack.configuration(for: "ar")?.speechLocale == "ar-SA")
+        #expect(LanguagePack.configuration(for: "ar")?.isRTL == true)
+        #expect(LanguagePack.configuration(for: "xx") == nil)
+    }
+
+    @Test func fsrsStatesDescribePracticeNotMastery() {
+        #expect(LearningState.new.isIntroduced == false)
+        #expect(LearningState.learning.isIntroduced)
+        #expect(LearningState.review.isIntroduced)
+        #expect(LearningState.relearning.isIntroduced)
+    }
+
+    @Test func supportedLanguageSeedRepairsCapabilityMetadata() throws {
+        let context = try makeContext()
+        let arabic = Language(
+            code: "ar",
+            name: "Arabic",
+            isRTL: false,
+            defaultTransliterationVisible: false
+        )
+        context.insert(arabic)
+        try context.save()
+
+        let first = SeedData.ensureSupportedLanguages(context)
+        let second = SeedData.ensureSupportedLanguages(context)
+        let languages = try context.fetch(FetchDescriptor<Language>())
+
+        #expect(first == 1) // Russian was missing.
+        #expect(second == 0)
+        #expect(languages.count == LanguagePack.supported.count)
+        #expect(arabic.name == LanguagePack.arabic.nativeName)
+        #expect(arabic.isRTL)
+        #expect(arabic.defaultTransliterationVisible)
+    }
+
     private func makeContext() throws -> ModelContext {
         let schema = Schema(versionedSchema: SchemaV1.self)
         let config = ModelConfiguration(isStoredInMemoryOnly: true)

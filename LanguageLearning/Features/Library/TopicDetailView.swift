@@ -2,9 +2,8 @@ import SwiftUI
 import SwiftData
 
 /// Per-topic detail (build 22). Bridges Library and progress: prominent
-/// activation toggle, mastery summary (FSRS-state breakdown + progress bar),
-/// and the topic's phrases. Each phrase has one shared learning schedule;
-/// "gemeistert" currently means that schedule is in FSRS `.review` state.
+/// activation toggle, learning summary (FSRS-state breakdown + progress bar),
+/// and the topic's phrases. Each phrase has one shared learning schedule.
 struct TopicDetailView: View {
     @Environment(\.modelContext) private var context
     @Bindable var topic: Topic
@@ -19,11 +18,12 @@ struct TopicDetailView: View {
     private var total: Int { cards.count }
     private var newCount: Int { cards.filter { $0.state == .new }.count }
     private var learningCount: Int { cards.filter { $0.state == .learning }.count }
-    private var masteredCount: Int { cards.filter { $0.state == .review }.count }
+    private var reviewingCount: Int { cards.filter { $0.state == .review }.count }
+    private var practisedCount: Int { cards.filter { $0.state.isIntroduced }.count }
     private var relearningCount: Int { cards.filter { $0.state == .relearning }.count }
     private var dueNow: Int { cards.filter { $0.dueDate <= .now && $0.state != .new }.count }
-    private var masteryFraction: Double {
-        total > 0 ? Double(masteredCount) / Double(total) : 0
+    private var practisedFraction: Double {
+        total > 0 ? Double(practisedCount) / Double(total) : 0
     }
 
     private var sortedPhrases: [Phrase] {
@@ -35,7 +35,7 @@ struct TopicDetailView: View {
             VStack(spacing: DS.space.lg) {
                 activationCard
                 if total > 0 {
-                    masteryCard
+                    learningProgressCard
                 }
                 phrasesCard
             }
@@ -87,16 +87,16 @@ struct TopicDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
     }
 
-    // MARK: - Mastery
+    // MARK: - Learning progress
 
-    private var masteryCard: some View {
+    private var learningProgressCard: some View {
         VStack(alignment: .leading, spacing: DS.space.md) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(Int((masteryFraction * 100).rounded()))%")
+                Text("\(Int((practisedFraction * 100).rounded()))%")
                     .font(.system(size: 34, weight: .bold, design: .rounded))
                     .foregroundStyle(DS.accent)
                     .monospacedDigit()
-                Text("gemeistert")
+                Text("schon geübt")
                     .font(.subheadline)
                     .foregroundStyle(DS.textSecondary)
                 Spacer()
@@ -115,7 +115,7 @@ struct TopicDetailView: View {
                     Capsule().fill(DS.surface2)
                     Capsule()
                         .fill(DS.accent)
-                        .frame(width: geo.size.width * masteryFraction)
+                        .frame(width: geo.size.width * practisedFraction)
                 }
             }
             .frame(height: 8)
@@ -123,12 +123,12 @@ struct TopicDetailView: View {
             VStack(spacing: DS.space.sm) {
                 stateBar(label: "Neu", count: newCount, color: DS.textTertiary)
                 stateBar(label: "Im Lernen", count: learningCount, color: DS.gradeMinor)
-                stateBar(label: "Gemeistert", count: masteredCount, color: DS.accent)
+                stateBar(label: "In Wiederholung", count: reviewingCount, color: DS.accent)
                 if relearningCount > 0 {
                     stateBar(label: "Nachlernen", count: relearningCount, color: DS.gradeWrong)
                 }
             }
-            Text("\(masteredCount) von \(total) Karten · \(topic.phrases.count) Phrasen")
+            Text("\(practisedCount) von \(total) Phrasen mindestens einmal geübt")
                 .font(.caption)
                 .foregroundStyle(DS.textTertiary)
         }

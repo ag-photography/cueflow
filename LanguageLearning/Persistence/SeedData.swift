@@ -165,7 +165,13 @@ enum SeedData {
         let existing = (try? context.fetch(FetchDescriptor<Language>())) ?? []
         guard existing.isEmpty else { return }
 
-        let russian = Language(code: "ru", name: "Русский")
+        let pack = LanguagePack.russian
+        let russian = Language(
+            code: pack.code,
+            name: pack.nativeName,
+            isRTL: pack.isRTL,
+            defaultTransliterationVisible: pack.defaultTransliterationVisible
+        )
         context.insert(russian)
         context.insert(AppSettings(activeLanguageCode: "ru"))
 
@@ -175,27 +181,39 @@ enum SeedData {
 
     /// Idempotent: ensures all supported languages have a `Language` record.
     /// On first launch only Russian is seeded; this function adds Arabic
-    /// (and future languages) on later launches without disturbing existing
-    /// Russian content. Active language stays whatever the user picked.
+    /// (and future languages) on later launches and repairs their capability
+    /// metadata from `LanguagePack`. Content and active language are untouched.
     @discardableResult
     static func ensureSupportedLanguages(_ context: ModelContext) -> Int {
         let existing = (try? context.fetch(FetchDescriptor<Language>())) ?? []
-        let codes = Set(existing.map(\.code))
+        let byCode = Dictionary(uniqueKeysWithValues: existing.map { ($0.code, $0) })
         var added = 0
-        let supported: [(code: String, name: String, isRTL: Bool, translit: Bool)] = [
-            ("ru", "Русский", false, true),
-            ("ar", "العربية", true, true)
-        ]
-        for lang in supported where !codes.contains(lang.code) {
-            context.insert(Language(
-                code: lang.code,
-                name: lang.name,
-                isRTL: lang.isRTL,
-                defaultTransliterationVisible: lang.translit
-            ))
-            added += 1
+        var repaired = false
+        for pack in LanguagePack.supported {
+            if let language = byCode[pack.code] {
+                if language.name != pack.nativeName {
+                    language.name = pack.nativeName
+                    repaired = true
+                }
+                if language.isRTL != pack.isRTL {
+                    language.isRTL = pack.isRTL
+                    repaired = true
+                }
+                if language.defaultTransliterationVisible != pack.defaultTransliterationVisible {
+                    language.defaultTransliterationVisible = pack.defaultTransliterationVisible
+                    repaired = true
+                }
+            } else {
+                context.insert(Language(
+                    code: pack.code,
+                    name: pack.nativeName,
+                    isRTL: pack.isRTL,
+                    defaultTransliterationVisible: pack.defaultTransliterationVisible
+                ))
+                added += 1
+            }
         }
-        if added > 0 { try? context.save() }
+        if added > 0 || repaired { try? context.save() }
         return added
     }
 
@@ -397,7 +415,13 @@ enum SeedData {
         if let existing = languages.first(where: { $0.code == "ru" }) {
             return existing
         }
-        let russian = Language(code: "ru", name: "Русский")
+        let pack = LanguagePack.russian
+        let russian = Language(
+            code: pack.code,
+            name: pack.nativeName,
+            isRTL: pack.isRTL,
+            defaultTransliterationVisible: pack.defaultTransliterationVisible
+        )
         context.insert(russian)
         return russian
     }
@@ -455,7 +479,13 @@ enum SeedData {
         if let existing = languages.first(where: { $0.code == "ar" }) {
             arabic = existing
         } else {
-            arabic = Language(code: "ar", name: "العربية", isRTL: true, defaultTransliterationVisible: true)
+            let pack = LanguagePack.arabic
+            arabic = Language(
+                code: pack.code,
+                name: pack.nativeName,
+                isRTL: pack.isRTL,
+                defaultTransliterationVisible: pack.defaultTransliterationVisible
+            )
             context.insert(arabic)
         }
 
@@ -685,7 +715,13 @@ enum SeedData {
         if let existing = languages.first(where: { $0.code == "ru" }) {
             russian = existing
         } else {
-            russian = Language(code: "ru", name: "Русский")
+            let pack = LanguagePack.russian
+            russian = Language(
+                code: pack.code,
+                name: pack.nativeName,
+                isRTL: pack.isRTL,
+                defaultTransliterationVisible: pack.defaultTransliterationVisible
+            )
             context.insert(russian)
         }
         let result = installStarterPack(into: context, language: russian)

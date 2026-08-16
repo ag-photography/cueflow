@@ -3,9 +3,9 @@ import SwiftData
 import Charts
 
 /// User-facing progress screen. Surfaces what the SRS schedule knows but the
-/// practice loop doesn't show: streak, today's count, mastery mix, weekly
+/// practice loop doesn't show: streak, today's count, learning mix, weekly
 /// rhythm, per-topic progress. Redesigned (build 28) around a streak hero and a
-/// mastery ring so it reads as a felt "dashboard", not a stats dump.
+/// progress ring so it reads as a felt "dashboard", not a stats dump.
 struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var cards: [StudyCard]
@@ -30,7 +30,7 @@ struct ProfileView: View {
                     streakHero
                     miniStatsRow
                     speakingSection
-                    masterySection
+                    learningProgressSection
                     weeklyChart
                     if languages.count > 1 {
                         perLanguage
@@ -136,20 +136,20 @@ struct ProfileView: View {
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
     }
 
-    // MARK: - Mastery ring
+    // MARK: - Learning progress
 
-    private var masterySection: some View {
+    private var learningProgressSection: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Beherrschung")
+            sectionHeader("Lernstand")
             HStack(spacing: DS.space.lg) {
-                MasteryRing(
-                    mastered: reviewCount, learning: learningCount,
+                LearningProgressRing(
+                    reviewing: reviewCount, learning: learningCount,
                     relearning: relearningCount, new: newCount
                 )
                 .frame(width: 124, height: 124)
 
                 VStack(alignment: .leading, spacing: DS.space.sm) {
-                    legendRow(color: DS.accent, label: "Gemeistert", count: reviewCount)
+                    legendRow(color: DS.accent, label: "In Wiederholung", count: reviewCount)
                     legendRow(color: DS.gradeMinor, label: "Im Lernen", count: learningCount)
                     legendRow(color: DS.gradeWrong, label: "Nachlernen", count: relearningCount)
                     legendRow(color: DS.textTertiary.opacity(0.55), label: "Neu", count: newCount)
@@ -281,7 +281,7 @@ struct ProfileView: View {
 
     private func topicRow(topic: Topic) -> some View {
         let total = topic.phrases.count
-        let learnedCount = cardsForTopic(topic).filter { $0.state == .review }.count
+        let practisedCount = cardsForTopic(topic).filter { $0.state.isIntroduced }.count
         return VStack(alignment: .leading, spacing: 5) {
             HStack {
                 if topic.isActive {
@@ -291,11 +291,11 @@ struct ProfileView: View {
                     .font(.subheadline.weight(topic.isActive ? .semibold : .regular))
                     .foregroundStyle(DS.textPrimary)
                 Spacer()
-                Text("\(learnedCount)/\(total)")
+                Text("\(practisedCount)/\(total)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(DS.textSecondary)
             }
-            ProgressCapsule(fraction: total > 0 ? Double(learnedCount) / Double(total) : 0,
+            ProgressCapsule(fraction: total > 0 ? Double(practisedCount) / Double(total) : 0,
                             fill: AnyShapeStyle(DS.accent))
                 .frame(height: 5)
         }
@@ -486,21 +486,23 @@ struct ProfileView: View {
     }
 }
 
-// MARK: - Mastery ring
+// MARK: - Learning progress ring
 
-/// Donut of the four FSRS states with the mastered-percentage in the middle.
-private struct MasteryRing: View {
-    let mastered: Int
+/// Donut of the four FSRS states with the honestly named introduced percentage.
+private struct LearningProgressRing: View {
+    let reviewing: Int
     let learning: Int
     let relearning: Int
     let new: Int
 
-    private var total: Int { max(1, mastered + learning + relearning + new) }
-    private var masteredPct: Int { Int((Double(mastered) / Double(total) * 100).rounded()) }
+    private var total: Int { max(1, reviewing + learning + relearning + new) }
+    private var introducedPct: Int {
+        Int((Double(reviewing + learning + relearning) / Double(total) * 100).rounded())
+    }
 
     private var segments: [(start: Double, end: Double, color: Color)] {
         let ordered: [(Int, Color)] = [
-            (mastered, DS.accent),
+            (reviewing, DS.accent),
             (learning, DS.gradeMinor),
             (relearning, DS.gradeWrong),
             (new, DS.textTertiary.opacity(0.5)),
@@ -524,11 +526,11 @@ private struct MasteryRing: View {
                     .rotationEffect(.degrees(-90))
             }
             VStack(spacing: 0) {
-                Text("\(masteredPct)%")
+                Text("\(introducedPct)%")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
                     .foregroundStyle(DS.accent)
                     .monospacedDigit()
-                Text("gemeistert")
+                Text("schon geübt")
                     .font(.caption2)
                     .foregroundStyle(DS.textSecondary)
             }
