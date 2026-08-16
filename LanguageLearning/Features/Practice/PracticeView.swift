@@ -500,6 +500,7 @@ struct PracticeView: View {
         let isCorrect = card.phrase?.targetText == option
         let answered = choiceChosen != nil
         let isChosen = choiceChosen == option
+        let isRTL = card.phrase?.language?.isRTL == true
 
         // Colour states: neutral until answered; then the correct option goes
         // green, a wrong pick goes red, and the rest dim back.
@@ -525,8 +526,8 @@ struct PracticeView: View {
                     .foregroundStyle(fg)
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(isRTL ? .trailing : .leading)
+                    .frame(maxWidth: .infinity, alignment: isRTL ? .trailing : .leading)
                 if answered && isCorrect {
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(DS.gradePerfect)
                 } else if answered && isChosen {
@@ -785,11 +786,7 @@ struct PracticeView: View {
             TextField(activeLanguage?.inputPlaceholder ?? "Antwort tippen…", text: $input)
                 .font(.title3)
                 .textFieldStyle(.plain)
-                // No forced RTL: the Arabic starter pack stores Latin
-                // transliteration as the practice target, so .leading is
-                // correct for both Russian Cyrillic and Latin-translit Arabic.
-                // SwiftUI's bidi handles the rare case where the user types
-                // genuine Arabic script.
+                .multilineTextAlignment(activeLanguage?.isRTL == true ? .trailing : .leading)
                 .padding(.horizontal, DS.space.lg)
                 .padding(.vertical, 18)
                 .background(DS.surface1)

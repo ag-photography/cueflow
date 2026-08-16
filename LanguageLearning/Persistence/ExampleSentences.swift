@@ -17,8 +17,8 @@ enum ExampleSentences {
         let s: String
         /// German translation of the sentence (optional).
         let de: String?
-        /// Pronunciation reference: stress-marked Cyrillic for Russian, Arabic
-        /// script for Arabic. Mirrors `Phrase.transliteration`. Optional.
+        /// Pronunciation reference. Legacy Arabic entries have script here and
+        /// Latin in `s`; `apply` normalizes that representation at runtime.
         let t: String?
     }
 
@@ -46,12 +46,37 @@ enum ExampleSentences {
     /// call on every phrase in every seed loader and on backfill.
     @discardableResult
     static func apply(to phrase: Phrase) -> Bool {
-        guard phrase.exampleSentence == nil,
-              let entry = entry(de: phrase.sourceText, target: phrase.targetText)
-        else { return false }
-        phrase.exampleSentence = entry.s
+        guard phrase.exampleSentence == nil else { return false }
+
+        let direct = entry(de: phrase.sourceText, target: phrase.targetText)
+        let legacyArabic = phrase.language?.code == "ar"
+            ? phrase.transliteration.flatMap { entry(de: phrase.sourceText, target: $0) }
+            : nil
+        guard let entry = direct ?? legacyArabic else { return false }
+
+        if phrase.language?.code == "ar",
+           let script = entry.t,
+           containsArabicScript(script),
+           !containsArabicScript(entry.s) {
+            phrase.exampleSentence = script
+            phrase.exampleSentenceTransliteration = entry.s
+        } else {
+            phrase.exampleSentence = entry.s
+            phrase.exampleSentenceTransliteration = entry.t
+        }
         phrase.exampleSentenceTranslation = entry.de
-        phrase.exampleSentenceTransliteration = entry.t
         return true
+    }
+
+    private static func containsArabicScript(_ text: String) -> Bool {
+        text.unicodeScalars.contains { scalar in
+            switch scalar.value {
+            case 0x0600...0x06FF, 0x0750...0x077F, 0x08A0...0x08FF,
+                 0xFB50...0xFDFF, 0xFE70...0xFEFF:
+                return true
+            default:
+                return false
+            }
+        }
     }
 }

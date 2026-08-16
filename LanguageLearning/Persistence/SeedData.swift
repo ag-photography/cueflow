@@ -2,6 +2,54 @@ import Foundation
 import SwiftData
 
 enum SeedData {
+    /// Repairs Arabic phrases created by early builds, which inverted the
+    /// canonical answer and its pronunciation aid. Review history and cards
+    /// stay attached to the same Phrase object, so learning progress is not
+    /// reset. Safe to run on every launch.
+    @discardableResult
+    static func migrateArabicToCanonicalScript(_ context: ModelContext) -> Int {
+        let phrases = (try? context.fetch(FetchDescriptor<Phrase>())) ?? []
+        var migrated = 0
+
+        for phrase in phrases where phrase.language?.code == "ar" {
+            guard let script = phrase.transliteration,
+                  containsArabicScript(script),
+                  !containsArabicScript(phrase.targetText)
+            else { continue }
+
+            let latinTransliteration = phrase.targetText
+            phrase.targetText = script
+            phrase.targetTextNormalized = Phrase.normalize(script)
+            phrase.transliteration = latinTransliteration
+
+            // The original Arabic sentence resource used the same inverted
+            // representation. Repair already-backfilled examples in place.
+            if let sentenceScript = phrase.exampleSentenceTransliteration,
+               containsArabicScript(sentenceScript),
+               let sentenceLatin = phrase.exampleSentence,
+               !containsArabicScript(sentenceLatin) {
+                phrase.exampleSentence = sentenceScript
+                phrase.exampleSentenceTransliteration = sentenceLatin
+            }
+            migrated += 1
+        }
+
+        if migrated > 0 { try? context.save() }
+        return migrated
+    }
+
+    private static func containsArabicScript(_ text: String) -> Bool {
+        text.unicodeScalars.contains { scalar in
+            switch scalar.value {
+            case 0x0600...0x06FF, 0x0750...0x077F, 0x08A0...0x08FF,
+                 0xFB50...0xFDFF, 0xFE70...0xFEFF:
+                return true
+            default:
+                return false
+            }
+        }
+    }
+
     /// Idempotent migration to one shared learning schedule per phrase.
     ///
     /// Older builds created a separate `StudyCard` for every exercise mode.
@@ -397,10 +445,9 @@ enum SeedData {
 
     // MARK: - Arabic starter pack
 
-    /// Idempotent A1 Arabic starter: ~120 phrases organised into topics,
-    /// stored with Latin transliteration as `targetText` (the practice form,
-    /// typeable with the default keyboard) and Arabic script in the
-    /// `transliteration` field as a cultural reference shown below the answer.
+    /// Idempotent A1 Arabic starter: ~120 phrases organised into topics. Arabic
+    /// script is the canonical practice answer; Latin transliteration is an
+    /// optional pronunciation aid.
     @discardableResult
     static func addArabicStarter(_ context: ModelContext) -> (phrasesAdded: Int, topicsAdded: Int) {
         let languages = (try? context.fetch(FetchDescriptor<Language>())) ?? []
@@ -430,17 +477,17 @@ enum SeedData {
 
         var added = 0
         for spec in arabicStarterPhrases {
-            let signature = "\(spec.de)|||\(spec.translit)"
+            let signature = "\(spec.de)|||\(spec.script)"
             guard !sigs.contains(signature) else { continue }
             sigs.insert(signature)
 
             let topics = spec.topics.compactMap { topicCache[$0] }
             let phrase = Phrase(
                 sourceText: spec.de,
-                targetText: spec.translit,       // Latin form — what the user types & is graded against
+                targetText: spec.script,
                 language: arabic,
                 topics: topics,
-                transliteration: spec.script     // Arabic script — display reference under the answer
+                transliteration: spec.translit
             )
             ExampleSentences.apply(to: phrase)
             context.insert(phrase)
@@ -458,8 +505,8 @@ enum SeedData {
 
     private struct ArabicPhrase {
         let de: String
-        let translit: String   // Latin transliteration (target for grading)
-        let script: String     // Arabic script (shown below as reference)
+        let translit: String   // Latin pronunciation aid
+        let script: String     // Canonical target for speech, typing, and grading
         let topics: [String]
     }
 

@@ -38,6 +38,7 @@ struct PhraseEditorView: View {
                 Section(targetLanguage?.germanLabel ?? "Zielsprache") {
                     TextField("Zieltext", text: $targetText, axis: .vertical)
                         .autocorrectionDisabled()
+                        .multilineTextAlignment(targetLanguage?.isRTL == true ? .trailing : .leading)
                 }
                 Section("Transliteration") {
                     TextField("Optional", text: $transliteration)

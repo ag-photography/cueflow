@@ -96,9 +96,9 @@ final class Phrase {
     var exampleSentence: String?
     /// German translation of `exampleSentence`.
     var exampleSentenceTranslation: String?
-    /// Pronunciation reference for `exampleSentence`: stress-marked Cyrillic for
-    /// Russian, Arabic script for Arabic. Mirrors how `transliteration` is used
-    /// on the headword itself. nil when not applicable.
+    /// Pronunciation reference for `exampleSentence`: stress-marked Cyrillic or
+    /// Latin transliteration, depending on the target language. nil when not
+    /// applicable.
     var exampleSentenceTransliteration: String?
     var audioFileName: String?
     var acceptedAlternatives: [String] = []

@@ -57,9 +57,8 @@ struct OnboardingView: View {
     }
 
     /// The keyboard page only appears when the active language's practice target
-    /// is written in a non-Latin script (Russian → Cyrillic needs the keyboard;
-    /// the Arabic starter practises Latin transliteration, so it doesn't). Data-
-    /// driven so a future language slots in without code changes.
+    /// is written in a non-Latin script. Data-driven so Russian, Arabic, and a
+    /// future language slot in without language-specific branching.
     private var needsKeyboardSetup: Bool {
         guard let lang = activeLanguage else { return false }
         let sample = lang.phrases.first { !$0.targetText.isEmpty }?.targetText ?? ""
