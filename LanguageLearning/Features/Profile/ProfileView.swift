@@ -280,7 +280,7 @@ struct ProfileView: View {
     }
 
     private func topicRow(topic: Topic) -> some View {
-        let total = topic.phrases.count * CardDirection.allCases.count
+        let total = topic.phrases.count
         let learnedCount = cardsForTopic(topic).filter { $0.state == .review }.count
         return VStack(alignment: .leading, spacing: 5) {
             HStack {

@@ -25,9 +25,6 @@ struct LanguageLearningApp: App {
 
             let setupContext = ModelContext(container)
             SeedData.seedIfNeeded(setupContext)
-            // Backfill StudyCards for any new directions added in updates
-            // (idempotent — only inserts the missing ones).
-            SeedData.backfillMissingCards(setupContext)
             // Migrate old "Wortliste A2/B1/B2" mega-topics into POS-split
             // topics (idempotent — no-op once migrated).
             SeedData.migrateVocabTopicsToPOS(setupContext)
@@ -42,6 +39,9 @@ struct LanguageLearningApp: App {
             // Ship all bundled content into the store on first launch
             // (idempotent). Topics stay inactive — user activates in Library.
             SeedData.ensureAllBundledContent(setupContext)
+            // One phrase owns one shared FSRS schedule. Older builds created a
+            // card per exercise mode; consolidate them without losing reviews.
+            SeedData.consolidateSharedCards(setupContext)
             // Fill in example sentences (the spoken "say it in a sentence" beat)
             // on phrases seeded before this build. Idempotent — only fills gaps.
             SeedData.backfillExampleSentences(setupContext)

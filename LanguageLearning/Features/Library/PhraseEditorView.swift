@@ -155,9 +155,7 @@ struct PhraseEditorView: View {
             )
             phrase.acceptedAlternatives = alternatives
             context.insert(phrase)
-            for direction in CardDirection.allCases {
-                context.insert(StudyCard(phrase: phrase, direction: direction))
-            }
+            context.insert(StudyCard(phrase: phrase))
         }
         try? context.save()
         dismiss()

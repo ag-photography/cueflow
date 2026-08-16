@@ -41,7 +41,7 @@ struct SchedulerServiceTests {
         dueCard.dueDate = Date.now.addingTimeInterval(-3600)   // overdue
         ctx.insert(newCard); ctx.insert(dueCard)
 
-        let next = scheduler.nextCard(from: [newCard, dueCard], direction: .typeDeToRu,
+        let next = scheduler.nextCard(from: [newCard, dueCard],
                                       reviews: [], dailyNewLimit: 10)
         #expect(next === dueCard)
     }
@@ -52,8 +52,7 @@ struct SchedulerServiceTests {
         let card = StudyCard(phrase: phrase, direction: .typeDeToRu)
         ctx.insert(card)
 
-        let next = scheduler.nextCard(from: [card], direction: .typeDeToRu,
-                                      reviews: [], dailyNewLimit: 10)
+        let next = scheduler.nextCard(from: [card], reviews: [], dailyNewLimit: 10)
         #expect(next === card)
     }
 
@@ -63,8 +62,7 @@ struct SchedulerServiceTests {
         let card = StudyCard(phrase: phrase, direction: .typeDeToRu)
         ctx.insert(card)
 
-        let next = scheduler.nextCard(from: [card], direction: .typeDeToRu,
-                                      reviews: [], dailyNewLimit: 10)
+        let next = scheduler.nextCard(from: [card], reviews: [], dailyNewLimit: 10)
         #expect(next == nil)
     }
 
@@ -78,8 +76,7 @@ struct SchedulerServiceTests {
             Review(card: card, rating: 3, autoGradeRating: 3, userAnswer: "",
                    mode: .typeDeToRu, responseTimeMs: 1_000, gradeTier: 1, wasNew: true)
         }
-        let next = scheduler.nextCard(from: [card], direction: .typeDeToRu,
-                                      reviews: todaysNewReviews, dailyNewLimit: 3)
+        let next = scheduler.nextCard(from: [card], reviews: todaysNewReviews, dailyNewLimit: 3)
         #expect(next == nil)
     }
 
@@ -97,7 +94,7 @@ struct SchedulerServiceTests {
         let newerCard = StudyCard(phrase: newer, direction: .typeDeToRu)
         ctx.insert(olderCard); ctx.insert(newerCard)
 
-        let next = scheduler.nextCard(from: [olderCard, newerCard], direction: .typeDeToRu,
+        let next = scheduler.nextCard(from: [olderCard, newerCard],
                                       reviews: [], dailyNewLimit: 10)
         #expect(next === newerCard)
     }
@@ -109,21 +106,22 @@ struct SchedulerServiceTests {
         let card = StudyCard(phrase: phrase, direction: .typeDeToRu)
         ctx.insert(card)
 
-        let next = scheduler.nextCard(from: [card], direction: .typeDeToRu,
-                                      reviews: [], dailyNewLimit: 10)
+        let next = scheduler.nextCard(from: [card], reviews: [], dailyNewLimit: 10)
         #expect(next === card)
     }
 
-    @Test func directionFilterScopesSelection() throws {
+    @Test func schedulerDoesNotSplitProgressByExerciseMode() throws {
         let ctx = try makeContext()
         let phrase = makePhrase(ctx, active: true)
         let typeCard = StudyCard(phrase: phrase, direction: .typeDeToRu)
         let speakCard = StudyCard(phrase: phrase, direction: .speakDeToRu)
         ctx.insert(typeCard); ctx.insert(speakCard)
 
-        let next = scheduler.nextCard(from: [typeCard, speakCard], direction: .speakDeToRu,
-                                      reviews: [], dailyNewLimit: 10)
-        #expect(next === speakCard)
+        typeCard.state = .review
+        typeCard.dueDate = Date.now.addingTimeInterval(-60)
+
+        let next = scheduler.nextCard(from: [typeCard, speakCard], reviews: [], dailyNewLimit: 10)
+        #expect(next === typeCard)
     }
 
     // MARK: - Recording a review

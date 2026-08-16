@@ -3,8 +3,8 @@ import SwiftData
 
 /// Per-topic detail (build 22). Bridges Library and progress: prominent
 /// activation toggle, mastery summary (FSRS-state breakdown + progress bar),
-/// and the topic's phrases. Card-level stats match ProfileView's convention
-/// (each phrase has one card per direction; "gemeistert" = card in `.review`).
+/// and the topic's phrases. Each phrase has one shared learning schedule;
+/// "gemeistert" currently means that schedule is in FSRS `.review` state.
 struct TopicDetailView: View {
     @Environment(\.modelContext) private var context
     @Bindable var topic: Topic

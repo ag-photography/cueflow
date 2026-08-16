@@ -186,6 +186,8 @@ enum LearningState: String, Codable {
 @Model
 final class StudyCard {
     var phrase: Phrase?
+    /// Legacy storage retained for compatibility with existing stores.
+    /// Scheduling is shared; the exercise used lives on `Review.modeRaw`.
     var directionRaw: String
     var stability: Double
     var difficulty: Double
@@ -208,7 +210,7 @@ final class StudyCard {
         set { stateRaw = newValue.rawValue }
     }
 
-    init(phrase: Phrase, direction: CardDirection) {
+    init(phrase: Phrase, direction: CardDirection = .speakDeToRu) {
         self.phrase = phrase
         self.directionRaw = direction.rawValue
         self.stability = 0

@@ -429,7 +429,7 @@ struct PracticeView: View {
                 rating: rating,
                 autoGradeRating: rating,  // no auto-grader involved in flip mode
                 userAnswer: "",
-                mode: card.direction,
+                mode: mode,
                 responseTimeMs: Int((promptStart.map { Date.now.timeIntervalSince($0) } ?? 0) * 1000),
                 gradeTier: 0,  // tier 0 = recognition flip, no character grading
                 wasNew: wasNew
@@ -581,7 +581,7 @@ struct PracticeView: View {
                 rating: rating,
                 autoGradeRating: rating,
                 userAnswer: choiceChosen ?? "",
-                mode: card.direction,
+                mode: mode,
                 responseTimeMs: responseTimeMs,
                 gradeTier: 0,   // recognition, no character grading
                 wasNew: wasNew
@@ -1626,7 +1626,7 @@ struct PracticeView: View {
                 rating: rating,
                 autoGradeRating: result.autoGrade.suggestedRating,
                 userAnswer: userAnswer,
-                mode: card.direction,
+                mode: mode,
                 responseTimeMs: responseTimeMs,
                 gradeTier: result.tier,
                 wasNew: wasNew
@@ -1760,7 +1760,7 @@ struct PracticeView: View {
         showingGradeDetails = false
         choiceChosen = nil
         let pool = cardsForActiveLanguage   // compute the language scan once
-        if let next = scheduler.nextCard(from: pool, direction: mode, reviews: reviews, dailyNewLimit: effectiveDailyLimit) {
+        if let next = scheduler.nextCard(from: pool, reviews: reviews, dailyNewLimit: effectiveDailyLimit) {
             if presentAsChoice(next) {
                 choiceOptions = makeChoiceOptions(for: next, pool: pool)
             }
@@ -1788,7 +1788,7 @@ struct PracticeView: View {
     /// topics or priority/homework), regardless of the daily cap.
     private var availableNewCount: Int {
         cardsForActiveLanguage.filter {
-            $0.direction == mode && $0.state == .new
+            $0.state == .new
             && (($0.phrase?.topics.contains(where: { $0.isActive }) ?? false)
                 || ($0.phrase?.isPriorityActive ?? false))
         }.count
@@ -1798,7 +1798,7 @@ struct PracticeView: View {
     private var newCardsDoneToday: Int {
         let cal = Calendar.current
         return reviews.filter {
-            $0.wasNew && cal.isDateInToday($0.timestamp) && $0.card?.direction == mode
+            $0.wasNew && cal.isDateInToday($0.timestamp)
         }.count
     }
 

@@ -216,9 +216,7 @@ struct PDFImportView: View {
             phrase.isPriority = true
             phrase.priorityUntil = Calendar.current.date(byAdding: .day, value: 14, to: .now)
             context.insert(phrase)
-            for direction in CardDirection.allCases {
-                context.insert(StudyCard(phrase: phrase, direction: direction))
-            }
+            context.insert(StudyCard(phrase: phrase))
         }
 
         // Activate every touched topic so the freshly imported vocab actually

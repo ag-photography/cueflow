@@ -17,7 +17,9 @@ settings:
 packages:
   swift-fsrs:
     url: https://github.com/open-spaced-repetition/swift-fsrs
-    branch: main
+    # Pin the exact revision currently validated by CueFlow. Tracking `main`
+    # made scheduling behaviour change without a local code or release change.
+    revision: a4ebe3a1d167fea63b75770cddf781bb78a9f768
 
 targets:
   LanguageLearning:

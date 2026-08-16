@@ -185,9 +185,8 @@ struct TelemetryView: View {
             let cardId = r.card?.phrase?.targetTextNormalized
                 ?? r.card?.phrase?.targetText
                 ?? "unknown"
-            let direction = r.card?.direction.rawValue ?? r.modeRaw
             return Row(
-                card_id: "\(cardId)|\(direction)",
+                card_id: cardId,
                 review_time: Int(r.timestamp.timeIntervalSince1970),
                 rating: r.rating,
                 auto_rating: r.autoGradeRating,

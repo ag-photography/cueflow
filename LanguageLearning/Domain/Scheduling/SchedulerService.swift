@@ -23,22 +23,20 @@ struct SchedulerService {
     /// could take weeks to reach behind the seeded content.
     func nextCard(
         from cards: [StudyCard],
-        direction: CardDirection? = nil,
         reviews: [Review] = [],
         dailyNewLimit: Int = .max
     ) -> StudyCard? {
-        let scoped = direction.map { d in cards.filter { $0.direction == d } } ?? cards
         let now = Date.now
 
         // 1. Priority due cards first (homework boost from PDF imports).
         //    Within priority, older-due cards still come first.
-        let priorityDue = scoped
+        let priorityDue = cards
             .filter { $0.dueDate <= now && $0.state != .new && ($0.phrase?.isPriorityActive ?? false) }
             .sorted { $0.dueDate < $1.dueDate }
         if let next = priorityDue.first { return next }
 
         // 2. Regular due cards.
-        let due = scoped
+        let due = cards
             .filter { $0.dueDate <= now && $0.state != .new }
             .sorted { $0.dueDate < $1.dueDate }
         if let next = due.first { return next }
@@ -46,7 +44,6 @@ struct SchedulerService {
         let calendar = Calendar.current
         let newReviewsToday = reviews
             .filter { $0.wasNew && calendar.isDateInToday($0.timestamp) }
-            .filter { direction == nil || ($0.card?.direction == direction) }
             .count
         let remaining = dailyNewLimit - newReviewsToday
         guard remaining > 0 else { return nil }
@@ -54,14 +51,14 @@ struct SchedulerService {
         // 3. Priority new cards before regular new cards. Priority cards
         //    ignore the active-topic filter — homework should show up even
         //    if the user hasn't manually activated the topic. Newest first.
-        let priorityNew = scoped
+        let priorityNew = cards
             .filter { $0.state == .new && ($0.phrase?.isPriorityActive ?? false) }
             .sorted { ($0.phrase?.createdAt ?? .distantPast) > ($1.phrase?.createdAt ?? .distantPast) }
         if let next = priorityNew.first { return next }
 
         // 4. Regular new cards (only from active topics). Newest first, so
         //    freshly-added/-activated content is what you see next.
-        let activeNew = scoped
+        let activeNew = cards
             .filter { $0.state == .new && ($0.phrase?.topics.contains(where: { $0.isActive }) ?? false) }
             .sorted { ($0.phrase?.createdAt ?? .distantPast) > ($1.phrase?.createdAt ?? .distantPast) }
         return activeNew.first

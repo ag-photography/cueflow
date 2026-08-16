@@ -166,9 +166,7 @@ struct PasteImportView: View {
                 phrase.topics = [topic]
             }
             context.insert(phrase)
-            for direction in CardDirection.allCases {
-                context.insert(StudyCard(phrase: phrase, direction: direction))
-            }
+            context.insert(StudyCard(phrase: phrase))
         }
 
         try? context.save()

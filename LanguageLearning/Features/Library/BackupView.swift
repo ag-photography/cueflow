@@ -78,7 +78,7 @@ struct BackupView: View {
             let createdAt: Double
         }
         struct ReviewOut: Encodable {
-            let cardId: String          // phrase target + direction
+            let cardId: String          // stable phrase target key
             let timestamp: Double
             let rating: Int
             let autoGradeRating: Int
@@ -121,9 +121,8 @@ struct BackupView: View {
                 let phraseKey = r.card?.phrase?.targetTextNormalized
                     ?? r.card?.phrase?.targetText
                     ?? "unknown"
-                let direction = r.card?.direction.rawValue ?? r.modeRaw
                 return ReviewOut(
-                    cardId: "\(phraseKey)|\(direction)",
+                    cardId: phraseKey,
                     timestamp: r.timestamp.timeIntervalSince1970,
                     rating: r.rating,
                     autoGradeRating: r.autoGradeRating,

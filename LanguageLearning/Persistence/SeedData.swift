@@ -2,23 +2,59 @@ import Foundation
 import SwiftData
 
 enum SeedData {
-    /// Idempotent: every Phrase should have one StudyCard per CardDirection.
-    /// When a new direction is added in a future build (e.g. `.flipDeToRu` in
-    /// build 8) existing phrases are missing the new card — this backfills it
-    /// so the new mode has content to schedule on first run.
+    /// Idempotent migration to one shared learning schedule per phrase.
+    ///
+    /// Older builds created a separate `StudyCard` for every exercise mode.
+    /// Keep the most-established card, attach every historical review to it,
+    /// and remove the duplicate schedules. The exercise used for each attempt
+    /// remains preserved on `Review.modeRaw`.
     @discardableResult
-    static func backfillMissingCards(_ context: ModelContext) -> Int {
+    static func consolidateSharedCards(_ context: ModelContext) -> (created: Int, removed: Int) {
         let phrases = (try? context.fetch(FetchDescriptor<Phrase>())) ?? []
-        var added = 0
+        var created = 0
+        var removed = 0
         for phrase in phrases {
-            let existing = Set(phrase.cards.map(\.direction))
-            for direction in CardDirection.allCases where !existing.contains(direction) {
-                context.insert(StudyCard(phrase: phrase, direction: direction))
-                added += 1
+            let cards = phrase.cards
+            guard !cards.isEmpty else {
+                context.insert(StudyCard(phrase: phrase))
+                created += 1
+                continue
+            }
+            guard cards.count > 1 else { continue }
+
+            let canonical = cards.max(by: sharedCardRanksBefore) ?? cards[0]
+            for duplicate in cards where duplicate !== canonical {
+                for review in Array(duplicate.reviews) {
+                    review.card = canonical
+                }
+                context.delete(duplicate)
+                removed += 1
             }
         }
-        if added > 0 { try? context.save() }
-        return added
+        if created > 0 || removed > 0 { try? context.save() }
+        return (created, removed)
+    }
+
+    /// Orders legacy schedules by the amount and recency of actual practice.
+    /// Ties prefer Üben, the speaking-first default, for deterministic results.
+    private static func sharedCardRanksBefore(_ lhs: StudyCard, _ rhs: StudyCard) -> Bool {
+        if lhs.reps != rhs.reps { return lhs.reps < rhs.reps }
+        let lhsLast = lhs.lastReview ?? .distantPast
+        let rhsLast = rhs.lastReview ?? .distantPast
+        if lhsLast != rhsLast { return lhsLast < rhsLast }
+        if lhs.state != rhs.state {
+            return sharedStateRank(lhs.state) < sharedStateRank(rhs.state)
+        }
+        return lhs.direction != .speakDeToRu && rhs.direction == .speakDeToRu
+    }
+
+    private static func sharedStateRank(_ state: LearningState) -> Int {
+        switch state {
+        case .new: return 0
+        case .learning: return 1
+        case .relearning: return 2
+        case .review: return 3
+        }
     }
 
     /// Idempotent: fills in `exampleSentence` (and its translation/transliteration)
@@ -167,9 +203,7 @@ enum SeedData {
             )
             ExampleSentences.apply(to: phrase)
             context.insert(phrase)
-            for direction in CardDirection.allCases {
-                context.insert(StudyCard(phrase: phrase, direction: direction))
-            }
+            context.insert(StudyCard(phrase: phrase))
             added += 1
         }
         try? context.save()
@@ -410,9 +444,7 @@ enum SeedData {
             )
             ExampleSentences.apply(to: phrase)
             context.insert(phrase)
-            for direction in CardDirection.allCases {
-                context.insert(StudyCard(phrase: phrase, direction: direction))
-            }
+            context.insert(StudyCard(phrase: phrase))
             added += 1
         }
         try? context.save()
@@ -657,9 +689,7 @@ enum SeedData {
             )
             ExampleSentences.apply(to: phrase)
             context.insert(phrase)
-            for direction in CardDirection.allCases {
-                context.insert(StudyCard(phrase: phrase, direction: direction))
-            }
+            context.insert(StudyCard(phrase: phrase))
             phrasesAdded += 1
         }
         return (phrasesAdded, topicsAdded)
