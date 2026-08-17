@@ -8,11 +8,14 @@ import Charts
 /// progress ring so it reads as a felt "dashboard", not a stats dump.
 struct ProfileView: View {
     @Environment(\.dismiss) private var dismiss
-    @Query private var cards: [StudyCard]
-    @Query(sort: \Review.timestamp, order: .reverse) private var reviews: [Review]
+    @Environment(\.modelContext) private var context
     @Query(sort: \Topic.name) private var topics: [Topic]
     @Query(sort: \Language.code) private var languages: [Language]
     @Query private var settings: [AppSettings]
+    @State private var cards: [StudyCard] = []
+    @State private var reviews: [Review] = []
+    @State private var snapshotLoaded = false
+    @State private var snapshotRefreshWorkItem: DispatchWorkItem?
 
     // Speaking-volume scoreboard — shared with Sprint via UserDefaults.
     @AppStorage("sprintBest") private var sprintBest: Int = 0
@@ -28,25 +31,31 @@ struct ProfileView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: DS.space.lg) {
-                    speakingSection
-                    capabilitySection
-                    if !learningPatterns.isEmpty { learningPatternSection }
-                    miniStatsRow
-                    topicProgress
-                    weeklyChart
-                    if languages.count > 1 {
-                        perLanguage
+            Group {
+                if snapshotLoaded {
+                    ScrollView {
+                        VStack(spacing: DS.space.lg) {
+                            speakingSection
+                            capabilitySection
+                            if !learningPatterns.isEmpty { learningPatternSection }
+                            miniStatsRow
+                            topicProgress
+                            weeklyChart
+                            if languages.count > 1 {
+                                perLanguage
+                            }
+                            learningProgressSection
+                            streakHero
+                        }
+                        .padding(.horizontal, DS.space.md)
+                        .padding(.top, DS.space.sm)
+                        .padding(.bottom, DS.space.xl)
+                        .frame(maxWidth: 760)
+                        .frame(maxWidth: .infinity)
                     }
-                    learningProgressSection
-                    streakHero
+                } else {
+                    progressPlaceholder
                 }
-                .padding(.horizontal, DS.space.md)
-                .padding(.top, DS.space.sm)
-                .padding(.bottom, DS.space.xl)
-                .frame(maxWidth: 760)
-                .frame(maxWidth: .infinity)
             }
             .background(
                 LinearGradient(colors: [DS.surface0, DS.surface2.opacity(0.5)],
@@ -62,7 +71,62 @@ struct ProfileView: View {
                     }
                 }
             }
+            .onAppear { scheduleSnapshotRefresh() }
+            .onDisappear { snapshotRefreshWorkItem?.cancel() }
         }
+    }
+
+    private var progressPlaceholder: some View {
+        ScrollView {
+            VStack(spacing: DS.space.lg) {
+                ForEach(0..<3, id: \.self) { index in
+                    VStack(alignment: .leading, spacing: DS.space.md) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(DS.surface2)
+                            .frame(width: index == 0 ? 180 : 130, height: 18)
+                        RoundedRectangle(cornerRadius: DS.radius.md)
+                            .fill(DS.surface1)
+                            .frame(height: index == 0 ? 180 : 130)
+                    }
+                }
+            }
+            .padding(DS.space.md)
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Fortschritt wird geladen")
+        }
+    }
+
+    private func scheduleSnapshotRefresh() {
+        // Heavy review/card histories are intentionally loaded after the tab
+        // selection commits, keeping the native navigation interaction instant.
+        snapshotRefreshWorkItem?.cancel()
+        let cache = LearningDataCache.shared
+        if cache.isPrimed {
+            // Let the empty destination commit one frame before constructing
+            // the chart- and history-heavy dashboard.
+            let work = DispatchWorkItem {
+                cards = cache.cards
+                reviews = cache.reviews
+                snapshotLoaded = true
+            }
+            snapshotRefreshWorkItem = work
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: work)
+            return
+        }
+        let work = DispatchWorkItem {
+            let fetchedCards = (try? context.fetch(FetchDescriptor<StudyCard>())) ?? []
+            let fetchedReviews = (try? context.fetch(FetchDescriptor<Review>(
+                sortBy: [SortDescriptor(\Review.timestamp, order: .reverse)]
+            ))) ?? []
+            cards = fetchedCards
+            reviews = fetchedReviews
+            LearningDataCache.shared.update(cards: fetchedCards, reviews: fetchedReviews)
+            snapshotLoaded = true
+        }
+        snapshotRefreshWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
     }
 
     private var activeLanguageCode: String { settings.first?.activeLanguageCode ?? "ru" }

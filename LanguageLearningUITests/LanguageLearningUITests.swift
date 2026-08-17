@@ -37,6 +37,21 @@ final class LanguageLearningUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Was willst du als Nächstes können?"].waitForExistence(timeout: 5))
     }
 
+    func testTabsRemainResponsiveWhileDestinationsLoad() {
+        let app = launch()
+        XCTAssertTrue(app.tabBars.buttons["Heute"].waitForExistence(timeout: 8))
+
+        app.tabBars.buttons["Bibliothek"].tap()
+        XCTAssertTrue(app.navigationBars["Bibliothek"].waitForExistence(timeout: 3))
+
+        app.tabBars.buttons["Fortschritt"].tap()
+        XCTAssertTrue(app.navigationBars["Fortschritt"].waitForExistence(timeout: 3))
+
+        // Switching back exercises the already-materialized, warm-cache path.
+        app.tabBars.buttons["Bibliothek"].tap()
+        XCTAssertTrue(app.navigationBars["Bibliothek"].waitForExistence(timeout: 3))
+    }
+
     func testAccessibilityTextSizeKeepsPrimaryActionReachable() {
         let app = launch(contentSize: "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge")
         XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 8))

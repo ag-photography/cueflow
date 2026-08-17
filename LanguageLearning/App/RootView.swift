@@ -223,13 +223,18 @@ private struct TodayView: View {
             .fullScreenCover(isPresented: $showingConversation) { ConversationView() }
             .navigationDestination(isPresented: $showingSkillPath) { SkillPathView() }
             .onAppear {
+                LearningDataCache.shared.update(cards: cards, reviews: reviews)
                 celebrateCompletedQuestsIfNeeded()
                 WidgetSnapshotService.refresh(cards: cards, settings: settings)
                 consumePendingAction()
             }
             .task { await refreshWeeklyRecap() }
             .onChange(of: reviews.count) { _, _ in
+                LearningDataCache.shared.update(cards: cards, reviews: reviews)
                 WidgetSnapshotService.refresh(cards: cards, settings: settings)
+            }
+            .onChange(of: cards.count) { _, _ in
+                LearningDataCache.shared.update(cards: cards, reviews: reviews)
             }
             .onChange(of: activeLanguageCode) { _, _ in
                 WidgetSnapshotService.refresh(cards: cards, settings: settings)

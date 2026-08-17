@@ -15,10 +15,8 @@ import SwiftData
 struct LibraryView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \Topic.name) private var topics: [Topic]
-    @Query(sort: \Phrase.createdAt, order: .reverse) private var phrases: [Phrase]
     @Query(sort: \Language.code) private var languages: [Language]
     @Query private var settings: [AppSettings]
-    @Query private var reviews: [Review]
 
     @State private var searchText = ""
     @State private var languageFilter = ""          // "" = all languages
@@ -35,6 +33,10 @@ struct LibraryView: View {
     @State private var saveErrorMessage: String?
     @State private var topicPendingDeletion: Topic?
     @State private var phrasePendingDeletion: Phrase?
+    @State private var phraseSearchResults: [Phrase] = []
+    @State private var cachedLearningEvents: [LearningEvent] = []
+    @State private var progressRefreshWorkItem: DispatchWorkItem?
+    @State private var contentReady = false
 
     private enum ActiveFilter: Hashable { case all, active, inactive }
     private enum LibraryMode: Hashable { case learn, manage }
@@ -69,7 +71,7 @@ struct LibraryView: View {
 
     private var filteredPhrases: [Phrase] {
         guard !searchText.isEmpty else { return [] }
-        return phrases.filter { phrase in
+        return phraseSearchResults.filter { phrase in
             (languageFilter.isEmpty || phrase.language?.code == languageFilter)
             && (phrase.sourceText.localizedCaseInsensitiveContains(searchText)
                 || phrase.targetText.localizedCaseInsensitiveContains(searchText)
@@ -84,18 +86,22 @@ struct LibraryView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                Picker("Ansicht", selection: $libraryMode) {
-                    Text("Lernen").tag(LibraryMode.learn)
-                    Text("Verwalten").tag(LibraryMode.manage)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal, DS.space.md)
-                .padding(.vertical, DS.space.sm)
+                if contentReady {
+                    Picker("Ansicht", selection: $libraryMode) {
+                        Text("Lernen").tag(LibraryMode.learn)
+                        Text("Verwalten").tag(LibraryMode.manage)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal, DS.space.md)
+                    .padding(.vertical, DS.space.sm)
 
-                if libraryMode == .learn {
-                    learningJourneys
+                    if libraryMode == .learn {
+                        learningJourneys
+                    } else {
+                        managementList
+                    }
                 } else {
-                    managementList
+                    Color.clear
                 }
             }
             .accessibilityIdentifier("library-root")
@@ -168,6 +174,18 @@ struct LibraryView: View {
             } message: {
                 Text("Die Phrase und ihr gesamter Lernfortschritt werden gelöscht. Das lässt sich nicht rückgängig machen.")
             }
+            .task(id: "\(searchText)|\(languageFilter)") {
+                await refreshPhraseSearch()
+            }
+            .task {
+                guard !contentReady else { return }
+                try? await Task.sleep(for: .milliseconds(80))
+                guard !Task.isCancelled else { return }
+                contentReady = true
+            }
+            .onAppear { scheduleLearningEventsRefresh() }
+            .onChange(of: activeLanguageCode) { _, _ in scheduleLearningEventsRefresh() }
+            .onDisappear { progressRefreshWorkItem?.cancel() }
         }
     }
 
@@ -223,10 +241,42 @@ struct LibraryView: View {
     }
 
     private var activeLearningEvents: [LearningEvent] {
-        let code = settings.first?.activeLanguageCode ?? "ru"
-        return LearningMotivation.events(from: reviews.filter {
-            $0.card?.phrase?.language?.code == code
-        })
+        cachedLearningEvents
+    }
+
+    private var activeLanguageCode: String {
+        settings.first?.activeLanguageCode ?? "ru"
+    }
+
+    @MainActor
+    private func refreshPhraseSearch() async {
+        guard !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            phraseSearchResults = []
+            return
+        }
+        try? await Task.sleep(for: .milliseconds(180))
+        guard !Task.isCancelled else { return }
+        let descriptor = FetchDescriptor<Phrase>(
+            sortBy: [SortDescriptor(\Phrase.createdAt, order: .reverse)]
+        )
+        phraseSearchResults = (try? context.fetch(descriptor)) ?? []
+    }
+
+    private func scheduleLearningEventsRefresh() {
+        progressRefreshWorkItem?.cancel()
+        let code = activeLanguageCode
+        if LearningDataCache.shared.isPrimed {
+            cachedLearningEvents = LearningDataCache.shared.events(languageCode: code)
+            return
+        }
+        let work = DispatchWorkItem {
+            let fetched = (try? context.fetch(FetchDescriptor<Review>())) ?? []
+            cachedLearningEvents = LearningMotivation.events(from: fetched.filter {
+                $0.card?.phrase?.language?.code == code
+            })
+        }
+        progressRefreshWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
     }
     private var curriculumProgress: [CurriculumStepProgress] {
         let fractions = Dictionary(uniqueKeysWithValues: ScenarioDefinition.defaults.map {
