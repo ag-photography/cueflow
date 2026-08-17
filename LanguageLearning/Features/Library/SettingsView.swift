@@ -22,6 +22,8 @@ struct SettingsView: View {
     @State private var surpriseRewardsEnabled: Bool = true
     @State private var showingOnboarding = false
     @State private var devTapCount = 0
+    @State private var didHydrate = false
+    @State private var saveErrorMessage: String?
 
     private static var defaultReminderTime: Date {
         var comps = DateComponents()
@@ -163,8 +165,9 @@ struct SettingsView: View {
                 // MARK: Info
                 Section {
                     Button {
-                        save()   // don't lose unsaved edits behind the cover
-                        showingOnboarding = true
+                        if save() {   // don't lose unsaved edits behind the cover
+                            showingOnboarding = true
+                        }
                     } label: {
                         Label("Einführung wiederholen", systemImage: "sparkles")
                     }
@@ -184,13 +187,33 @@ struct SettingsView: View {
             .navigationTitle("Einstellungen")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Fertig") { save(); dismiss() }
+                    Button("Fertig") {
+                        if save() { dismiss() }
+                    }
                 }
             }
             .fullScreenCover(isPresented: $showingOnboarding) {
                 OnboardingView()
             }
             .onAppear { hydrate() }
+            .onChange(of: dailyNewLimit) { _, _ in saveAfterHydration() }
+            .onChange(of: transliterationVisible) { _, _ in saveAfterHydration() }
+            .onChange(of: useAIGradingAssist) { _, _ in saveAfterHydration() }
+            .onChange(of: activeLanguageCode) { _, _ in saveAfterHydration() }
+            .onChange(of: surpriseRewardsEnabled) { _, _ in saveAfterHydration() }
+            .onDisappear {
+                // Interactive sheet dismissal must behave like the explicit
+                // confirmation action; settings should never silently vanish.
+                if didHydrate { _ = save() }
+            }
+            .alert("Einstellungen konnten nicht gespeichert werden", isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { saveErrorMessage = nil }
+            } message: {
+                Text(saveErrorMessage ?? "Bitte versuche es erneut.")
+            }
         }
     }
 
@@ -206,6 +229,7 @@ struct SettingsView: View {
         comps.minute = row?.dailyReminderMinute ?? 0
         dailyReminderTime = Calendar.current.date(from: comps) ?? Self.defaultReminderTime
         surpriseRewardsEnabled = row?.surpriseRewardsEnabled ?? true
+        didHydrate = true
     }
 
     private func handleReminderToggle(_ enabled: Bool) {
@@ -234,7 +258,7 @@ struct SettingsView: View {
 
     private func saveReminderEnabled(_ enabled: Bool) {
         ensureSettingsRow().dailyReminderEnabled = enabled
-        try? context.save()
+        persistContext()
     }
 
     private func saveReminderTime(_ time: Date) {
@@ -242,7 +266,7 @@ struct SettingsView: View {
         let row = ensureSettingsRow()
         row.dailyReminderHour = comps.hour ?? 19
         row.dailyReminderMinute = comps.minute ?? 0
-        try? context.save()
+        persistContext()
     }
 
     private func ensureSettingsRow() -> AppSettings {
@@ -252,7 +276,8 @@ struct SettingsView: View {
         return row
     }
 
-    private func save() {
+    @discardableResult
+    private func save() -> Bool {
         let row = settings.first ?? {
             let s = AppSettings()
             context.insert(s)
@@ -263,7 +288,23 @@ struct SettingsView: View {
         row.useAIGradingAssist = useAIGradingAssist
         row.activeLanguageCode = activeLanguageCode
         row.surpriseRewardsEnabled = surpriseRewardsEnabled
-        try? context.save()
+        return persistContext()
+    }
+
+    private func saveAfterHydration() {
+        if didHydrate { _ = save() }
+    }
+
+    @discardableResult
+    private func persistContext() -> Bool {
+        do {
+            try context.save()
+            saveErrorMessage = nil
+            return true
+        } catch {
+            saveErrorMessage = error.localizedDescription
+            return false
+        }
     }
 
     // MARK: - Developer mode
@@ -274,7 +315,7 @@ struct SettingsView: View {
 
     private func setDeveloperMode(_ on: Bool) {
         ensureSettingsRow().developerModeEnabled = on
-        try? context.save()
+        persistContext()
         devTapCount = 0
     }
 

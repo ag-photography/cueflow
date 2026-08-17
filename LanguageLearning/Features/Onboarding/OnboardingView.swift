@@ -27,6 +27,10 @@ struct OnboardingView: View {
     @State private var selectedDailyLimit = 10
     @State private var selectedTopicIDs: Set<PersistentIdentifier> = []
     @State private var didHydrate = false
+    @State private var selectedPurpose = "Reisen"
+    @State private var firstSpeechSucceeded = false
+    @State private var firstSpeechUnavailable = false
+    @StateObject private var speech = SpeechRecognitionService()
 
     /// Curated beginner topics offered on the topic-selection page. A small,
     /// inviting subset — the full library (incl. A2/B1/B2 vocab) stays one tap
@@ -45,9 +49,7 @@ struct OnboardingView: View {
 
     // MARK: - Page model
 
-    private enum Page: Hashable {
-        case welcome, language, howItWorks, goal, topics, keyboard
-    }
+    private enum Page: Hashable { case welcome, languageAndPurpose, firstSuccess, personalize }
 
     /// Languages the user can learn (everything except German, the UI language).
     private var learnableLanguages: [Language] {
@@ -69,11 +71,7 @@ struct OnboardingView: View {
     }
 
     private var pages: [Page] {
-        var p: [Page] = [.welcome]
-        if learnableLanguages.count > 1 { p.append(.language) }
-        p += [.howItWorks, .goal, .topics]
-        if needsKeyboardSetup { p.append(.keyboard) }
-        return p
+        [.welcome, .languageAndPurpose, .firstSuccess, .personalize]
     }
 
     private var isLastPage: Bool { index >= pages.count - 1 }
@@ -121,11 +119,29 @@ struct OnboardingView: View {
             .animation(.easeInOut, value: index)
             bottomBar
         }
+        .frame(maxWidth: 680)
+        .frame(maxWidth: .infinity)
         .background(DS.surface0.ignoresSafeArea())
         .onAppear(perform: hydrateOnce)
         .onChange(of: selectedLanguageCode) { _, _ in
             // New language → its starter topics differ, so re-seed the picks.
             rehydrateTopicSelection()
+            firstSpeechSucceeded = false
+            firstSpeechUnavailable = false
+            speech.stop()
+            if let locale = activeLanguage?.speechLocale { speech.setLocale(locale) }
+        }
+        .onChange(of: speech.transcription) { _, newValue in
+            guard let phrase = firstPhrase, !firstSpeechSucceeded else { return }
+            if SprintMatcher.matches(spokenTail: newValue, target: phrase.targetText) {
+                firstSpeechSucceeded = true
+                speech.stop()
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
+        }
+        .onDisappear {
+            speech.stop()
+            TTSService.shared.stop()
         }
     }
 
@@ -148,8 +164,8 @@ struct OnboardingView: View {
                 Color.clear.frame(width: 44, height: 44)
             }
             Spacer()
-            if !isLastPage {
-                Button("Überspringen") { finish() }
+            if index > 0 && !isLastPage {
+                Button("Später") { finish() }
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(DS.textSecondary)
                     .padding(.horizontal, DS.space.sm)
@@ -170,7 +186,7 @@ struct OnboardingView: View {
                     withAnimation { index += 1 }
                 }
             } label: {
-                Text(isLastPage ? "Los geht's" : "Weiter")
+                Text(isLastPage ? "Erste Einheit starten" : "Weiter")
                     .font(.headline.weight(.bold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -203,11 +219,9 @@ struct OnboardingView: View {
     private func pageBody(_ page: Page) -> some View {
         switch page {
         case .welcome:    welcomePage
-        case .language:   languagePage
-        case .howItWorks: howItWorksPage
-        case .goal:       goalPage
-        case .topics:     topicsPage
-        case .keyboard:   keyboardPage
+        case .languageAndPurpose: languageAndPurposePage
+        case .firstSuccess: firstSuccessPage
+        case .personalize: personalizePage
         }
     }
 
@@ -220,7 +234,7 @@ struct OnboardingView: View {
                     .font(.system(size: 40, weight: .bold, design: .serif))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(DS.textPrimary)
-                Text("Dein ruhiger Übungsraum für deine neue Sprache. Kein Schnickschnack, kein Maskottchen — nur du, deine Vokabeln und ein System, das weiß, wann du sie wiederholen musst.")
+                Text("Hol die richtigen Wörter selbst hervor — und sprich sie aus. So wird aus Verstehen echte Gesprächsfähigkeit.")
                     .font(.body)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(DS.textSecondary)
@@ -230,6 +244,158 @@ struct OnboardingView: View {
             Spacer()
         }
         .padding(.horizontal, DS.space.lg)
+    }
+
+    private var languageAndPurposePage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.space.lg) {
+                pageHeader(
+                    title: "Wofür willst du sprechen?",
+                    subtitle: "Wähle deine Sprache und den Moment, für den du sie brauchst."
+                )
+                VStack(spacing: DS.space.sm) {
+                    ForEach(learnableLanguages, id: \.code) { lang in
+                        languageOptionRow(lang)
+                    }
+                }
+                Text("Mein Ziel")
+                    .font(.headline)
+                    .foregroundStyle(DS.textPrimary)
+                HStack(spacing: DS.space.sm) {
+                    ForEach(["Reisen", "Menschen", "Beruf"], id: \.self) { purpose in
+                        Button(purpose) { selectedPurpose = purpose }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(selectedPurpose == purpose ? .white : DS.textPrimary)
+                            .padding(.horizontal, DS.space.md)
+                            .frame(minHeight: 44)
+                            .background(selectedPurpose == purpose ? DS.accent : DS.surface1)
+                            .clipShape(Capsule())
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(selectedPurpose == purpose ? .isSelected : [])
+                    }
+                }
+            }
+            .padding(.horizontal, DS.space.lg)
+            .padding(.bottom, DS.space.lg)
+        }
+    }
+
+    private var firstPhrase: Phrase? {
+        shownTopics.lazy.flatMap(\.phrases).first(where: { !$0.targetText.isEmpty })
+            ?? activeLanguage?.phrases.first(where: { !$0.targetText.isEmpty })
+    }
+
+    private var firstSuccessPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.space.lg) {
+                pageHeader(
+                    title: "Dein erster Satz",
+                    subtitle: "Hör ihn einmal. Dann sag ihn selbst — die Verarbeitung bleibt auf deinem Gerät."
+                )
+                if let phrase = firstPhrase {
+                    VStack(spacing: DS.space.md) {
+                        Text(phrase.sourceText)
+                            .font(.subheadline)
+                            .foregroundStyle(DS.textSecondary)
+                        Text(phrase.targetText)
+                            .font(.system(size: 34, weight: .bold, design: .serif))
+                            .multilineTextAlignment(.center)
+                            .environment(\.layoutDirection, phrase.language?.code == "ar" ? .rightToLeft : .leftToRight)
+                            .foregroundStyle(DS.textPrimary)
+                        Button {
+                            TTSService.shared.speak(
+                                phrase.targetText,
+                                language: phrase.language?.ttsLocale ?? "ru-RU"
+                            )
+                        } label: {
+                            Label("Anhören", systemImage: "speaker.wave.2.fill")
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(DS.accent)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, DS.space.xl)
+                    .padding(.horizontal, DS.space.md)
+                    .dsFlashcardSurface()
+
+                    Button(action: startFirstSpeech) {
+                        Label(
+                            firstSpeechSucceeded ? "Geschafft" : (speech.isRecording ? "Ich höre zu …" : "Jetzt selbst sagen"),
+                            systemImage: firstSpeechSucceeded ? "checkmark.circle.fill" : "mic.fill"
+                        )
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(maxWidth: .infinity, minHeight: 54)
+                        .background(firstSpeechSucceeded ? DS.gradePerfect : DS.accent)
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(firstSpeechSucceeded || speech.isRecording)
+
+                    if firstSpeechUnavailable {
+                        Text("Sprechen ist gerade nicht verfügbar. Du kannst trotzdem fortfahren und später erneut probieren.")
+                            .font(.footnote)
+                            .foregroundStyle(DS.textSecondary)
+                    } else if speech.isRecording {
+                        Text(speech.transcription.isEmpty ? "Sprich jetzt den Satz." : "Gehört: \(speech.transcription)")
+                            .font(.footnote)
+                            .foregroundStyle(DS.textSecondary)
+                    }
+                } else {
+                    Text("Deine erste Übung wird vorbereitet.")
+                        .foregroundStyle(DS.textSecondary)
+                }
+            }
+            .padding(.horizontal, DS.space.lg)
+            .padding(.bottom, DS.space.lg)
+        }
+    }
+
+    private var personalizePage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.space.lg) {
+                pageHeader(
+                    title: "Was passt heute?",
+                    subtitle: "Wähle ein Startthema und deinen täglichen Rhythmus. Beides lässt sich später ändern."
+                )
+                Text("Startthemen")
+                    .font(.headline)
+                    .foregroundStyle(DS.textPrimary)
+                VStack(spacing: DS.space.sm) {
+                    ForEach(shownTopics.prefix(4)) { topic in topicRow(topic) }
+                }
+                Text("Täglicher Rhythmus")
+                    .font(.headline)
+                    .foregroundStyle(DS.textPrimary)
+                VStack(spacing: DS.space.sm) {
+                    ForEach(dailyOptions.filter { [5, 10, 20].contains($0.limit) }, id: \.limit) { option in
+                        goalOptionRow(option)
+                    }
+                }
+            }
+            .padding(.horizontal, DS.space.lg)
+            .padding(.bottom, DS.space.lg)
+        }
+    }
+
+    private func startFirstSpeech() {
+        guard !speech.isRecording else { return }
+        TTSService.shared.stop()
+        firstSpeechUnavailable = false
+        Task {
+            let authorized = await speech.requestAuthorization()
+            guard authorized else {
+                firstSpeechUnavailable = true
+                return
+            }
+            if let locale = activeLanguage?.speechLocale { speech.setLocale(locale) }
+            speech.clearTranscription()
+            do {
+                try speech.start()
+            } catch {
+                firstSpeechUnavailable = true
+            }
+        }
     }
 
     private var brandBadge: some View {
@@ -574,6 +740,7 @@ struct OnboardingView: View {
         selectedLanguageCode = row?.activeLanguageCode ?? "ru"
         selectedDailyLimit = row?.dailyNewLimit ?? 10
         rehydrateTopicSelection()
+        if let locale = activeLanguage?.speechLocale { speech.setLocale(locale) }
         didHydrate = true
     }
 
@@ -582,6 +749,9 @@ struct OnboardingView: View {
     /// picks on replay). Re-run when the language choice changes.
     private func rehydrateTopicSelection() {
         selectedTopicIDs = Set(shownTopics.filter(\.isActive).map(\.persistentModelID))
+        if selectedTopicIDs.isEmpty, let first = shownTopics.first {
+            selectedTopicIDs.insert(first.persistentModelID)
+        }
     }
 
     private func finish() {
@@ -600,7 +770,12 @@ struct OnboardingView: View {
             topic.isActive = selectedTopicIDs.contains(topic.persistentModelID)
         }
         row.hasCompletedOnboarding = true
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            // Keep onboarding open if the durable hand-off failed.
+            return
+        }
         // First launch: RootView observes the flag and swaps in PracticeView.
         // Replay: this closes the Settings-presented cover. Harmless at the root.
         dismiss()

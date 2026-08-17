@@ -18,6 +18,8 @@ struct ProfileView: View {
     @AppStorage("spokenWordsCount") private var spokenWordsCountStored: Int = 0
     @AppStorage("spokenWordsDayIndex") private var spokenWordsDayIndex: Int = 0
 
+    var showsDismissButton = true
+
     private let flame = LinearGradient(
         colors: [Color(red: 0.97, green: 0.45, blue: 0.17), Color(red: 0.98, green: 0.66, blue: 0.22)],
         startPoint: .top, endPoint: .bottom
@@ -27,19 +29,21 @@ struct ProfileView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: DS.space.lg) {
-                    streakHero
-                    miniStatsRow
                     speakingSection
-                    learningProgressSection
+                    miniStatsRow
+                    topicProgress
                     weeklyChart
                     if languages.count > 1 {
                         perLanguage
                     }
-                    topicProgress
+                    learningProgressSection
+                    streakHero
                 }
                 .padding(.horizontal, DS.space.md)
                 .padding(.top, DS.space.sm)
                 .padding(.bottom, DS.space.xl)
+                .frame(maxWidth: 760)
+                .frame(maxWidth: .infinity)
             }
             .background(
                 LinearGradient(colors: [DS.surface0, DS.surface2.opacity(0.5)],
@@ -49,8 +53,10 @@ struct ProfileView: View {
             .navigationTitle("Fortschritt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Fertig") { dismiss() }
+                if showsDismissButton {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Fertig") { dismiss() }
+                    }
                 }
             }
         }
@@ -110,13 +116,25 @@ struct ProfileView: View {
 
     private var miniStatsRow: some View {
         HStack(spacing: DS.space.md) {
-            miniStat(value: reviewedToday, label: "heute geübt",
-                     icon: "checkmark.circle.fill", color: DS.gradePerfect)
+            miniStat(value: phrasesProducedUnaided, label: "selbst abgerufen",
+                     icon: "bubble.left.and.bubble.right.fill", color: DS.gradePerfect)
             miniStat(value: dueNow, label: "jetzt fällig",
                      icon: "clock.fill", color: DS.accent)
-            miniStat(value: reviews.count, label: "insgesamt",
-                     icon: "tray.full.fill", color: DS.textSecondary)
+            miniStat(value: reviewedToday, label: "Antworten heute",
+                     icon: "checkmark.circle.fill", color: DS.textSecondary)
         }
+    }
+
+    /// Distinct prompts recalled productively with a strong grade. Recognition
+    /// flips and multiple-choice introductions do not count as unaided output.
+    private var phrasesProducedUnaided: Int {
+        Set(reviews.compactMap { review -> PersistentIdentifier? in
+            guard review.gradeTier >= 3,
+                  review.modeRaw == CardDirection.speakDeToRu.rawValue ||
+                    review.modeRaw == CardDirection.typeDeToRu.rawValue
+            else { return nil }
+            return review.card?.phrase?.persistentModelID
+        }).count
     }
 
     private func miniStat(value: Int, label: String, icon: String, color: Color) -> some View {

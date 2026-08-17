@@ -17,6 +17,7 @@ struct LibraryView: View {
     @Query(sort: \Topic.name) private var topics: [Topic]
     @Query(sort: \Phrase.createdAt, order: .reverse) private var phrases: [Phrase]
     @Query(sort: \Language.code) private var languages: [Language]
+    @Query private var settings: [AppSettings]
 
     @State private var searchText = ""
     @State private var languageFilter = ""          // "" = all languages
@@ -29,8 +30,10 @@ struct LibraryView: View {
     @State private var phraseInEditor: Phrase?
     @State private var creatingPhrase = false
     @State private var creatingTopic = false
+    @State private var libraryMode: LibraryMode = .learn
 
     private enum ActiveFilter: Hashable { case all, active, inactive }
+    private enum LibraryMode: Hashable { case learn, manage }
 
     private let phraseResultCap = 60
 
@@ -76,18 +79,22 @@ struct LibraryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if !activeTopics.isEmpty {
-                    activeTopicsSection
+            VStack(spacing: 0) {
+                Picker("Ansicht", selection: $libraryMode) {
+                    Text("Lernen").tag(LibraryMode.learn)
+                    Text("Verwalten").tag(LibraryMode.manage)
                 }
-                filterSection
-                topicsSection
-                if !searchText.isEmpty {
-                    phrasesSection
+                .pickerStyle(.segmented)
+                .padding(.horizontal, DS.space.md)
+                .padding(.vertical, DS.space.sm)
+
+                if libraryMode == .learn {
+                    learningJourneys
+                } else {
+                    managementList
                 }
             }
             .navigationTitle("Bibliothek")
-            .searchable(text: $searchText, prompt: "Themen & Phrasen suchen")
             .navigationDestination(item: $selectedTopic) { topic in
                 TopicDetailView(topic: topic)
             }
@@ -101,7 +108,7 @@ struct LibraryView: View {
                     .accessibilityLabel("Einstellungen")
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    addMenu
+                    if libraryMode == .manage { addMenu }
                 }
             }
             .sheet(isPresented: $showingPasteImport) { PasteImportView() }
@@ -111,6 +118,94 @@ struct LibraryView: View {
             .sheet(item: $phraseInEditor) { phrase in PhraseEditorView(phrase: phrase) }
             .sheet(isPresented: $creatingTopic) { TopicEditorView(topic: nil) }
         }
+    }
+
+    private var managementList: some View {
+        List {
+            if !activeTopics.isEmpty { activeTopicsSection }
+            filterSection
+            topicsSection
+            if !searchText.isEmpty { phrasesSection }
+        }
+        .searchable(text: $searchText, prompt: "Themen & Phrasen suchen")
+    }
+
+    private var learningJourneys: some View {
+        List {
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Was willst du als Nächstes können?")
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(DS.textPrimary)
+                    Text("Wähle eine praktische Mission. CueFlow stellt die passenden Ausdrücke automatisch in deine Einheiten.")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textSecondary)
+                }
+                .padding(.vertical, DS.space.xs)
+            }
+
+            Section("Missionen") {
+                ForEach(learningTopics.prefix(16)) { topic in
+                    missionRow(topic)
+                }
+                if learningTopics.isEmpty {
+                    ContentUnavailableView(
+                        "Noch keine Missionen",
+                        systemImage: "books.vertical",
+                        description: Text("Inhalte kannst du unter Verwalten hinzufügen.")
+                    )
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+    }
+
+    private var learningTopics: [Topic] {
+        let code = settings.first?.activeLanguageCode ?? "ru"
+        return topics
+            .filter { $0.language?.code == code && $0.parent == nil && !$0.phrases.isEmpty }
+            .sorted {
+                if $0.isActive != $1.isActive { return $0.isActive && !$1.isActive }
+                return $0.name.localizedCompare($1.name) == .orderedAscending
+            }
+    }
+
+    private func missionRow(_ topic: Topic) -> some View {
+        let introduced = topic.phrases.filter { phrase in
+            phrase.cards.first?.state.isIntroduced == true
+        }.count
+        let total = topic.phrases.count
+        let fraction = total > 0 ? Double(introduced) / Double(total) : 0
+        return Button {
+            if !topic.isActive {
+                topic.isActive = true
+                try? context.save()
+            }
+            selectedTopic = topic
+        } label: {
+            VStack(alignment: .leading, spacing: DS.space.sm) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text(topic.name)
+                        .font(.headline)
+                        .foregroundStyle(DS.textPrimary)
+                    Spacer()
+                    Text(topic.isActive ? "Aktiv" : "Starten")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(DS.accent)
+                }
+                Text("\(total) Ausdrücke · etwa \(max(3, Int(ceil(Double(total) * 0.45)))) Min.")
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+                ProgressView(value: fraction)
+                    .tint(DS.accent)
+                Text(introduced == 0 ? "Noch nicht begonnen" : "\(introduced) von \(total) produktiv eingeführt")
+                    .font(.caption2)
+                    .foregroundStyle(DS.textTertiary)
+            }
+            .padding(.vertical, DS.space.xs)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(topic.isActive ? "Öffnet diese Mission" : "Aktiviert und öffnet diese Mission")
     }
 
     // MARK: - Active chip strip

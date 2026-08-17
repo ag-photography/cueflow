@@ -41,11 +41,18 @@ struct SprintView: View {
     @State private var bestAtRoundStart = 0   // to detect a new personal best
     @State private var speechDenied = false
     @State private var pulse = false
+    @State private var countdownValue = 3
+    @State private var countdownEndDate = Date()
+    @State private var preparationGeneration = UUID()
+    @State private var unavailableMessage: String?
+    @State private var skippedPhrases: [Phrase] = []
+    @State private var revealedAnswer: String?
+    @State private var skipGeneration = UUID()
 
     private let duration: TimeInterval = 60
     private let ticker = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
 
-    enum Phase { case intro, running, done }
+    enum Phase { case intro, preparing, countdown, running, done }
 
     // MARK: - Derived
 
@@ -72,16 +79,30 @@ struct SprintView: View {
                 .ignoresSafeArea()
             switch phase {
             case .intro:   introView
+            case .preparing: preparationView
+            case .countdown: countdownView
             case .running: runningView
             case .done:    doneView
             }
         }
         .onAppear(perform: handleAppear)
-        .onDisappear { speech.stop() }
+        .onDisappear {
+            preparationGeneration = UUID()
+            skipGeneration = UUID()
+            speech.stop()
+            TTSService.shared.stop()
+        }
         .onReceive(ticker) { t in
-            guard phase == .running else { return }
-            now = t
-            if remaining <= 0 { endRound() }
+            switch phase {
+            case .countdown:
+                countdownValue = max(0, Int(ceil(countdownEndDate.timeIntervalSince(t))))
+                if countdownValue == 0 { beginTimedRound() }
+            case .running:
+                now = t
+                if remaining <= 0 { endRound() }
+            default:
+                break
+            }
         }
         .onChange(of: speech.transcription) { _, _ in
             guard phase == .running, let target = currentPhrase?.targetText else { return }
@@ -129,12 +150,57 @@ struct SprintView: View {
                     .background(DS.gradeHesitant.opacity(0.12))
                     .clipShape(Capsule())
             }
+            if let unavailableMessage {
+                Label(unavailableMessage, systemImage: "mic.slash")
+                    .font(.footnote)
+                    .foregroundStyle(DS.gradeWrong)
+                    .multilineTextAlignment(.center)
+                    .padding(DS.space.md)
+                    .frame(maxWidth: .infinity)
+                    .background(DS.gradeWrong.opacity(0.08))
+                    .clipShape(RoundedRectangle(cornerRadius: DS.radius.md, style: .continuous))
+            }
             Spacer()
             primaryButton(title: "Los geht's", systemImage: "play.fill") { startRound() }
             Text("Zählt nicht in deinen Lernplan — reine Sprechübung.")
                 .font(.caption)
                 .foregroundStyle(DS.textTertiary)
                 .multilineTextAlignment(.center)
+        }
+        .padding(DS.space.lg)
+    }
+
+    private var preparationView: some View {
+        VStack(spacing: DS.space.lg) {
+            HStack { closeButton; Spacer() }
+            Spacer()
+            ProgressView()
+                .controlSize(.large)
+                .tint(DS.accent)
+            Text("Mikrofon wird vorbereitet …")
+                .font(.headline)
+                .foregroundStyle(DS.textPrimary)
+            Text("Die Zeit startet erst, wenn alles bereit ist.")
+                .font(.subheadline)
+                .foregroundStyle(DS.textSecondary)
+            Spacer()
+        }
+        .padding(DS.space.lg)
+    }
+
+    private var countdownView: some View {
+        VStack(spacing: DS.space.lg) {
+            HStack { closeButton; Spacer() }
+            Spacer()
+            Text(countdownValue > 0 ? "\(countdownValue)" : "Los")
+                .font(.system(size: 112, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(DS.accent)
+                .contentTransition(.numericText())
+                .accessibilityLabel(countdownValue > 0 ? "Start in \(countdownValue)" : "Los")
+            Text("Mach dich bereit")
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(DS.textSecondary)
+            Spacer()
         }
         .padding(DS.space.lg)
     }
@@ -216,15 +282,26 @@ struct SprintView: View {
     private var promptCard: some View {
         let text = currentPhrase?.sourceText ?? "—"
         let base: CGFloat = text.count > 40 ? 24 : (text.count > 20 ? 32 : 42)
-        return Text(text)
-            .font(.system(size: base, weight: .bold, design: .serif))
-            .multilineTextAlignment(.center)
-            .foregroundStyle(DS.textPrimary)
-            .lineLimit(nil)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity)
+        return VStack(spacing: DS.space.md) {
+            Text(text)
+                .font(.system(size: base, weight: .bold, design: .serif))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(DS.textPrimary)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+            if let revealedAnswer {
+                Divider()
+                Text(revealedAnswer)
+                    .font(.title2.weight(.semibold))
+                    .multilineTextAlignment(.center)
+                    .foregroundStyle(DS.accent)
+                    .transition(.opacity)
+                    .accessibilityLabel("Antwort: \(revealedAnswer)")
+            }
+        }
+            .frame(maxWidth: .infinity, minHeight: 180)
             .padding(.horizontal, DS.space.lg)
-            .padding(.vertical, DS.space.xxl)
+            .padding(.vertical, DS.space.xl)
             .dsFlashcardSurface()
             .id(index)   // fresh transition per card
             .transition(reduceMotion ? .opacity : .push(from: .trailing))
@@ -276,6 +353,7 @@ struct SprintView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
+        .disabled(revealedAnswer != nil)
         .accessibilityHint("Überspringt diese Karte ohne Punkt")
     }
 
@@ -306,6 +384,22 @@ struct SprintView: View {
                 Text("Bestleistung: \(best)")
                     .font(.subheadline.weight(.medium))
                     .foregroundStyle(DS.textTertiary)
+            }
+            if !skippedPhrases.isEmpty {
+                VStack(alignment: .leading, spacing: DS.space.xs) {
+                    Text("Nochmal ansehen")
+                        .font(.headline)
+                        .foregroundStyle(DS.textPrimary)
+                    ForEach(Array(skippedPhrases.prefix(3).enumerated()), id: \.offset) { _, phrase in
+                        Text("\(phrase.sourceText)  →  \(phrase.targetText)")
+                            .font(.subheadline)
+                            .foregroundStyle(DS.textSecondary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(DS.space.md)
+                .background(DS.surface1)
+                .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
             }
             Spacer()
             primaryButton(title: "Nochmal", systemImage: "arrow.clockwise") { startRound() }
@@ -365,30 +459,57 @@ struct SprintView: View {
 
     private func startRound() {
         pool = buildPool()
+        guard !pool.isEmpty else {
+            unavailableMessage = "Lerne zuerst einige Ausdrücke, dann ist dein Sprint bereit."
+            phase = .intro
+            return
+        }
         index = 0
         cleared = 0
+        skippedPhrases = []
+        revealedAnswer = nil
         baseline = ""
         speechDenied = false
+        unavailableMessage = nil
         bestAtRoundStart = best
-        endDate = Date().addingTimeInterval(duration)
-        now = Date()
-        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) { phase = .running }
-        pulse = true
-        beginListening()
+        let generation = UUID()
+        preparationGeneration = generation
+        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) { phase = .preparing }
+        prepareRound(generation: generation)
     }
 
-    private func beginListening() {
-        speech.clearTranscription()
+    private func prepareRound(generation: UUID) {
         Task {
             let authorized = await speech.requestAuthorization()
+            guard preparationGeneration == generation, phase == .preparing else { return }
             guard authorized else {
-                await MainActor.run { speechDenied = true }
+                speechDenied = true
+                unavailableMessage = "Mikrofon und Spracherkennung sind für Sprint erforderlich."
+                withAnimation { phase = .intro }
                 return
             }
-            do { try speech.start() } catch {
-                await MainActor.run { speechDenied = true }
-            }
+            countdownValue = 3
+            countdownEndDate = Date().addingTimeInterval(3)
+            withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) { phase = .countdown }
         }
+    }
+
+    private func beginTimedRound() {
+        guard phase == .countdown else { return }
+        speech.clearTranscription()
+        do {
+            try speech.start()
+        } catch {
+            speechDenied = true
+            unavailableMessage = error.localizedDescription
+            withAnimation { phase = .intro }
+            return
+        }
+        baseline = ""
+        endDate = Date().addingTimeInterval(duration)
+        now = Date()
+        pulse = true
+        withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) { phase = .running }
     }
 
     private func clearCurrent() {
@@ -415,8 +536,32 @@ struct SprintView: View {
     }
 
     private func skip() {
+        guard phase == .running, revealedAnswer == nil, let phrase = currentPhrase else { return }
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
-        advance()
+        speech.stop()
+        skippedPhrases.append(phrase)
+        revealedAnswer = phrase.targetText
+        TTSService.shared.speak(
+            phrase.targetText,
+            language: phrase.language?.ttsLocale ?? "ru-RU"
+        )
+        let generation = UUID()
+        skipGeneration = generation
+        Task {
+            try? await Task.sleep(for: .seconds(2.2))
+            guard skipGeneration == generation, phase == .running else { return }
+            TTSService.shared.stop()
+            revealedAnswer = nil
+            advance()
+            speech.clearTranscription()
+            baseline = ""
+            do {
+                try speech.start()
+            } catch {
+                unavailableMessage = error.localizedDescription
+                endRound()
+            }
+        }
     }
 
     /// Move to the next prompt and ignore everything said so far, so the next
@@ -429,6 +574,10 @@ struct SprintView: View {
     }
 
     private func endRound() {
+        preparationGeneration = UUID()
+        skipGeneration = UUID()
+        revealedAnswer = nil
+        TTSService.shared.stop()
         speech.stop()
         pulse = false
         if cleared > best { best = cleared }

@@ -48,6 +48,7 @@ struct PracticeInteractionGate {
 /// prompt card, distinct reveal layout, modern semantic rating buttons.
 struct PracticeView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Query private var cards: [StudyCard]
@@ -90,13 +91,16 @@ struct PracticeView: View {
     @State private var praiseTask: Task<Void, Never>?
     @State private var savedBannerTask: Task<Void, Never>?
     @State private var persistenceErrorMessage: String?
+    @State private var isSessionPaused = false
+    @State private var showingExitConfirmation = false
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
     // Lets the fixed-size serif prompt grow with Dynamic Type (capped so very
     // large accessibility sizes don't push the input off-screen).
     @ScaledMetric(relativeTo: .largeTitle) private var heroTypeScale: CGFloat = 1
 
-    private let sessionTarget = 10
+    let sessionTarget: Int
+    let isFocusedSession: Bool
     private let transliterationGracePeriod = 200
     private let speakHesitantStartDelaySec: Double = 4.0
     private let speakHesitantPauseSec: Double = 1.5
@@ -104,6 +108,11 @@ struct PracticeView: View {
     private let grader = GraderService()
     private let scheduler = SchedulerService()
     private let tts = TTSService.shared
+
+    init(sessionTarget: Int = 10, isFocusedSession: Bool = false) {
+        self.sessionTarget = max(1, sessionTarget)
+        self.isFocusedSession = isFocusedSession
+    }
 
     enum Phase {
         case loading
@@ -145,16 +154,28 @@ struct PracticeView: View {
     var body: some View {
         VStack(spacing: 0) {
             sessionProgressBar
-            headerBar
+            if isFocusedSession {
+                focusedSessionHeader
+            } else {
+                headerBar
+            }
             if let persistenceErrorMessage {
                 persistenceErrorBanner(persistenceErrorMessage)
                     .padding(.horizontal, DS.space.md)
                     .padding(.top, DS.space.sm)
             }
-            content
+            Group {
+                if isSessionPaused {
+                    pausedContent
+                } else {
+                    content
+                }
+            }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, DS.space.md)
         }
+        .frame(maxWidth: 760)
+        .frame(maxWidth: .infinity)
         .background(
             // Subtle top-to-bottom warmth so the prompt card floats on depth
             // rather than flat cream. Header sits on the surface0 top stop, so
@@ -211,9 +232,91 @@ struct PracticeView: View {
             if newPhase != .active { invalidateInteraction() }
         }
         .onDisappear { invalidateInteraction() }
+        .confirmationDialog(
+            "Einheit beenden?",
+            isPresented: $showingExitConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button("Einheit beenden", role: .destructive) { dismiss() }
+            Button("Weiter üben", role: .cancel) {}
+        } message: {
+            Text("Dein bereits gespeicherter Fortschritt bleibt erhalten.")
+        }
     }
 
     // MARK: - Header
+
+    private var focusedSessionHeader: some View {
+        HStack(spacing: DS.space.md) {
+            Button {
+                if sessionCount > 0 {
+                    showingExitConfirmation = true
+                } else {
+                    dismiss()
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.headline)
+                    .foregroundStyle(DS.textSecondary)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Einheit schließen")
+
+            Text("\(min(sessionCount + 1, sessionTarget)) von \(sessionTarget)")
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(DS.textSecondary)
+                .frame(maxWidth: .infinity)
+
+            Button {
+                if isSessionPaused {
+                    isSessionPaused = false
+                    promptStart = .now
+                } else {
+                    invalidateInteraction()
+                    isSessionPaused = true
+                }
+            } label: {
+                Image(systemName: isSessionPaused ? "play.fill" : "pause.fill")
+                    .font(.headline)
+                    .foregroundStyle(DS.textSecondary)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel(isSessionPaused ? "Einheit fortsetzen" : "Einheit pausieren")
+        }
+        .padding(.horizontal, DS.space.sm)
+        .background(DS.surface0)
+    }
+
+    private var pausedContent: some View {
+        VStack(spacing: DS.space.lg) {
+            Spacer()
+            Image(systemName: "pause.circle.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(DS.accent)
+            Text("Einheit pausiert")
+                .font(.title2.weight(.bold))
+                .foregroundStyle(DS.textPrimary)
+            Text("Atme kurz durch. Deine aktuelle Stelle bleibt erhalten.")
+                .font(.subheadline)
+                .foregroundStyle(DS.textSecondary)
+                .multilineTextAlignment(.center)
+            Button {
+                isSessionPaused = false
+                promptStart = .now
+            } label: {
+                Label("Weiter", systemImage: "play.fill")
+                    .font(.headline.weight(.bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, DS.space.xl)
+                    .padding(.vertical, 14)
+                    .background(DS.accent)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+            Spacer()
+        }
+        .padding(DS.space.lg)
+    }
 
     /// Duolingo-style thin progress bar showing where we are in the current
     /// 10-card block. Fills with brand accent. 4pt tall, full width.
@@ -1577,7 +1680,11 @@ struct PracticeView: View {
             Button("Pause") {
                 resetSession()
                 showingSessionSummary = false
-                phase = .empty
+                if isFocusedSession {
+                    dismiss()
+                } else {
+                    phase = .empty
+                }
             }
             .foregroundStyle(DS.textSecondary)
             .padding(.bottom)
