@@ -59,7 +59,7 @@ struct SchedulerService {
         // 4. Regular new cards (only from active topics). Newest first, so
         //    freshly-added/-activated content is what you see next.
         let activeNew = cards
-            .filter { $0.state == .new && ($0.phrase?.topics.contains(where: { $0.isActive }) ?? false) }
+            .filter { $0.state == .new && ($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false) }
             .sorted { ($0.phrase?.createdAt ?? .distantPast) > ($1.phrase?.createdAt ?? .distantPast) }
         return activeNew.first
     }

@@ -64,7 +64,7 @@ struct OnboardingView: View {
     /// future language slot in without language-specific branching.
     private var needsKeyboardSetup: Bool {
         guard let lang = activeLanguage else { return false }
-        let sample = lang.phrases.first { !$0.targetText.isEmpty }?.targetText ?? ""
+        let sample = lang.phrases?.first { !$0.targetText.isEmpty }?.targetText ?? ""
         // Anything above the combining-marks block (U+036F) is non-Latin here —
         // Cyrillic (U+0400+), Arabic (U+0600+), etc. Latin (incl. accented
         // transliteration) stays below it.
@@ -289,8 +289,8 @@ struct OnboardingView: View {
     }
 
     private var firstPhrase: Phrase? {
-        shownTopics.lazy.flatMap(\.phrases).first(where: { !$0.targetText.isEmpty })
-            ?? activeLanguage?.phrases.first(where: { !$0.targetText.isEmpty })
+        shownTopics.lazy.flatMap { $0.phrases ?? [] }.first(where: { !$0.targetText.isEmpty })
+            ?? activeLanguage?.phrases?.first(where: { !$0.targetText.isEmpty })
     }
 
     private var firstSuccessPage: some View {
@@ -612,7 +612,7 @@ struct OnboardingView: View {
                     .font(.body.weight(.medium))
                     .foregroundStyle(DS.textPrimary)
                 Spacer()
-                Text("\(topic.phrases.count)")
+                Text("\(topic.phrases?.count ?? 0)")
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(DS.textTertiary)
             }
@@ -625,7 +625,7 @@ struct OnboardingView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(topic.name), \(topic.phrases.count) Phrasen")
+        .accessibilityLabel("\(topic.name), \(topic.phrases?.count ?? 0) Phrasen")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 

@@ -2219,8 +2219,8 @@ struct PracticeView: View {
         }
 
         let phraseID = String(describing: phrase.persistentModelID)
-        for topic in phrase.topics {
-            let topicPhraseIDs = Set(topic.phrases.map { String(describing: $0.persistentModelID) })
+        for topic in phrase.topics ?? [] {
+            let topicPhraseIDs = Set((topic.phrases ?? []).map { String(describing: $0.persistentModelID) })
             let priorFraction = LearningMotivation.strongRecallFraction(
                 events: priorEvents,
                 phraseIDs: topicPhraseIDs
@@ -2372,7 +2372,7 @@ struct PracticeView: View {
     private var availableNewCount: Int {
         cardsForActiveLanguage.filter {
             $0.state == .new
-            && (($0.phrase?.topics.contains(where: { $0.isActive }) ?? false)
+            && (($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false)
                 || ($0.phrase?.isPriorityActive ?? false))
         }.count
     }

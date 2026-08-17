@@ -93,7 +93,7 @@ struct ExampleSentencesTests {
         #expect(greeting?.transliteration == "marhaba")
         #expect(greeting?.exampleSentence == "مرحبا، كيف حالك؟")
         #expect(greeting?.exampleSentenceTransliteration == "Marhaba, kayfa haaluka?")
-        #expect(greeting?.cards.count == 1)
+        #expect(greeting?.cards?.count == 1)
     }
 
     @Test func migrationSwapsLegacyArabicWithoutResettingProgress() throws {
@@ -140,10 +140,10 @@ struct ExampleSentencesTests {
         #expect(phrase.transliteration == "marhaba")
         #expect(phrase.exampleSentence == "مرحبا، كيف حالك؟")
         #expect(phrase.exampleSentenceTransliteration == "Marhaba, kayfa haaluka?")
-        #expect(phrase.cards.count == 1)
-        #expect(phrase.cards.first === card)
+        #expect(phrase.cards?.count == 1)
+        #expect(phrase.cards?.first === card)
         #expect(card.reps == 7)
-        #expect(card.reviews.count == 1)
-        #expect(card.reviews.first === review)
+        #expect(card.reviews?.count == 1)
+        #expect(card.reviews?.first === review)
     }
 }

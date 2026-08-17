@@ -100,7 +100,7 @@ struct SharedProgressMigrationTests {
 
         #expect(result.created == 1)
         #expect(result.removed == 0)
-        #expect(phrase.cards.count == 1)
+        #expect(phrase.cards?.count == 1)
     }
 
     @Test func keepsMostEstablishedScheduleAndPreservesEveryReview() throws {
@@ -136,9 +136,9 @@ struct SharedProgressMigrationTests {
 
         #expect(result.created == 0)
         #expect(result.removed == 1)
-        #expect(phrase.cards.count == 1)
-        #expect(phrase.cards.first === speaking)
-        #expect(speaking.reviews.count == 2)
+        #expect(phrase.cards?.count == 1)
+        #expect(phrase.cards?.first === speaking)
+        #expect(speaking.reviews?.count == 2)
         #expect(typedReview.card === speaking)
         #expect(typedReview.modeRaw == CardDirection.typeDeToRu.rawValue)
         #expect(spokenReview.modeRaw == CardDirection.speakDeToRu.rawValue)
@@ -158,6 +158,6 @@ struct SharedProgressMigrationTests {
         #expect(first.removed == 0)
         #expect(second.created == 0)
         #expect(second.removed == 0)
-        #expect(phrase.cards.count == 1)
+        #expect(phrase.cards?.count == 1)
     }
 }

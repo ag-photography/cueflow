@@ -3,6 +3,7 @@ import SwiftData
 import UIKit
 
 struct SettingsView: View {
+    @Environment(\.cueFlowStorageMode) private var storageMode
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query private var settings: [AppSettings]
@@ -25,6 +26,7 @@ struct SettingsView: View {
     @State private var didHydrate = false
     @State private var saveErrorMessage: String?
     @AppStorage("soundEffectsEnabled") private var soundEffectsEnabled = true
+    @StateObject private var cloudStatus = CloudSyncStatusService()
 
     private static var defaultReminderTime: Date {
         var comps = DateComponents()
@@ -133,6 +135,8 @@ struct SettingsView: View {
 
                 // MARK: Daten
                 Section {
+                    Label(cloudStatus.status.label, systemImage: cloudStatus.status.symbol)
+                        .foregroundStyle(cloudStatus.status == .available ? DS.accent : DS.textSecondary)
                     NavigationLink {
                         BackupView()
                     } label: {
@@ -141,7 +145,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Daten")
                 } footer: {
-                    Text("Fortschritt & Streak: oben rechts auf der Übungsseite (Diagramm-Icon). TestFlight-Updates erhalten deinen Fortschritt automatisch.")
+                    Text("Mit iCloud werden Lernstand und Inhalte privat über deine Apple-ID synchronisiert. Ohne verfügbaren Account bleibt alles vollständig auf diesem Gerät nutzbar. Sicherungen lassen sich zusätzlich exportieren und wiederherstellen.")
                 }
                 .listRowBackground(DS.surface1)
 
@@ -198,6 +202,7 @@ struct SettingsView: View {
                 OnboardingView()
             }
             .onAppear { hydrate() }
+            .task { await cloudStatus.refresh(storageMode: storageMode) }
             .onChange(of: dailyNewLimit) { _, _ in saveAfterHydration() }
             .onChange(of: transliterationVisible) { _, _ in saveAfterHydration() }
             .onChange(of: useAIGradingAssist) { _, _ in saveAfterHydration() }

@@ -126,13 +126,13 @@ enum LearningMotivation {
     }
 
     static func events(from reviews: [Review]) -> [LearningEvent] {
-        reviews.compactMap { review in
+        reviews.compactMap { review -> LearningEvent? in
             guard let phrase = review.card?.phrase else { return nil }
             return LearningEvent(
                 timestamp: review.timestamp,
                 phraseID: String(describing: phrase.persistentModelID),
                 sourceText: phrase.sourceText,
-                topicIDs: Set(phrase.topics.map { String(describing: $0.persistentModelID) }),
+                topicIDs: Set((phrase.topics ?? []).map { String(describing: $0.persistentModelID) }),
                 exercise: LearningExercise(rawValue: review.modeRaw),
                 rating: review.rating,
                 gradeTier: review.gradeTier,

@@ -62,7 +62,7 @@ enum SeedData {
         var created = 0
         var removed = 0
         for phrase in phrases {
-            let cards = phrase.cards
+            let cards = phrase.cards ?? []
             guard !cards.isEmpty else {
                 context.insert(StudyCard(phrase: phrase))
                 created += 1
@@ -72,7 +72,7 @@ enum SeedData {
 
             let canonical = cards.max(by: sharedCardRanksBefore) ?? cards[0]
             for duplicate in cards where duplicate !== canonical {
-                for review in Array(duplicate.reviews) {
+                for review in duplicate.reviews ?? [] {
                     review.card = canonical
                 }
                 context.delete(duplicate)
@@ -303,7 +303,7 @@ enum SeedData {
 
         var moved = 0
         for oldTopic in oldTopics {
-            let snapshot = oldTopic.phrases
+            let snapshot = oldTopic.phrases ?? []
             for phrase in snapshot {
                 let pos = posByRu[phrase.targetText] ?? "other"
                 let newTopicName = semanticTopicName(
@@ -318,14 +318,16 @@ enum SeedData {
                     cache: &topicCache,
                     isActive: oldTopic.isActive
                 ).topic
-                phrase.topics.removeAll { $0.persistentModelID == oldTopic.persistentModelID }
-                if !phrase.topics.contains(where: { $0.persistentModelID == newTopic.persistentModelID }) {
-                    phrase.topics.append(newTopic)
+                var phraseTopics = phrase.topics ?? []
+                phraseTopics.removeAll { $0.persistentModelID == oldTopic.persistentModelID }
+                if !phraseTopics.contains(where: { $0.persistentModelID == newTopic.persistentModelID }) {
+                    phraseTopics.append(newTopic)
                 }
+                phrase.topics = phraseTopics
                 moved += 1
             }
         }
-        for oldTopic in oldTopics where oldTopic.phrases.isEmpty {
+        for oldTopic in oldTopics where (oldTopic.phrases ?? []).isEmpty {
             context.delete(oldTopic)
         }
         try? context.save()
@@ -371,7 +373,7 @@ enum SeedData {
         var movedPhrases = 0
         for oldTopic in oldTopics {
             let level = String(oldTopic.name.dropFirst("Wortliste ".count))
-            let snapshot = oldTopic.phrases
+            let snapshot = oldTopic.phrases ?? []
             for phrase in snapshot {
                 let pos = posByRu[phrase.targetText] ?? "other"
                 let newTopicName = "\(level) \(posToGermanLabel(pos))"
@@ -384,16 +386,18 @@ enum SeedData {
                 ).topic
 
                 // Detach from old topic, attach to new.
-                phrase.topics.removeAll { $0.persistentModelID == oldTopic.persistentModelID }
-                if !phrase.topics.contains(where: { $0.persistentModelID == newTopic.persistentModelID }) {
-                    phrase.topics.append(newTopic)
+                var phraseTopics = phrase.topics ?? []
+                phraseTopics.removeAll { $0.persistentModelID == oldTopic.persistentModelID }
+                if !phraseTopics.contains(where: { $0.persistentModelID == newTopic.persistentModelID }) {
+                    phraseTopics.append(newTopic)
                 }
+                phrase.topics = phraseTopics
                 movedPhrases += 1
             }
         }
 
         // Delete the old now-empty topics.
-        for oldTopic in oldTopics where oldTopic.phrases.isEmpty {
+        for oldTopic in oldTopics where (oldTopic.phrases ?? []).isEmpty {
             context.delete(oldTopic)
         }
         try? context.save()

@@ -396,6 +396,9 @@
     "C" : {
 
     },
+    "CueFlow" : {
+
+    },
     "DE" : {
 
     },
@@ -420,6 +423,9 @@
     "Dein bereits gespeicherter Fortschritt bleibt erhalten." : {
 
     },
+    "Deine Lernreise wird vorbereitet …" : {
+
+    },
     "Deine erste Übung wird vorbereitet." : {
 
     },
@@ -430,6 +436,9 @@
 
     },
     "Diagnose" : {
+
+    },
+    "Die JSON-Datei enthält Sprachen, Themen, Phrasen, Lernpläne, Reviews und Einstellungen. Wiederherstellen führt Daten sicher zusammen und erzeugt keine doppelten Reviews." : {
 
     },
     "Die Phrase und ihr gesamter Lernfortschritt werden gelöscht. Das lässt sich nicht rückgängig machen." : {
@@ -659,6 +668,9 @@
     "Missionen" : {
 
     },
+    "Mit iCloud werden Lernstand und Inhalte privat über deine Apple-ID synchronisiert. Ohne verfügbaren Account bleibt alles vollständig auf diesem Gerät nutzbar. Sicherungen lassen sich zusätzlich exportieren und wiederherstellen." : {
+
+    },
     "Name" : {
 
     },
@@ -801,6 +813,12 @@
 
     },
     "Sicherung & Export" : {
+
+    },
+    "Sicherung & Wiederherstellung" : {
+
+    },
+    "Sicherung wiederherstellen" : {
 
     },
     "Situationen" : {

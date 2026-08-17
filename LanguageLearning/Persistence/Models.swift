@@ -34,16 +34,16 @@ struct LanguagePack: Equatable, Sendable {
 
 @Model
 final class Language {
-    @Attribute(.unique) var code: String
-    var name: String
-    var isRTL: Bool
-    var defaultTransliterationVisible: Bool
+    var code: String = ""
+    var name: String = ""
+    var isRTL: Bool = false
+    var defaultTransliterationVisible: Bool = true
 
     @Relationship(deleteRule: .cascade, inverse: \Phrase.language)
-    var phrases: [Phrase] = []
+    var phrases: [Phrase]? = []
 
     @Relationship(deleteRule: .cascade, inverse: \Topic.language)
-    var topics: [Topic] = []
+    var topics: [Topic]? = []
 
     init(
         code: String,
@@ -78,16 +78,16 @@ final class Language {
 
 @Model
 final class Topic {
-    var name: String
+    var name: String = ""
     var parent: Topic?
     var language: Language?
-    var isActive: Bool
+    var isActive: Bool = false
 
     @Relationship(deleteRule: .nullify, inverse: \Topic.parent)
-    var children: [Topic] = []
+    var children: [Topic]? = []
 
     @Relationship(inverse: \Phrase.topics)
-    var phrases: [Phrase] = []
+    var phrases: [Phrase]? = []
 
     init(
         name: String,
@@ -104,9 +104,9 @@ final class Topic {
 
 @Model
 final class Phrase {
-    var sourceText: String
-    var targetText: String
-    var targetTextNormalized: String
+    var sourceText: String = ""
+    var targetText: String = ""
+    var targetTextNormalized: String = ""
     var transliteration: String?
     var notes: String?
     /// A short target-language sentence that *uses* this word, shown as a
@@ -125,9 +125,9 @@ final class Phrase {
     var exampleSentenceTransliteration: String?
     var audioFileName: String?
     var acceptedAlternatives: [String] = []
-    var topics: [Topic] = []
+    var topics: [Topic]? = []
     var language: Language?
-    var createdAt: Date
+    var createdAt: Date = Date.now
     /// Homework boost: when a phrase is imported from a tutor lecture, mark
     /// it priority so the scheduler surfaces it ahead of regular vocab while
     /// the boost window is active.
@@ -137,7 +137,7 @@ final class Phrase {
     var priorityUntil: Date? = nil
 
     @Relationship(deleteRule: .cascade, inverse: \StudyCard.phrase)
-    var cards: [StudyCard] = []
+    var cards: [StudyCard]? = []
 
     init(
         sourceText: String,
@@ -215,17 +215,17 @@ final class StudyCard {
     var phrase: Phrase?
     /// Legacy storage retained for compatibility with existing stores.
     /// Scheduling is shared; the exercise used lives on `Review.modeRaw`.
-    var directionRaw: String
-    var stability: Double
-    var difficulty: Double
-    var dueDate: Date
-    var lapses: Int
-    var reps: Int
+    var directionRaw: String = CardDirection.speakDeToRu.rawValue
+    var stability: Double = 0
+    var difficulty: Double = 0
+    var dueDate: Date = Date.now
+    var lapses: Int = 0
+    var reps: Int = 0
     var lastReview: Date?
-    var stateRaw: String
+    var stateRaw: String = LearningState.new.rawValue
 
     @Relationship(deleteRule: .cascade, inverse: \Review.card)
-    var reviews: [Review] = []
+    var reviews: [Review]? = []
 
     var direction: CardDirection {
         get { CardDirection(rawValue: directionRaw) ?? .typeDeToRu }
@@ -253,13 +253,13 @@ final class StudyCard {
 @Model
 final class Review {
     var card: StudyCard?
-    var timestamp: Date
-    var rating: Int
-    var autoGradeRating: Int
-    var userAnswer: String
-    var modeRaw: String
-    var responseTimeMs: Int
-    var gradeTier: Int
+    var timestamp: Date = Date.now
+    var rating: Int = 0
+    var autoGradeRating: Int = 0
+    var userAnswer: String = ""
+    var modeRaw: String = CardDirection.speakDeToRu.rawValue
+    var responseTimeMs: Int = 0
+    var gradeTier: Int = 0
     var wasNew: Bool = false
 
     init(
@@ -286,10 +286,10 @@ final class Review {
 
 @Model
 final class Session {
-    var startedAt: Date
+    var startedAt: Date = Date.now
     var endedAt: Date?
-    var cardsReviewed: Int
-    var correctCount: Int
+    var cardsReviewed: Int = 0
+    var correctCount: Int = 0
 
     init() {
         self.startedAt = .now
@@ -301,10 +301,10 @@ final class Session {
 
 @Model
 final class AppSettings {
-    var dailyNewLimit: Int
-    var activeLanguageCode: String
+    var dailyNewLimit: Int = 10
+    var activeLanguageCode: String = "ru"
     var transliterationVisible: Bool?
-    var useAIGradingAssist: Bool
+    var useAIGradingAssist: Bool = false
     // Daily reminder: defaults are off-and-7pm so a SwiftData lightweight
     // migration from earlier builds doesn't surprise existing users with a
     // notification — they have to opt in via Settings.

@@ -26,6 +26,10 @@
 	<string>Sprich deine Antwort, um die Aussprache zu üben.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
 	<string>Spracherkennung läuft auf dem Gerät und hilft, deine gesprochene Antwort zu prüfen.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

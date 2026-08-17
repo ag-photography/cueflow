@@ -139,7 +139,7 @@ struct PhraseEditorView: View {
         targetText = phrase.targetText
         transliteration = phrase.transliteration ?? ""
         notes = phrase.notes ?? ""
-        selectedTopicIDs = Set(phrase.topics.map { $0.persistentModelID })
+        selectedTopicIDs = Set((phrase.topics ?? []).map { $0.persistentModelID })
         alternatives = phrase.acceptedAlternatives
     }
 

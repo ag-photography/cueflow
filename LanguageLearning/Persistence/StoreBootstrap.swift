@@ -1,16 +1,22 @@
 import Foundation
+import CloudKit
 import SwiftData
+
+enum CueFlowStorageMode: String, Sendable {
+    case iCloud
+    case local
+    case recovery
+}
 
 struct StoreBootstrapResult {
     let container: ModelContainer
     let recoveryMessage: String?
+    let mode: CueFlowStorageMode
 
     var isRecovering: Bool { recoveryMessage != nil }
 }
 
 enum StoreBootstrap {
-    private enum DiagnosticError: Error { case forcedRecovery }
-
     struct Resolution<Value> {
         let value: Value
         let persistentError: Error?
@@ -36,8 +42,20 @@ enum StoreBootstrap {
 
     static func make(forceRecovery: Bool = false) throws -> StoreBootstrapResult {
         let schema = Schema(versionedSchema: SchemaV1.self)
-        let resolution = try resolve {
-            if forceRecovery { throw DiagnosticError.forcedRecovery }
+        if forceRecovery {
+            let configuration = ModelConfiguration(
+                "LanguageLearningRecovery",
+                schema: schema,
+                isStoredInMemoryOnly: true
+            )
+            return StoreBootstrapResult(
+                container: try ModelContainer(for: schema, configurations: configuration),
+                recoveryMessage: "Deine lokalen Lerndaten konnten nicht geöffnet werden. CueFlow läuft in einer sicheren Sitzung; neue Fortschritte bleiben nur bis zum Schließen der App erhalten.",
+                mode: .recovery
+            )
+        }
+
+        let localResolution = try resolve {
             let configuration = ModelConfiguration("LanguageLearning", schema: schema)
             return try ModelContainer(
                 for: schema,
@@ -53,9 +71,50 @@ enum StoreBootstrap {
             return try ModelContainer(for: schema, configurations: configuration)
         }
 
-        let message = resolution.usedFallback
+        let message = localResolution.usedFallback
             ? "Deine lokalen Lerndaten konnten nicht geöffnet werden. CueFlow läuft in einer sicheren Sitzung; neue Fortschritte bleiben nur bis zum Schließen der App erhalten."
             : nil
-        return StoreBootstrapResult(container: resolution.value, recoveryMessage: message)
+        return StoreBootstrapResult(
+            container: localResolution.value,
+            recoveryMessage: message,
+            mode: localResolution.usedFallback ? .recovery : .local
+        )
+    }
+
+    /// Checks account availability off the main thread before attaching the
+    /// CloudKit mirroring delegate. This avoids noisy failed CloudKit stores on
+    /// signed-out devices while preserving a fully functional local database.
+    static func makePreferred(forceRecovery: Bool = false) async throws -> StoreBootstrapResult {
+        if forceRecovery { return try make(forceRecovery: true) }
+
+        #if targetEnvironment(simulator)
+        // CoreSimulator can report a stale `.available` account before the
+        // CloudKit daemon rejects mirroring. Keep development deterministic;
+        // an opt-in remains available for explicit CloudKit simulator testing.
+        if ProcessInfo.processInfo.environment["CUEFLOW_ENABLE_CLOUDKIT_SIMULATOR"] != "1" {
+            return try make()
+        }
+        #endif
+
+        let accountStatus = try? await CKContainer(identifier: "iCloud.com.alex.cueflow").accountStatus()
+        if accountStatus == .available, let cloud = try? makeCloudContainer() {
+            return cloud
+        }
+        return try make()
+    }
+
+    private static func makeCloudContainer() throws -> StoreBootstrapResult {
+        let schema = Schema(versionedSchema: SchemaV1.self)
+        let configuration = ModelConfiguration(
+            "LanguageLearning",
+            schema: schema,
+            cloudKitDatabase: .automatic
+        )
+        let container = try ModelContainer(
+            for: schema,
+            migrationPlan: LanguageLearningMigrationPlan.self,
+            configurations: configuration
+        )
+        return StoreBootstrapResult(container: container, recoveryMessage: nil, mode: .iCloud)
     }
 }

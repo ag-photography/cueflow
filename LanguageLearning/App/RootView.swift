@@ -116,7 +116,7 @@ private struct TodayView: View {
     }
     private var availableNewCount: Int {
         activeCards.filter {
-            $0.state == .new && (($0.phrase?.topics.contains(where: { $0.isActive }) ?? false)
+            $0.state == .new && (($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false)
                 || ($0.phrase?.isPriorityActive ?? false))
         }.count
     }
@@ -390,7 +390,7 @@ private struct TodayView: View {
                 Text(mission.name)
                     .font(.headline)
                     .foregroundStyle(DS.textPrimary)
-                Text("\(mission.phrases.count) nützliche Ausdrücke · produktiv üben")
+                Text("\(mission.phrases?.count ?? 0) nützliche Ausdrücke · produktiv üben")
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
             }

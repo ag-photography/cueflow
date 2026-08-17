@@ -13,7 +13,7 @@ struct TopicDetailView: View {
     @State private var saveErrorMessage: String?
 
     private var cards: [StudyCard] {
-        topic.phrases.flatMap(\.cards)
+        (topic.phrases ?? []).flatMap { $0.cards ?? [] }
     }
 
     private var total: Int { cards.count }
@@ -28,7 +28,7 @@ struct TopicDetailView: View {
     }
 
     private var sortedPhrases: [Phrase] {
-        topic.phrases.sorted { $0.sourceText.localizedCompare($1.sourceText) == .orderedAscending }
+        (topic.phrases ?? []).sorted { $0.sourceText.localizedCompare($1.sourceText) == .orderedAscending }
     }
 
     var body: some View {

@@ -44,6 +44,7 @@ struct StoreBootstrapTests {
         let result = try StoreBootstrap.make(forceRecovery: true)
 
         #expect(result.isRecovering)
+        #expect(result.mode == .recovery)
         #expect(result.recoveryMessage?.contains("sicheren Sitzung") == true)
     }
 }

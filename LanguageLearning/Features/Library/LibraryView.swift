@@ -237,7 +237,7 @@ struct LibraryView: View {
         let matchedTopics = learningTopics.filter {
             scenario.topicTerms.contains(baseTopicName($0.name))
         }
-        let phraseIDs = Set(matchedTopics.flatMap(\.phrases).map {
+        let phraseIDs = Set(matchedTopics.flatMap { $0.phrases ?? [] }.map {
             String(describing: $0.persistentModelID)
         })
         let fraction = LearningMotivation.strongRecallFraction(
@@ -294,7 +294,7 @@ struct LibraryView: View {
     private var learningTopics: [Topic] {
         let code = settings.first?.activeLanguageCode ?? "ru"
         return topics
-            .filter { $0.language?.code == code && $0.parent == nil && !$0.phrases.isEmpty }
+            .filter { $0.language?.code == code && $0.parent == nil && !($0.phrases?.isEmpty ?? true) }
             .sorted {
                 if $0.isActive != $1.isActive { return $0.isActive && !$1.isActive }
                 return $0.name.localizedCompare($1.name) == .orderedAscending
@@ -302,11 +302,12 @@ struct LibraryView: View {
     }
 
     private func missionRow(_ topic: Topic) -> some View {
-        let introduced = topic.phrases.filter { phrase in
-            phrase.cards.first?.state.isIntroduced == true
+        let topicPhrases = topic.phrases ?? []
+        let introduced = topicPhrases.filter { phrase in
+            phrase.cards?.first?.state.isIntroduced == true
         }.count
-        let total = topic.phrases.count
-        let phraseIDs = Set(topic.phrases.map { String(describing: $0.persistentModelID) })
+        let total = topicPhrases.count
+        let phraseIDs = Set(topicPhrases.map { String(describing: $0.persistentModelID) })
         let fraction = LearningMotivation.strongRecallFraction(
             events: activeLearningEvents,
             phraseIDs: phraseIDs
@@ -493,7 +494,7 @@ struct LibraryView: View {
                             .background(DS.surface2)
                             .clipShape(Capsule())
                     }
-                    Text("\(topic.phrases.count)")
+                    Text("\(topic.phrases?.count ?? 0)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                     Image(systemName: "chevron.right")
@@ -585,9 +586,9 @@ struct LibraryView: View {
             Text(phrase.targetText)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
-            if !phrase.topics.isEmpty {
+            if !(phrase.topics?.isEmpty ?? true) {
                 HStack(spacing: 4) {
-                    ForEach(phrase.topics) { topic in
+                    ForEach(phrase.topics ?? []) { topic in
                         Text(topic.name)
                             .font(.caption2)
                             .padding(.horizontal, 6)

@@ -105,7 +105,7 @@ struct ProfileView: View {
             $0.language?.code == activeLanguageCode
                 && scenario.topicTerms.contains(baseTopicName($0.name))
         }
-        let phraseIDs = Set(matchingTopics.flatMap(\.phrases).map {
+        let phraseIDs = Set(matchingTopics.flatMap { $0.phrases ?? [] }.map {
             String(describing: $0.persistentModelID)
         })
         let fraction = LearningMotivation.strongRecallFraction(
@@ -391,7 +391,7 @@ struct ProfileView: View {
     }
 
     private func topicRow(topic: Topic) -> some View {
-        let total = topic.phrases.count
+        let total = topic.phrases?.count ?? 0
         let practisedCount = cardsForTopic(topic).filter { $0.state.isIntroduced }.count
         return VStack(alignment: .leading, spacing: 5) {
             HStack {
@@ -581,7 +581,7 @@ struct ProfileView: View {
 
     private var topicsWithCards: [Topic] {
         topics
-            .filter { !$0.phrases.isEmpty }
+            .filter { !($0.phrases?.isEmpty ?? true) }
             .sorted { lhs, rhs in
                 if lhs.isActive != rhs.isActive { return lhs.isActive && !rhs.isActive }
                 return lhs.name.localizedCompare(rhs.name) == .orderedAscending
@@ -589,7 +589,7 @@ struct ProfileView: View {
     }
 
     private func cardsForTopic(_ topic: Topic) -> [StudyCard] {
-        let phraseIDs = Set(topic.phrases.map(\.persistentModelID))
+        let phraseIDs = Set((topic.phrases ?? []).map(\.persistentModelID))
         return cards.filter {
             guard let phrase = $0.phrase else { return false }
             return phraseIDs.contains(phrase.persistentModelID)
