@@ -112,7 +112,10 @@ struct ProfileView: View {
                 snapshotLoaded = true
             }
             snapshotRefreshWorkItem = work
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.08, execute: work)
+            // Keep chart construction outside the liquid-glass tab spring.
+            // A one-frame defer still froze the native pressed indicator on
+            // physical iOS 26 devices while Swift Charts materialised.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.65, execute: work)
             return
         }
         let work = DispatchWorkItem {

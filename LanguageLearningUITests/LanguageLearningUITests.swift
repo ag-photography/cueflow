@@ -52,6 +52,36 @@ final class LanguageLearningUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["Bibliothek"].waitForExistence(timeout: 3))
     }
 
+    func testTutorFocusCreatesAndStartsALessonScopedSession() {
+        let app = launch()
+        XCTAssertTrue(app.tabBars.buttons["Bibliothek"].waitForExistence(timeout: 8))
+        app.tabBars.buttons["Bibliothek"].tap()
+
+        let addFocus = app.buttons["tutor-focus-add"]
+        XCTAssertTrue(addFocus.waitForExistence(timeout: 5))
+        addFocus.tap()
+        XCTAssertTrue(app.navigationBars["Tutor-Fokus"].waitForExistence(timeout: 3))
+
+        let topic = app.textFields["z. B. Jahreszeiten"]
+        XCTAssertTrue(topic.waitForExistence(timeout: 2))
+        topic.tap()
+        topic.typeText("Jahreszeiten")
+
+        let phrases = app.textViews.firstMatch
+        XCTAssertTrue(phrases.exists)
+        phrases.tap()
+        phrases.typeText("Frühling = весна\nSommer = лето")
+
+        let save = app.buttons["tutor-focus-save"]
+        XCTAssertTrue(save.isEnabled)
+        save.tap()
+
+        let practice = app.buttons["tutor-focus-practice"]
+        XCTAssertTrue(practice.waitForExistence(timeout: 4))
+        practice.tap()
+        XCTAssertTrue(app.buttons["practice-close"].waitForExistence(timeout: 5))
+    }
+
     func testAccessibilityTextSizeKeepsPrimaryActionReachable() {
         let app = launch(contentSize: "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge")
         XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 8))

@@ -196,7 +196,7 @@ enum LineOrder: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-private struct ParsedLine: Identifiable {
+struct ParsedLine: Identifiable {
     let id: Int
     let raw: String
     /// Always German — regardless of the side the user typed it on.

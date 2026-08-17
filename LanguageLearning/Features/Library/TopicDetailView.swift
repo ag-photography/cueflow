@@ -10,6 +10,7 @@ struct TopicDetailView: View {
 
     @State private var phraseInEditor: Phrase?
     @State private var showingEditor = false
+    @State private var showingPractice = false
     @State private var saveErrorMessage: String?
 
     private var cards: [StudyCard] {
@@ -58,6 +59,13 @@ struct TopicDetailView: View {
         }
         .sheet(item: $phraseInEditor) { PhraseEditorView(phrase: $0) }
         .sheet(isPresented: $showingEditor) { TopicEditorView(topic: topic) }
+        .fullScreenCover(isPresented: $showingPractice) {
+            PracticeView(
+                sessionTarget: min(10, max(1, total)),
+                isFocusedSession: true,
+                scope: .topic(id: topic.persistentModelID)
+            )
+        }
         .alert("Thema konnte nicht aktualisiert werden", isPresented: Binding(
             get: { saveErrorMessage != nil },
             set: { if !$0 { saveErrorMessage = nil } }
@@ -90,6 +98,18 @@ struct TopicDetailView: View {
                 .font(.caption)
                 .foregroundStyle(DS.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if total > 0 {
+                Button {
+                    if !topic.isActive { setTopicActive(true) }
+                    showingPractice = true
+                } label: {
+                    Label("Dieses Thema jetzt üben", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(DS.accent)
+                .accessibilityIdentifier("topic-practice-start")
+            }
         }
         .padding(DS.space.md)
         .background(DS.surface1)

@@ -22,9 +22,11 @@ struct LibraryView: View {
     @State private var languageFilter = ""          // "" = all languages
     @State private var activeFilter: ActiveFilter = .all
     @State private var selectedTopic: Topic?
+    @State private var practiceTopic: Topic?
 
     @State private var showingPasteImport = false
     @State private var showingPDFImport = false
+    @State private var showingTutorFocus = false
     @State private var showingSettings = false
     @State private var phraseInEditor: Phrase?
     @State private var creatingPhrase = false
@@ -101,7 +103,7 @@ struct LibraryView: View {
                         managementList
                     }
                 } else {
-                    Color.clear
+                    libraryPlaceholder
                 }
             }
             .accessibilityIdentifier("library-root")
@@ -124,10 +126,18 @@ struct LibraryView: View {
             }
             .sheet(isPresented: $showingPasteImport) { PasteImportView() }
             .sheet(isPresented: $showingPDFImport) { PDFImportView() }
+            .sheet(isPresented: $showingTutorFocus) { TutorFocusView() }
             .sheet(isPresented: $showingSettings) { SettingsView() }
             .sheet(isPresented: $creatingPhrase) { PhraseEditorView(phrase: nil) }
             .sheet(item: $phraseInEditor) { phrase in PhraseEditorView(phrase: phrase) }
             .sheet(isPresented: $creatingTopic) { TopicEditorView(topic: nil) }
+            .fullScreenCover(item: $practiceTopic) { topic in
+                PracticeView(
+                    sessionTarget: min(10, max(1, topic.phrases?.count ?? 1)),
+                    isFocusedSession: true,
+                    scope: .topic(id: topic.persistentModelID)
+                )
+            }
             .alert("Änderung konnte nicht gespeichert werden", isPresented: Binding(
                 get: { saveErrorMessage != nil },
                 set: { if !$0 { saveErrorMessage = nil } }
@@ -179,7 +189,11 @@ struct LibraryView: View {
             }
             .task {
                 guard !contentReady else { return }
-                try? await Task.sleep(for: .milliseconds(80))
+                // The iOS 26 liquid-glass selection spring lasts longer than
+                // one frame. Let it finish before materialising SwiftData's
+                // relationship-heavy topic hierarchy, otherwise the spring
+                // visibly freezes in its enlarged pressed state.
+                try? await Task.sleep(for: .milliseconds(650))
                 guard !Task.isCancelled else { return }
                 contentReady = true
             }
@@ -208,36 +222,75 @@ struct LibraryView: View {
         .searchable(text: $searchText, prompt: "Themen & Phrasen suchen")
     }
 
+    private var libraryPlaceholder: some View {
+        ScrollView {
+            VStack(spacing: DS.space.lg) {
+                RoundedRectangle(cornerRadius: DS.radius.pill)
+                    .fill(DS.surface1)
+                    .frame(height: 44)
+                ForEach(0..<3, id: \.self) { index in
+                    VStack(alignment: .leading, spacing: DS.space.sm) {
+                        RoundedRectangle(cornerRadius: 4)
+                            .fill(DS.surface2)
+                            .frame(width: index == 0 ? 150 : 210, height: 18)
+                        RoundedRectangle(cornerRadius: DS.radius.md)
+                            .fill(DS.surface1)
+                            .frame(height: index == 0 ? 150 : 104)
+                    }
+                }
+            }
+            .padding(DS.space.md)
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Bibliothek wird geladen")
+        }
+        .background(DS.surface0)
+    }
+
     private var learningJourneys: some View {
-        List {
-            Section {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: DS.space.lg) {
+                tutorFocusCard
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Was willst du als Nächstes können?")
                         .font(.title3.weight(.bold))
                         .foregroundStyle(DS.textPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text("Wähle eine praktische Mission. CueFlow stellt die passenden Ausdrücke automatisch in deine Einheiten.")
                         .font(.subheadline)
                         .foregroundStyle(DS.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .padding(.vertical, DS.space.xs)
-            }
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            scenarioCollectionsSection
+                scenarioCollections
 
-            Section("Missionen") {
-                ForEach(learningTopics.prefix(16)) { topic in
-                    missionRow(topic)
-                }
-                if learningTopics.isEmpty {
-                    ContentUnavailableView(
-                        "Noch keine Missionen",
-                        systemImage: "books.vertical",
-                        description: Text("Inhalte kannst du unter Verwalten hinzufügen.")
-                    )
+                Text("Deine Themen")
+                    .font(.title3.weight(.bold))
+                    .foregroundStyle(DS.textPrimary)
+
+                LazyVStack(spacing: DS.space.sm) {
+                    ForEach(learningTopics.prefix(16)) { topic in
+                        missionRow(topic)
+                    }
+                    if learningTopics.isEmpty {
+                        ContentUnavailableView(
+                            "Noch keine Missionen",
+                            systemImage: "books.vertical",
+                            description: Text("Inhalte kannst du unter Verwalten hinzufügen.")
+                        )
+                    }
                 }
             }
+            .padding(.horizontal, DS.space.md)
+            .padding(.top, DS.space.sm)
+            .padding(.bottom, 120)
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
         }
-        .listStyle(.insetGrouped)
+        .background(DS.surface0)
     }
 
     private var activeLearningEvents: [LearningEvent] {
@@ -291,8 +344,103 @@ struct LibraryView: View {
         CurriculumPlanner.recommendation(from: curriculumProgress)?.id
     }
 
-    private var scenarioCollectionsSection: some View {
-        Section("Situationen") {
+    private var tutorFocusTopic: Topic? {
+        // Priority is the scheduler-level source of truth. Pick the most
+        // recently added lesson when several tutor imports are still active.
+        learningTopics
+            .filter { topic in (topic.phrases ?? []).contains { $0.isPriorityActive } }
+            .max { lhs, rhs in
+                let left = (lhs.phrases ?? []).map(\.createdAt).max() ?? .distantPast
+                let right = (rhs.phrases ?? []).map(\.createdAt).max() ?? .distantPast
+                return left < right
+            }
+    }
+
+    private var tutorFocusCard: some View {
+        VStack(alignment: .leading, spacing: DS.space.md) {
+            HStack(alignment: .top, spacing: DS.space.md) {
+                Image(systemName: "person.2.wave.2.fill")
+                    .font(.title2)
+                    .foregroundStyle(DS.onAccent)
+                    .frame(width: 48, height: 48)
+                    .background(DS.accent)
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("TUTOR-FOKUS")
+                        .font(.caption.weight(.bold))
+                        .tracking(1.1)
+                        .foregroundStyle(DS.accent)
+                    if let tutorFocusTopic {
+                        Text(tutorFocusTopic.name)
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(DS.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("\(tutorFocusTopic.phrases?.filter(\.isPriorityActive).count ?? 0) Ausdrücke aus deinem Unterricht werden bevorzugt.")
+                            .font(.subheadline)
+                            .foregroundStyle(DS.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text("Lerne passend zu deinem Unterricht")
+                            .font(.title3.weight(.bold))
+                            .foregroundStyle(DS.textPrimary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text("Füge z. B. „Jahreszeiten“ hinzu. Die Ausdrücke erscheinen 14 Tage lang bevorzugt.")
+                            .font(.subheadline)
+                            .foregroundStyle(DS.textSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .multilineTextAlignment(.leading)
+                .layoutPriority(1)
+                Spacer(minLength: 0)
+            }
+
+            HStack(spacing: DS.space.sm) {
+                if let tutorFocusTopic {
+                    Button {
+                        practiceTopic = tutorFocusTopic
+                    } label: {
+                        Label("Jetzt üben", systemImage: "play.fill")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(DS.accent)
+                    .accessibilityIdentifier("tutor-focus-practice")
+                }
+
+                if tutorFocusTopic == nil {
+                    Button {
+                        showingTutorFocus = true
+                    } label: {
+                        Label("Thema hinzufügen", systemImage: "plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(DS.accent)
+                    .accessibilityIdentifier("tutor-focus-add")
+                } else {
+                    Button {
+                        showingTutorFocus = true
+                    } label: {
+                        Label("Ergänzen", systemImage: "plus")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .tint(DS.accent)
+                    .accessibilityIdentifier("tutor-focus-add")
+                }
+            }
+        }
+        .dsCard(elevation: 1, padding: DS.space.md)
+    }
+
+    private var scenarioCollections: some View {
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            Text("Situationen")
+                .font(.headline)
+                .foregroundStyle(DS.textPrimary)
             NavigationLink {
                 SkillPathView()
             } label: {
@@ -307,7 +455,6 @@ struct LibraryView: View {
                 }
                 .padding(.vertical, DS.space.xs)
             }
-            .listRowInsets(EdgeInsets(top: 0, leading: DS.space.md, bottom: 0, trailing: 0))
         }
     }
 
@@ -435,7 +582,11 @@ struct LibraryView: View {
                     .font(.caption2)
                     .foregroundStyle(DS.textTertiary)
             }
-            .padding(.vertical, DS.space.xs)
+            .dsCard(elevation: 0, padding: DS.space.md)
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.radius.md)
+                    .stroke(topic.isActive ? DS.accent.opacity(0.22) : Color.clear, lineWidth: 1)
+            )
         }
         .buttonStyle(.plain)
         .accessibilityHint(topic.isActive ? "Öffnet diese Mission" : "Aktiviert und öffnet diese Mission")
@@ -701,6 +852,11 @@ struct LibraryView: View {
 
     private var addMenu: some View {
         Menu {
+            Button {
+                showingTutorFocus = true
+            } label: {
+                Label("Tutor-Fokus", systemImage: "person.2.wave.2")
+            }
             Button {
                 creatingPhrase = true
             } label: {

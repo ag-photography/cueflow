@@ -4,22 +4,6 @@
     "" : {
 
     },
-    "… und %lld weitere. Suche verfeinern." : {
-
-    },
-    "„%@\"" : {
-
-    },
-    "„%@“ · %@ s" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "„%1$@“ · %2$@ s"
-          }
-        }
-      }
-    },
     "%@  →  %@" : {
       "localizations" : {
         "de" : {
@@ -29,6 +13,9 @@
           }
         }
       }
+    },
+    "%@ deaktivieren" : {
+
     },
     "%@ · %lld von %lld kennengelernt" : {
       "localizations" : {
@@ -40,7 +27,7 @@
         }
       }
     },
-    "%@ deaktivieren" : {
+    "%@ → Deutsch" : {
 
     },
     "%@, %@" : {
@@ -92,12 +79,28 @@
         }
       }
     },
+    "%lld Ausdrücke aus deinem Unterricht werden bevorzugt." : {
+
+    },
     "%lld Ausdrücke · etwa %lld Min." : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld Ausdrücke · etwa %2$lld Min."
+          }
+        }
+      }
+    },
+    "%lld Tage Serie!" : {
+
+    },
+    "%lld Wiederholungen · %lld neue Ausdrücke" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld Wiederholungen · %2$lld neue Ausdrücke"
           }
         }
       }
@@ -130,9 +133,6 @@
     "%lld s" : {
 
     },
-    "%lld Tage Serie!" : {
-
-    },
     "%lld von %lld" : {
       "localizations" : {
         "de" : {
@@ -163,15 +163,18 @@
         }
       }
     },
-    "%lld Wiederholungen · %lld neue Ausdrücke" : {
+    "%lld von %lld Zeilen bereit" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "%1$lld Wiederholungen · %2$lld neue Ausdrücke"
+            "value" : "%1$lld von %2$lld Zeilen bereit"
           }
         }
       }
+    },
+    "%lld%%" : {
+
     },
     "%lld/%lld" : {
       "localizations" : {
@@ -186,16 +189,7 @@
     "%lld/5" : {
 
     },
-    "%lld%%" : {
-
-    },
     "%lld×" : {
-
-    },
-    "→" : {
-
-    },
-    "=" : {
 
     },
     "60 Sekunden. Sag die Übersetzung laut — so viele wie du schaffst. Es hört mit und springt von selbst weiter." : {
@@ -205,6 +199,12 @@
 
     },
     "60-Sekunden-Sprint" : {
+
+    },
+    "=" : {
+
+    },
+    "AKTUELLE MISSION" : {
 
     },
     "Abbrechen" : {
@@ -243,9 +243,6 @@
     "Aktiviert und öffnet diese Mission" : {
 
     },
-    "AKTUELLE MISSION" : {
-
-    },
     "Akzeptierte Alternative" : {
 
     },
@@ -255,13 +252,13 @@
     "Alle" : {
 
     },
+    "Alle Sprachen" : {
+
+    },
     "Alle aktivieren" : {
 
     },
     "Alle deaktivieren" : {
-
-    },
-    "Alle Sprachen" : {
 
     },
     "Alles erledigt!" : {
@@ -271,9 +268,6 @@
 
     },
     "Anderes Gespräch wählen" : {
-
-    },
-    "Änderung konnte nicht gespeichert werden" : {
 
     },
     "Anhören" : {
@@ -345,7 +339,13 @@
     "Bibliothek" : {
 
     },
+    "Bibliothek wird geladen" : {
+
+    },
     "Bibliothek öffnen" : {
+
+    },
+    "Bleibt Teil deines langfristigen Lernplans" : {
 
     },
     "C" : {
@@ -357,6 +357,9 @@
     "CueFlow Problembericht" : {
 
     },
+    "CueFlow aktiviert dieses Thema und bevorzugt seine Ausdrücke 14 Tage lang." : {
+
+    },
     "CueFlow-Einheit starten" : {
 
     },
@@ -364,6 +367,15 @@
 
     },
     "CueFlow-Hörstudio starten" : {
+
+    },
+    "DE" : {
+
+    },
+    "DEIN LERNWEG" : {
+
+    },
+    "DEINE MOMENTE" : {
 
     },
     "Danke, dass du hilfst, CueFlow zuverlässiger zu machen." : {
@@ -384,40 +396,37 @@
     "Daten" : {
 
     },
-    "DE" : {
-
-    },
     "Deaktivieren" : {
-
-    },
-    "Dein bereits gespeicherter Fortschritt bleibt erhalten." : {
-
-    },
-    "DEIN LERNWEG" : {
 
     },
     "Dein Weg ins Gespräch" : {
 
     },
-    "Deine Aufgabe" : {
+    "Dein bereits gespeicherter Fortschritt bleibt erhalten." : {
 
     },
-    "Deine erste Übung wird vorbereitet." : {
+    "Deine Aufgabe" : {
 
     },
     "Deine Lernreise wird vorbereitet …" : {
 
     },
-    "DEINE MOMENTE" : {
+    "Deine Sammlung" : {
 
     },
-    "Deine Sammlung" : {
+    "Deine Themen" : {
+
+    },
+    "Deine erste Übung wird vorbereitet." : {
 
     },
     "Details & Abgleich" : {
 
     },
     "Deutsch" : {
+
+    },
+    "Deutsch → %@" : {
 
     },
     "Diagnose" : {
@@ -435,19 +444,22 @@
     "Die Standardlänge gilt für neue Einheiten und kann auf Heute jederzeit geändert werden. Neue Karten pro Tag begrenzt nur die Einführung; Wiederholungen bleiben unbegrenzt. Klangeffekte respektieren den Stummmodus." : {
 
     },
-    "Die tägliche Erinnerung ist ein sanfter Impuls. Der Rückblick fasst sonntags echte Antworten, neue Ausdrücke und erfolgreiche Sprechabrufe zusammen — ohne Zielvorgabe oder Streak-Panik." : {
-
-    },
     "Die Zeit startet erst, wenn alles bereit ist." : {
 
     },
     "Die Zuordnung zu dieser Mission wird entfernt. Die enthaltenen Phrasen bleiben erhalten." : {
 
     },
+    "Die tägliche Erinnerung ist ein sanfter Impuls. Der Rückblick fasst sonntags echte Antworten, neue Ausdrücke und erfolgreiche Sprechabrufe zusammen — ohne Zielvorgabe oder Streak-Panik." : {
+
+    },
     "Diese Woche" : {
 
     },
     "Diese Woche schwer gefallen" : {
+
+    },
+    "Dieses Thema jetzt üben" : {
 
     },
     "Drei kleine Ziele" : {
@@ -462,6 +474,9 @@
           }
         }
       }
+    },
+    "Eine Vokabel oder Redewendung pro Zeile, getrennt mit =. Du kannst die Liste direkt aus den Notizen deines Tutors kopieren." : {
+
     },
     "Einfügen" : {
 
@@ -508,7 +523,13 @@
     "Entwicklermodus ausblenden" : {
 
     },
+    "Ergänzen" : {
+
+    },
     "Erinnerungen" : {
+
+    },
+    "Erscheint zuerst in fokussierten Einheiten" : {
 
     },
     "Erst verstehen, dann nachsprechen" : {
@@ -520,13 +541,13 @@
     "Etwa %lld Minuten" : {
 
     },
-    "Fähigkeiten, nächste Stufe und Wochenmissionen" : {
-
-    },
     "Fehlermeldung schließen" : {
 
     },
     "Fertig" : {
+
+    },
+    "Fokus erstellen" : {
 
     },
     "Format" : {
@@ -535,7 +556,19 @@
     "Fortschritt" : {
 
     },
+    "Fortschritt wird geladen" : {
+
+    },
+    "Fähigkeiten, nächste Stufe und Wochenmissionen" : {
+
+    },
+    "Füge z. B. „Jahreszeiten“ hinzu. Die Ausdrücke erscheinen 14 Tage lang bevorzugt." : {
+
+    },
     "Für die Offline-Optimierung der FSRS-Gewichte mit fsrs-optimizer (Python). Format: card_id, review_time, rating." : {
+
+    },
+    "GESPRÄCH" : {
 
     },
     "Geführte Rollenspiele funktionieren auf jedem Gerät. Du antwortest frei; Beispiele helfen nur, wenn du sie brauchst." : {
@@ -547,16 +580,10 @@
     "Geprüft" : {
 
     },
-    "gesagt" : {
-
-    },
     "Geschafft" : {
 
     },
     "Gespräch" : {
-
-    },
-    "GESPRÄCH" : {
 
     },
     "Gespräch gerade nicht verfügbar" : {
@@ -565,16 +592,13 @@
     "Gespräch geschafft" : {
 
     },
+    "HEUTE IM FLOW" : {
+
+    },
     "Heute" : {
 
     },
     "Heute gesprochen" : {
-
-    },
-    "HEUTE IM FLOW" : {
-
-    },
-    "heute laut gesprochen" : {
 
     },
     "Heute schon %lld Antworten produziert." : {
@@ -592,19 +616,16 @@
     "Hol die richtigen Wörter selbst hervor — und sprich sie aus. So wird aus Verstehen echte Gesprächsfähigkeit." : {
 
     },
+    "HÖRSTUDIO" : {
+
+    },
     "Hören → verstehen → nachsprechen" : {
 
     },
     "Hörstudio" : {
 
     },
-    "HÖRSTUDIO" : {
-
-    },
     "Hörstudio abschließen" : {
-
-    },
-    "hört zu" : {
 
     },
     "Ich höre zu … Tippe zum Stoppen" : {
@@ -661,22 +682,25 @@
     "Jetzt selbst sagen" : {
 
     },
+    "Jetzt üben" : {
+
+    },
+    "KI-Bewertungshilfe" : {
+
+    },
     "Karten" : {
 
     },
     "Kein Muss — du kannst das auch später machen. Zum Erkennen und Sprechen brauchst du keine Tastatur." : {
 
     },
+    "Keine Themen — füge eines hinzu." : {
+
+    },
     "Keine fälligen Karten und keine neuen in deinen aktiven Themen. Aktiviere ein Thema oder importiere neue Vokabeln in der Bibliothek." : {
 
     },
     "Keine passenden Phrasen." : {
-
-    },
-    "Keine Themen — füge eines hinzu." : {
-
-    },
-    "KI-Bewertungshilfe" : {
 
     },
     "Klangeffekte" : {
@@ -707,6 +731,9 @@
 
     },
     "Laut nachsprechen. Wird nicht bewertet – einfach sagen." : {
+
+    },
+    "Lerne passend zu deinem Unterricht" : {
 
     },
     "Lernen" : {
@@ -748,18 +775,6 @@
     "Nachsprechen" : {
 
     },
-    "Nächster Ausdruck" : {
-
-    },
-    "Nächster sinnvoller Fokus" : {
-
-    },
-    "Nächstes Ziel" : {
-
-    },
-    "Nächstes Ziel: %@" : {
-
-    },
     "Name" : {
 
     },
@@ -772,13 +787,13 @@
     "Neue Karten pro Tag" : {
 
     },
+    "Neue Phrase" : {
+
+    },
     "Neue manuelle und Tutor-Importe erscheinen automatisch hier." : {
 
     },
     "Neue manuelle und Tutor-Inhalte durchlaufen eine explizite Qualitätsprüfung." : {
-
-    },
-    "Neue Phrase" : {
 
     },
     "Neues Thema" : {
@@ -786,16 +801,6 @@
     },
     "Niveau" : {
 
-    },
-    "noch %lld %@ bis %lld" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "noch %1$lld %2$@ bis %3$lld"
-          }
-        }
-      }
     },
     "Noch einmal sagen" : {
 
@@ -827,49 +832,43 @@
     "Notizen" : {
 
     },
+    "Nächster Ausdruck" : {
+
+    },
+    "Nächster sinnvoller Fokus" : {
+
+    },
+    "Nächstes Ziel" : {
+
+    },
+    "Nächstes Ziel: %@" : {
+
+    },
+    "OK" : {
+
+    },
     "Oder Antwort eingeben" : {
 
     },
     "Offen · %lld" : {
 
     },
-    "Öffnet den Fortschritt" : {
-
-    },
-    "Öffnet die Auswahl der geführten Rollenspiele." : {
-
-    },
-    "Öffnet diese Mission" : {
-
-    },
-    "Öffnet direkt die empfohlene sprechorientierte Einheit." : {
-
-    },
-    "Öffnet ein privates Rollenspiel auf dem Gerät" : {
-
-    },
-    "Öffnet fünf kurze Hör- und Nachsprechübungen." : {
-
-    },
-    "OK" : {
-
-    },
     "Optional" : {
 
     },
-    "Pause" : {
+    "PDF Import" : {
 
     },
     "PDF auswählen" : {
-
-    },
-    "PDF Import" : {
 
     },
     "PDF importieren" : {
 
     },
     "PDF-Import konnte nicht gespeichert werden" : {
+
+    },
+    "Pause" : {
 
     },
     "Persönliche Bestzeit" : {
@@ -941,13 +940,10 @@
     "Schließen" : {
 
     },
-    "Schnell · etwa 3 Min." : {
-
-    },
     "Schnell sprechen, ohne SRS-Druck" : {
 
     },
-    "schon geübt" : {
+    "Schnell · etwa 3 Min." : {
 
     },
     "Serie: %lld Tage" : {
@@ -977,7 +973,7 @@
     "Situationen" : {
 
     },
-    "Später" : {
+    "So wirkt der Tutor-Fokus" : {
 
     },
     "Speichern" : {
@@ -1004,13 +1000,13 @@
     "Sprechtempo %@" : {
 
     },
+    "Sprich Rhythmus und Melodie nach" : {
+
+    },
     "Sprich den Satz" : {
 
     },
     "Sprich jetzt den Satz." : {
-
-    },
-    "Sprich Rhythmus und Melodie nach" : {
 
     },
     "Sprint" : {
@@ -1026,6 +1022,9 @@
 
     },
     "Sprint: noch keiner" : {
+
+    },
+    "Später" : {
 
     },
     "Stand" : {
@@ -1070,6 +1069,9 @@
     "Stoppen & Prüfen" : {
 
     },
+    "TUTOR-FOKUS" : {
+
+    },
     "Tab" : {
 
     },
@@ -1082,13 +1084,7 @@
     "Tagesziele geschafft" : {
 
     },
-    "Täglich · etwa 7 Min." : {
-
-    },
-    "Tägliche Erinnerung" : {
-
-    },
-    "Täglicher Rhythmus" : {
+    "Thema aus deinem Unterricht" : {
 
     },
     "Thema bearbeiten" : {
@@ -1112,10 +1108,10 @@
     "Themen" : {
 
     },
-    "Themen (%lld)" : {
+    "Themen & Phrasen suchen" : {
 
     },
-    "Themen & Phrasen suchen" : {
+    "Themen (%lld)" : {
 
     },
     "Tier-Verteilung" : {
@@ -1136,25 +1132,31 @@
     "Trennzeichen fehlt: %@" : {
 
     },
-    "Übe heute eine Runde, um die Serie zu starten." : {
+    "Tutor-Fokus" : {
 
     },
-    "Üben" : {
+    "Tutor-Fokus konnte nicht gespeichert werden" : {
 
     },
-    "Übersicht" : {
+    "Täglich · etwa 7 Min." : {
 
     },
-    "Überspringen" : {
+    "Tägliche Erinnerung" : {
 
     },
-    "Überspringt diese Karte ohne Punkt" : {
+    "Täglicher Rhythmus" : {
 
     },
     "Verwalten" : {
 
     },
+    "Vokabeln einfügen" : {
+
+    },
     "Vollständige Sicherung erstellen" : {
+
+    },
+    "Vorschau" : {
 
     },
     "Vorschau (%lld gültig / %lld)" : {
@@ -1166,12 +1168,6 @@
           }
         }
       }
-    },
-    "Wähle eine praktische Mission. CueFlow stellt die passenden Ausdrücke automatisch in deine Einheiten." : {
-
-    },
-    "Wähle eine Text-PDF von deinem Tutor. Die Vokabeln werden automatisch dem passenden Thema zugeordnet (Familie, Verben, Essen & Trinken, …) und die Themen aktiviert." : {
-
     },
     "War schwerer – früher zeigen" : {
 
@@ -1206,16 +1202,16 @@
     "Wo möchtest du sprechen?" : {
 
     },
+    "Wähle eine Text-PDF von deinem Tutor. Die Vokabeln werden automatisch dem passenden Thema zugeordnet (Familie, Verben, Essen & Trinken, …) und die Themen aktiviert." : {
+
+    },
+    "Wähle eine praktische Mission. CueFlow stellt die passenden Ausdrücke automatisch in deine Einheiten." : {
+
+    },
     "Wöchentlicher Rückblick" : {
 
     },
     "Wörter" : {
-
-    },
-    "z.B. Genitiv mit Verneinung" : {
-
-    },
-    "Zählt nicht in deinen Lernplan — reine Sprechübung." : {
 
     },
     "Zeigt die Erstkonfiguration erneut — Tagesziel, Starter-Themen und Tastatur-Anleitung." : {
@@ -1231,6 +1227,92 @@
 
     },
     "Zurücksetzen" : {
+
+    },
+    "Zählt nicht in deinen Lernplan — reine Sprechübung." : {
+
+    },
+    "gesagt" : {
+
+    },
+    "heute laut gesprochen" : {
+
+    },
+    "hört zu" : {
+
+    },
+    "noch %lld %@ bis %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "noch %1$lld %2$@ bis %3$lld"
+          }
+        }
+      }
+    },
+    "schon geübt" : {
+
+    },
+    "z. B. Jahreszeiten" : {
+
+    },
+    "z.B. Genitiv mit Verneinung" : {
+
+    },
+    "Änderung konnte nicht gespeichert werden" : {
+
+    },
+    "Öffnet den Fortschritt" : {
+
+    },
+    "Öffnet die Auswahl der geführten Rollenspiele." : {
+
+    },
+    "Öffnet diese Mission" : {
+
+    },
+    "Öffnet direkt die empfohlene sprechorientierte Einheit." : {
+
+    },
+    "Öffnet ein privates Rollenspiel auf dem Gerät" : {
+
+    },
+    "Öffnet fünf kurze Hör- und Nachsprechübungen." : {
+
+    },
+    "Übe heute eine Runde, um die Serie zu starten." : {
+
+    },
+    "Üben" : {
+
+    },
+    "Übersicht" : {
+
+    },
+    "Überspringen" : {
+
+    },
+    "Überspringt diese Karte ohne Punkt" : {
+
+    },
+    "„%@\"" : {
+
+    },
+    "„%@“ · %@ s" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "„%1$@“ · %2$@ s"
+          }
+        }
+      }
+    },
+    "… und %lld weitere. Suche verfeinern." : {
+
+    },
+    "→" : {
 
     }
   },

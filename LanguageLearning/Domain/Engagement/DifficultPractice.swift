@@ -1,8 +1,21 @@
 import Foundation
+import SwiftData
 
 enum PracticeScope: Equatable, Sendable {
     case recommended
     case difficultThisWeek
+    case topic(id: PersistentIdentifier)
+
+    func includes(_ card: StudyCard) -> Bool {
+        switch self {
+        case .recommended, .difficultThisWeek:
+            return true
+        case .topic(let id):
+            return card.phrase?.topics?.contains {
+                $0.persistentModelID == id
+            } ?? false
+        }
+    }
 }
 
 struct DifficultPractice {

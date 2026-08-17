@@ -12,6 +12,7 @@ CueFlow is a privacy-first native iOS language coach for German speakers learnin
 - a five-item listening and shadowing studio with normal/slow playback, bounded recording, and explicit non-diagnostic feedback;
 - six Russian and six Arabic guided situations, including longer shopping, hotel, and pharmacy drafts with authored response branches;
 - practical topic journeys, curated starters, tutor imports, phrase metadata, and an editorial/native-speaker review queue;
+- a Tutor Focus for pasting the vocabulary from the current lesson, prioritising it for two weeks, and practising that topic directly;
 - progress centered on successful recalls, spoken output, recovery, and fluency—not hearts or streak anxiety;
 - private CloudKit sync when available, reliable local fallback, complete JSON backup/restore, widgets, Siri/App Shortcuts, and MetricKit diagnostics;
 - VoiceOver-aware, Dynamic Type, dark mode, Reduce Motion, RTL Arabic, and adaptive iPhone/iPad layout.

@@ -110,6 +110,24 @@ struct SchedulerServiceTests {
         #expect(next === card)
     }
 
+    @Test func topicScopeOnlyIncludesCardsFromTheChosenTutorFocus() throws {
+        let ctx = try makeContext()
+        let seasons = Topic(name: "Jahreszeiten", isActive: true)
+        let travel = Topic(name: "Reisen", isActive: true)
+        let spring = Phrase(sourceText: "Frühling", targetText: "весна", topics: [seasons])
+        let train = Phrase(sourceText: "Zug", targetText: "поезд", topics: [travel])
+        let springCard = StudyCard(phrase: spring, direction: .typeDeToRu)
+        let trainCard = StudyCard(phrase: train, direction: .typeDeToRu)
+        ctx.insert(seasons); ctx.insert(travel)
+        ctx.insert(spring); ctx.insert(train)
+        ctx.insert(springCard); ctx.insert(trainCard)
+
+        let scope = PracticeScope.topic(id: seasons.persistentModelID)
+
+        #expect(scope.includes(springCard))
+        #expect(!scope.includes(trainCard))
+    }
+
     @Test func schedulerDoesNotSplitProgressByExerciseMode() throws {
         let ctx = try makeContext()
         let phrase = makePhrase(ctx, active: true)

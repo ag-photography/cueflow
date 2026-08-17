@@ -40,7 +40,7 @@ targets:
       properties:
         CFBundleDisplayName: CueFlow
         CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "44"
+        CFBundleVersion: "45"
         CFBundleURLTypes:
           - CFBundleURLName: com.alex.cueflow
             CFBundleURLSchemes:
@@ -117,7 +117,7 @@ targets:
       properties:
         CFBundleDisplayName: CueFlow
         CFBundleShortVersionString: "1.0"
-        CFBundleVersion: "44"
+        CFBundleVersion: "45"
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     settings:

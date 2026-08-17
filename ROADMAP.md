@@ -2,7 +2,7 @@
 
 **Updated:** 17 August 2026
 
-**Current train:** 1.0, build 44
+**Current train:** 1.0, build 45
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.
 
 ## Product promise
@@ -43,6 +43,7 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 
 - SwiftUI/SwiftData app with native three-tab navigation and adaptive content width;
 - immediate tab selection with process-local learning-data reuse, deferred dashboard materialization, and on-demand phrase search;
+- a first-class Tutor Focus that turns the current lesson into a two-week priority topic and supports immediate topic-scoped practice;
 - account-aware asynchronous SwiftData startup, private CloudKit sync when available, local fallback, and an in-memory recovery session if persistent storage cannot open;
 - versioned full JSON backup and idempotent restore, including settings, topics, phrases, schedule, and review history;
 - Home Screen and Lock Screen widgets with due count and `cueflow://practice` deep link, plus Siri/App Shortcuts for practice and conversations;

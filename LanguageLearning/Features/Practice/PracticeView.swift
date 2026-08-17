@@ -2437,7 +2437,15 @@ struct PracticeView: View {
         reviewModeOverride = nil
         lastSubmissionWasSpeech = false
         retryWasNeeded = false
-        let pool = scope == .difficultThisWeek ? difficultCards : cardsForActiveLanguage
+        let pool: [StudyCard]
+        switch scope {
+        case .difficultThisWeek:
+            pool = difficultCards
+        case .recommended:
+            pool = cardsForActiveLanguage
+        case .topic:
+            pool = cardsForActiveLanguage.filter(scope.includes)
+        }
         let next: StudyCard?
         if scope == .difficultThisWeek {
             next = pool.first { !reviewedCardIDs.contains(String(describing: $0.persistentModelID)) }
@@ -2498,7 +2506,7 @@ struct PracticeView: View {
     /// New cards still available to introduce in the current mode (active
     /// topics or priority/homework), regardless of the daily cap.
     private var availableNewCount: Int {
-        cardsForActiveLanguage.filter {
+        cardsForActiveLanguage.filter(scope.includes).filter {
             $0.state == .new
             && (($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false)
                 || ($0.phrase?.isPriorityActive ?? false))
