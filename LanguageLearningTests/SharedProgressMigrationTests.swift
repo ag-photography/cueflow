@@ -35,6 +35,16 @@ struct SharedProgressMigrationTests {
         #expect(gate.isBusy == false)
     }
 
+    @Test func lifecycleIdentityExpiresWhenSessionIsInvalidated() {
+        var gate = PracticeInteractionGate()
+        let initialLifecycle = gate.lifecycleID
+
+        #expect(gate.accepts(lifecycleID: initialLifecycle))
+        gate.invalidate()
+        #expect(gate.accepts(lifecycleID: initialLifecycle) == false)
+        #expect(gate.accepts(lifecycleID: gate.lifecycleID))
+    }
+
     @Test func supportedLanguagesComeFromReusablePackConfiguration() {
         #expect(LanguagePack.supported.map(\.code) == ["ru", "ar"])
         #expect(LanguagePack.configuration(for: "ru")?.ttsLocale == "ru-RU")

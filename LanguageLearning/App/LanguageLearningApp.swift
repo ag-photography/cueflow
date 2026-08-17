@@ -4,17 +4,18 @@ import SwiftData
 @main
 struct LanguageLearningApp: App {
     let container: ModelContainer
+    let storeRecoveryMessage: String?
 
     init() {
         do {
-            let schema = Schema(versionedSchema: SchemaV1.self)
-            let configuration = ModelConfiguration("LanguageLearning", schema: schema)
-            let container = try ModelContainer(
-                for: schema,
-                migrationPlan: LanguageLearningMigrationPlan.self,
-                configurations: configuration
-            )
-            self.container = container
+            #if DEBUG
+            let forceRecovery = ProcessInfo.processInfo.environment["CUEFLOW_FORCE_STORE_RECOVERY"] == "1"
+            #else
+            let forceRecovery = false
+            #endif
+            let bootstrap = try StoreBootstrap.make(forceRecovery: forceRecovery)
+            self.container = bootstrap.container
+            self.storeRecoveryMessage = bootstrap.recoveryMessage
 
             // Unit tests host this app to reach its internal types; skip the
             // (heavy, ~2000-phrase) seeding then so the test run stays fast and
@@ -23,7 +24,7 @@ struct LanguageLearningApp: App {
                 return
             }
 
-            let setupContext = ModelContext(container)
+            let setupContext = ModelContext(bootstrap.container)
             SeedData.seedIfNeeded(setupContext)
             // Migrate old "Wortliste A2/B1/B2" mega-topics into POS-split
             // topics (idempotent — no-op once migrated).
@@ -53,13 +54,16 @@ struct LanguageLearningApp: App {
             // when they update to the onboarding build is marked complete.
             SeedData.markExistingUsersOnboarded(setupContext)
         } catch {
-            fatalError("Failed to create ModelContainer: \(error)")
+            // SwiftUI cannot start without any model container. This is only
+            // reachable if both the persistent store and an isolated in-memory
+            // recovery store fail to initialise.
+            fatalError("Failed to create persistent and recovery stores: \(error)")
         }
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(storeRecoveryMessage: storeRecoveryMessage)
                 .modelContainer(container)
                 // Brand teal as the system tint so buttons, NavigationLinks,
                 // selection indicators and active-topic badges inherit it

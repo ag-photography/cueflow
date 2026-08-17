@@ -4,6 +4,11 @@ import SwiftData
 /// Root gate: onboarding first, then the native primary navigation.
 struct RootView: View {
     @Query private var settings: [AppSettings]
+    let storeRecoveryMessage: String?
+
+    init(storeRecoveryMessage: String? = nil) {
+        self.storeRecoveryMessage = storeRecoveryMessage
+    }
 
     private var hasOnboarded: Bool {
         #if DEBUG
@@ -13,16 +18,45 @@ struct RootView: View {
     }
 
     var body: some View {
-        Group {
-            if hasOnboarded {
-                MainTabView()
-                    .transition(.opacity)
-            } else {
-                OnboardingView()
-                    .transition(.opacity)
+        VStack(spacing: 0) {
+            if let storeRecoveryMessage {
+                storeRecoveryBanner(storeRecoveryMessage)
+            }
+
+            Group {
+                if hasOnboarded {
+                    MainTabView()
+                        .transition(.opacity)
+                } else {
+                    OnboardingView()
+                        .transition(.opacity)
+                }
             }
         }
         .animation(.easeInOut(duration: 0.4), value: hasOnboarded)
+    }
+
+    private func storeRecoveryBanner(_ message: String) -> some View {
+        HStack(alignment: .top, spacing: DS.space.sm) {
+            Image(systemName: "externaldrive.badge.exclamationmark")
+                .foregroundStyle(DS.gradeWrong)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Sichere Sitzung")
+                    .font(.subheadline.weight(.bold))
+                    .foregroundStyle(DS.textPrimary)
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, DS.space.md)
+        .padding(.vertical, DS.space.sm)
+        .background(.ultraThinMaterial)
+        .overlay(alignment: .bottom) { Divider() }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Sichere Sitzung. \(message)")
     }
 }
 

@@ -17,6 +17,26 @@
     "%@ deaktivieren" : {
 
     },
+    "%@ · %lld von %lld kennengelernt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$lld von %3$lld kennengelernt"
+          }
+        }
+      }
+    },
+    "%@, %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@"
+          }
+        }
+      }
+    },
     "%@, %lld Phrasen" : {
       "localizations" : {
         "de" : {
@@ -256,6 +276,9 @@
     "Abbrechen" : {
 
     },
+    "Abgeschlossen" : {
+
+    },
     "Abruf-Meilensteine" : {
 
     },
@@ -416,6 +439,9 @@
 
     },
     "Die Zuordnung zu dieser Mission wird entfernt. Die enthaltenen Phrasen bleiben erhalten." : {
+
+    },
+    "Drei kleine Ziele" : {
 
     },
     "Du hast heute %arg neue Karten gelernt. Es warten noch %arg in deinen aktiven Themen." : {
@@ -765,6 +791,12 @@
     "Serie: %lld Tage" : {
 
     },
+    "Sichere Sitzung" : {
+
+    },
+    "Sichere Sitzung. %@" : {
+
+    },
     "Sicherung" : {
 
     },
@@ -856,6 +888,9 @@
 
     },
     "Tagesziel erreicht" : {
+
+    },
+    "Tagesziele geschafft" : {
 
     },
     "Thema bearbeiten" : {
@@ -1056,6 +1091,16 @@
     },
     "„%@\"" : {
 
+    },
+    "„%@“ · %@ s" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "„%1$@“ · %2$@ s"
+          }
+        }
+      }
     },
     "„%arg\"" : {
 

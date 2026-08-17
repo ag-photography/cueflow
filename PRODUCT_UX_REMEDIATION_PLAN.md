@@ -8,7 +8,7 @@
 
 ## Implementation status — 17 August 2026
 
-Implemented on `codex/shared-learning-progress`:
+Implemented on `main`:
 
 - one shared FSRS schedule per phrase, with preserved historical reviews;
 - canonical Arabic script, RTL-aware presentation, and reusable language-pack configuration;
@@ -22,9 +22,10 @@ Implemented on `codex/shared-learning-progress`:
 - truthful daily quests, scenario collections, capability paths, personal records, and measured comeback moments;
 - tactile word-tile motion plus a restrained completion chime and success haptics;
 - immediate settings persistence, recoverable content saves, confirmed destructive actions, and a German-source String Catalog;
+- an in-memory safe-session fallback when the persistent store cannot open, replacing an ordinary launch crash with an explicit data-retention warning;
 - dark-mode design tokens, RTL handling, Dynamic Type support, VoiceOver labels, Reduce Motion handling, and iPad content-width adaptation.
 
-Automated validation currently passes 70 tests on an iPhone 17 / iOS 26.5 simulator. Before a public release, the remaining gates are physical-device interruption and microphone testing, accessibility testing across the full device matrix, native-speaker review of Russian and Arabic content, and a measured external beta. These are release-validation tasks rather than unfinished core product architecture.
+Automated validation currently passes 75 tests on an iPhone 17 / iOS 26.5 simulator. Before a public release, the remaining gates are physical-device interruption and microphone testing, accessibility testing across the full device matrix, native-speaker review of Russian and Arabic content, and a measured external beta. These are release-validation tasks rather than unfinished core product architecture.
 
 ## Executive assessment
 
@@ -102,11 +103,11 @@ The domain tests cover grading, matching, scheduling, classification, and exampl
 
 **Target:** state-machine, integration, migration, accessibility, and UI tests complement the domain suite.
 
-### 6. Builds are not fully reproducible
+### 6. Builds must remain reproducible
 
-The FSRS package follows its `main` branch.
+FSRS previously followed its `main` branch. It is now pinned to the exact validated revision `a4ebe3a1d167fea63b75770cddf781bb78a9f768`.
 
-**Target:** pin a tested release or exact revision and update it intentionally.
+**Ongoing rule:** update the exact revision intentionally and rerun the complete scheduling and migration suite.
 
 ## Target information architecture
 

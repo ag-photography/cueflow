@@ -19,6 +19,7 @@ struct PracticeInteractionGate {
     private(set) var activeOperation: Operation?
 
     var isBusy: Bool { activeOperation != nil }
+    var lifecycleID: UUID { generation }
 
     mutating func begin(_ operation: Operation) -> Token? {
         guard activeOperation == nil else { return nil }
@@ -28,6 +29,10 @@ struct PracticeInteractionGate {
 
     func accepts(_ token: Token) -> Bool {
         token.generation == generation && token.operation == activeOperation
+    }
+
+    func accepts(lifecycleID: UUID) -> Bool {
+        lifecycleID == generation
     }
 
     @discardableResult
@@ -1921,6 +1926,7 @@ struct PracticeView: View {
         gradingTask = nil
         choiceDelayTask = nil
         permissionTask = nil
+        silenceTask?.cancel()
         silenceTask = nil
         interactionGate.invalidate()
         choiceChosen = nil
@@ -1939,9 +1945,13 @@ struct PracticeView: View {
               !transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         else { return }
         let snapshot = transcription
+        let lifecycleID = interactionGate.lifecycleID
         silenceTask = Task { @MainActor in
             do { try await Task.sleep(for: .seconds(1.6)) } catch { return }
-            guard speech.isRecording, speech.transcription == snapshot else { return }
+            guard interactionGate.accepts(lifecycleID: lifecycleID),
+                  speech.isRecording,
+                  speech.transcription == snapshot
+            else { return }
             switch phase {
             case .prompt(_):
                 speech.stop()
