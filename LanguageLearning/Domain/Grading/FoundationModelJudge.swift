@@ -41,12 +41,18 @@ struct FoundationModelJudge {
         german: String,
         expected: String,
         actual: String,
+        targetLanguage: String = "Russian",
         timeoutMs: Int = 600
     ) async -> Verdict? {
         #if canImport(FoundationModels)
         guard SystemLanguageModel.default.isAvailable else { return nil }
 
-        let prompt = Self.buildPrompt(german: german, expected: expected, actual: actual)
+        let prompt = Self.buildPrompt(
+            german: german,
+            expected: expected,
+            actual: actual,
+            targetLanguage: targetLanguage
+        )
         let session = LanguageModelSession()
 
         return await withTaskGroup(of: Verdict?.self) { group in
@@ -72,12 +78,17 @@ struct FoundationModelJudge {
         #endif
     }
 
-    static func buildPrompt(german: String, expected: String, actual: String) -> String {
+    static func buildPrompt(
+        german: String,
+        expected: String,
+        actual: String,
+        targetLanguage: String = "Russian"
+    ) -> String {
         """
-        You are grading a learner translating from German into Russian.
+        You are grading a learner translating from German into \(targetLanguage).
 
         German source: "\(german)"
-        Reference Russian translation: "\(expected)"
+        Reference \(targetLanguage) translation: "\(expected)"
         Learner answered: "\(actual)"
 
         Decide how close the learner's answer is. Reply with EXACTLY one line, \

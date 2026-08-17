@@ -46,7 +46,8 @@ enum StoreBootstrap {
             let configuration = ModelConfiguration(
                 "LanguageLearningRecovery",
                 schema: schema,
-                isStoredInMemoryOnly: true
+                isStoredInMemoryOnly: true,
+                cloudKitDatabase: .none
             )
             return StoreBootstrapResult(
                 container: try ModelContainer(for: schema, configurations: configuration),
@@ -56,7 +57,11 @@ enum StoreBootstrap {
         }
 
         let localResolution = try resolve {
-            let configuration = ModelConfiguration("LanguageLearning", schema: schema)
+            let configuration = ModelConfiguration(
+                "LanguageLearning",
+                schema: schema,
+                cloudKitDatabase: .none
+            )
             return try ModelContainer(
                 for: schema,
                 migrationPlan: LanguageLearningMigrationPlan.self,
@@ -66,7 +71,8 @@ enum StoreBootstrap {
             let configuration = ModelConfiguration(
                 "LanguageLearningRecovery",
                 schema: schema,
-                isStoredInMemoryOnly: true
+                isStoredInMemoryOnly: true,
+                cloudKitDatabase: .none
             )
             return try ModelContainer(for: schema, configurations: configuration)
         }

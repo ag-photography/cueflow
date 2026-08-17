@@ -135,6 +135,11 @@ final class Phrase {
     /// Date after which the priority boost expires. nil = no boost. Defaults
     /// to ~2 weeks from import for lecture material.
     var priorityUntil: Date? = nil
+    var levelRaw: String = PhraseLevel.unspecified.rawValue
+    var registerRaw: String = PhraseRegister.neutral.rawValue
+    var dialect: String = ""
+    var qualityStatusRaw: String = PhraseQualityStatus.editorial.rawValue
+    var contentSourceRaw: String = PhraseContentSource.bundled.rawValue
 
     @Relationship(deleteRule: .cascade, inverse: \StudyCard.phrase)
     var cards: [StudyCard]? = []
@@ -169,6 +174,77 @@ final class Phrase {
         guard isPriority else { return false }
         if let until = priorityUntil, until < .now { return false }
         return true
+    }
+
+    var level: PhraseLevel {
+        get { PhraseLevel(rawValue: levelRaw) ?? .unspecified }
+        set { levelRaw = newValue.rawValue }
+    }
+
+    var phraseRegister: PhraseRegister {
+        get { PhraseRegister(rawValue: registerRaw) ?? .neutral }
+        set { registerRaw = newValue.rawValue }
+    }
+
+    var qualityStatus: PhraseQualityStatus {
+        get { PhraseQualityStatus(rawValue: qualityStatusRaw) ?? .unreviewed }
+        set { qualityStatusRaw = newValue.rawValue }
+    }
+
+    var contentSource: PhraseContentSource {
+        get { PhraseContentSource(rawValue: contentSourceRaw) ?? .bundled }
+        set { contentSourceRaw = newValue.rawValue }
+    }
+}
+
+enum PhraseLevel: String, CaseIterable, Codable, Sendable {
+    case unspecified = ""
+    case a1 = "A1", a2 = "A2", b1 = "B1", b2 = "B2", c1 = "C1"
+
+    var label: String { rawValue.isEmpty ? "Nicht angegeben" : rawValue }
+}
+
+enum PhraseRegister: String, CaseIterable, Codable, Sendable {
+    case neutral, formal, informal
+
+    var label: String {
+        switch self {
+        case .neutral: return "Neutral"
+        case .formal: return "Formell"
+        case .informal: return "Informell"
+        }
+    }
+}
+
+enum PhraseQualityStatus: String, CaseIterable, Codable, Sendable {
+    case unreviewed, editorial, nativeVerified
+
+    var label: String {
+        switch self {
+        case .unreviewed: return "Noch nicht geprüft"
+        case .editorial: return "Redaktionell geprüft"
+        case .nativeVerified: return "Von Muttersprachler:in geprüft"
+        }
+    }
+
+    var trustRank: Int {
+        switch self {
+        case .unreviewed: return 0
+        case .editorial: return 1
+        case .nativeVerified: return 2
+        }
+    }
+}
+
+enum PhraseContentSource: String, Codable, Sendable {
+    case bundled, manual, tutorImport
+
+    var provenanceRank: Int {
+        switch self {
+        case .manual: return 0
+        case .tutorImport: return 1
+        case .bundled: return 2
+        }
     }
 }
 

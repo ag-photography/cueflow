@@ -170,6 +170,16 @@
     "%lld" : {
 
     },
+    "%lld %@ gezielt festigen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld %2$@ gezielt festigen"
+          }
+        }
+      }
+    },
     "%lld Ausdrücke · etwa %lld Min." : {
       "localizations" : {
         "de" : {
@@ -327,6 +337,9 @@
     "Alles erledigt!" : {
 
     },
+    "Alles geprüft" : {
+
+    },
     "Anhören" : {
 
     },
@@ -339,7 +352,16 @@
     "Antwort gemerkt: " : {
 
     },
+    "Antwort senden" : {
+
+    },
+    "Antwort sprechen" : {
+
+    },
     "Antwort vorlesen" : {
+
+    },
+    "Antwort wird formuliert …" : {
 
     },
     "Antwort: %@" : {
@@ -399,10 +421,16 @@
     "CueFlow" : {
 
     },
+    "CueFlow Problembericht" : {
+
+    },
     "DE" : {
 
     },
     "DEINE MOMENTE" : {
+
+    },
+    "Danke, dass du hilfst, CueFlow zuverlässiger zu machen." : {
 
     },
     "Das Tageslimit kannst du in den Einstellungen ändern (Üben → Neue Karten pro Tag)." : {
@@ -438,16 +466,28 @@
     "Diagnose" : {
 
     },
+    "Dialekt oder Region (optional)" : {
+
+    },
     "Die JSON-Datei enthält Sprachen, Themen, Phrasen, Lernpläne, Reviews und Einstellungen. Wiederherstellen führt Daten sicher zusammen und erzeugt keine doppelten Reviews." : {
 
     },
     "Die Phrase und ihr gesamter Lernfortschritt werden gelöscht. Das lässt sich nicht rückgängig machen." : {
 
     },
+    "Die Standardlänge gilt für neue Einheiten und kann auf Heute jederzeit geändert werden. Neue Karten pro Tag begrenzt nur die Einführung; Wiederholungen bleiben unbegrenzt. Klangeffekte respektieren den Stummmodus." : {
+
+    },
     "Die Zeit startet erst, wenn alles bereit ist." : {
 
     },
     "Die Zuordnung zu dieser Mission wird entfernt. Die enthaltenen Phrasen bleiben erhalten." : {
+
+    },
+    "Die tägliche Erinnerung ist ein sanfter Impuls. Der Rückblick fasst sonntags echte Antworten, neue Ausdrücke und erfolgreiche Sprechabrufe zusammen — ohne Zielvorgabe oder Streak-Panik." : {
+
+    },
+    "Diese Woche schwer gefallen" : {
 
     },
     "Drei kleine Ziele" : {
@@ -554,10 +594,25 @@
     "Für die Offline-Optimierung der FSRS-Gewichte mit fsrs-optimizer (Python). Format: card_id, review_time, rating." : {
 
     },
+    "GESPRÄCH" : {
+
+    },
     "Gehört: %@" : {
 
     },
+    "Geprüft" : {
+
+    },
     "Geschafft" : {
+
+    },
+    "Gespräch" : {
+
+    },
+    "Gespräch benötigt Apple Intelligence auf einem unterstützten Gerät. Alle regulären Übungen bleiben verfügbar." : {
+
+    },
+    "Gespräch gerade nicht verfügbar" : {
 
     },
     "HEUTE IM FLOW" : {
@@ -581,6 +636,9 @@
     "Hol die richtigen Wörter selbst hervor — und sprich sie aus. So wird aus Verstehen echte Gesprächsfähigkeit." : {
 
     },
+    "Ich höre zu … Tippe zum Stoppen" : {
+
+    },
     "Ich kann gerade nicht sprechen" : {
 
     },
@@ -588,6 +646,9 @@
 
     },
     "Ich weiß es nicht" : {
+
+    },
+    "Im echten Kontext sprechen" : {
 
     },
     "Import konnte nicht gespeichert werden" : {
@@ -605,7 +666,16 @@
     "Inhalte kannst du unter Verwalten hinzufügen." : {
 
     },
+    "Inhalte prüfen" : {
+
+    },
     "Inhalte werden vorbereitet …" : {
+
+    },
+    "Inhaltsprüfung" : {
+
+    },
+    "Intensiv · etwa 15 Min." : {
 
     },
     "Jetzt du – sprich den Satz" : {
@@ -636,6 +706,12 @@
 
     },
     "Konnte ich nicht" : {
+
+    },
+    "Kurze Antworten · privat auf dem Gerät · ohne Bewertung" : {
+
+    },
+    "Kurzes Rollenspiel mit deinen aktuellen Ausdrücken" : {
 
     },
     "Laut nachsprechen. Wird nicht bewertet – einfach sagen." : {
@@ -674,6 +750,9 @@
     "Name" : {
 
     },
+    "Native" : {
+
+    },
     "Neue Bestleistung!" : {
 
     },
@@ -689,7 +768,16 @@
     "Neue Phrase" : {
 
     },
+    "Neue manuelle und Tutor-Importe erscheinen automatisch hier." : {
+
+    },
+    "Neue manuelle und Tutor-Inhalte durchlaufen eine explizite Qualitätsprüfung." : {
+
+    },
     "Neues Thema" : {
+
+    },
+    "Niveau" : {
 
     },
     "Noch keine Missionen" : {
@@ -720,6 +808,12 @@
 
     },
     "OK" : {
+
+    },
+    "Oder Antwort eingeben" : {
+
+    },
+    "Offen · %lld" : {
 
     },
     "Optional" : {
@@ -776,10 +870,22 @@
     "Priorität" : {
 
     },
+    "Problem melden" : {
+
+    },
+    "Prüfe Zieltext, Register, Dialekt und zulässige Varianten. Der Status beschreibt die tatsächliche Prüfung — nicht den Lernfortschritt." : {
+
+    },
     "Prüfen" : {
 
     },
     "Quelltext" : {
+
+    },
+    "Redaktionell" : {
+
+    },
+    "Register" : {
 
     },
     "Reihenfolge" : {
@@ -794,7 +900,13 @@
     "Satz vorlesen" : {
 
     },
+    "Schließen" : {
+
+    },
     "Schnell sprechen, ohne SRS-Druck" : {
+
+    },
+    "Schnell · etwa 3 Min." : {
 
     },
     "Serie: %arg Tage" : {
@@ -831,6 +943,9 @@
 
     },
     "Sprache & Inhalte" : {
+
+    },
+    "Sprachgebrauch" : {
 
     },
     "Sprechen ist gerade nicht verfügbar. Du kannst trotzdem fortfahren und später erneut probieren." : {
@@ -875,6 +990,9 @@
     "Stand" : {
 
     },
+    "Standardlänge" : {
+
+    },
     "Stapel-Import" : {
 
     },
@@ -887,10 +1005,16 @@
     "Starten" : {
 
     },
+    "Startet eine Einheit nur mit kürzlich schwierigen Ausdrücken" : {
+
+    },
     "Startthemen" : {
 
     },
     "Status" : {
+
+    },
+    "Status konnte nicht gespeichert werden" : {
 
     },
     "Stoppen" : {
@@ -962,6 +1086,9 @@
     "Trennzeichen fehlt: %arg" : {
 
     },
+    "Täglich · etwa 7 Min." : {
+
+    },
     "Tägliche Erinnerung" : {
 
     },
@@ -1027,6 +1154,9 @@
     "Wähle eine praktische Mission. CueFlow stellt die passenden Ausdrücke automatisch in deine Einheiten." : {
 
     },
+    "Wöchentlicher Rückblick" : {
+
+    },
     "Wörter" : {
 
     },
@@ -1090,6 +1220,9 @@
 
     },
     "Öffnet diese Mission" : {
+
+    },
+    "Öffnet ein privates Rollenspiel auf dem Gerät" : {
 
     },
     "Übe heute eine Runde, um die Serie zu starten." : {

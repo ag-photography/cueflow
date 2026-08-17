@@ -9,6 +9,7 @@ struct SettingsView: View {
     @Query private var settings: [AppSettings]
     @Query private var topics: [Topic]
     @Query private var phrases: [Phrase]
+    @Query private var reviews: [Review]
 
     @Query(sort: \Language.code) private var languages: [Language]
 
@@ -26,6 +27,8 @@ struct SettingsView: View {
     @State private var didHydrate = false
     @State private var saveErrorMessage: String?
     @AppStorage("soundEffectsEnabled") private var soundEffectsEnabled = true
+    @AppStorage("preferredSessionTarget") private var preferredSessionTarget = 10
+    @AppStorage("weeklyRecapEnabled") private var weeklyRecapEnabled = false
     @StateObject private var cloudStatus = CloudSyncStatusService()
 
     private static var defaultReminderTime: Date {
@@ -64,6 +67,7 @@ struct SettingsView: View {
                         }
                     }
                     .listRowBackground(DS.accentSoft)
+                    .accessibilityIdentifier("active-language-picker")
 
                     Picker("Transliteration", selection: $transliterationVisible) {
                         ForEach(TransliterationMode.allCases, id: \.self) { mode in
@@ -79,6 +83,11 @@ struct SettingsView: View {
 
                 // MARK: Üben
                 Section {
+                    Picker("Standardlänge", selection: $preferredSessionTarget) {
+                        Text("Schnell · etwa 3 Min.").tag(5)
+                        Text("Täglich · etwa 7 Min.").tag(10)
+                        Text("Intensiv · etwa 15 Min.").tag(20)
+                    }
                     Stepper(value: $dailyNewLimit, in: 0...50) {
                         HStack {
                             Text("Neue Karten pro Tag")
@@ -93,7 +102,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Üben")
                 } footer: {
-                    Text("Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Abruf-Meilensteine würdigen echte Serien selbständig produzierter Antworten. Klangeffekte respektieren den Stummmodus.")
+                    Text("Die Standardlänge gilt für neue Einheiten und kann auf Heute jederzeit geändert werden. Neue Karten pro Tag begrenzt nur die Einführung; Wiederholungen bleiben unbegrenzt. Klangeffekte respektieren den Stummmodus.")
                 }
                 .listRowBackground(DS.surface1)
 
@@ -121,6 +130,10 @@ struct SettingsView: View {
                             }
                         }
                     }
+                    Toggle("Wöchentlicher Rückblick", isOn: $weeklyRecapEnabled)
+                        .onChange(of: weeklyRecapEnabled) { _, enabled in
+                            handleWeeklyRecapToggle(enabled)
+                        }
                     if reminderPermissionDenied {
                         Text("Benachrichtigungen sind in den iOS-Einstellungen deaktiviert. Aktiviere sie dort, um die Erinnerung zu nutzen.")
                             .font(.caption)
@@ -129,7 +142,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Erinnerungen")
                 } footer: {
-                    Text("Eine sanfte tägliche Erinnerung zur gewählten Zeit. Keine Streak-Panik, keine FOMO. Jederzeit ausschaltbar.")
+                    Text("Die tägliche Erinnerung ist ein sanfter Impuls. Der Rückblick fasst sonntags echte Antworten, neue Ausdrücke und erfolgreiche Sprechabrufe zusammen — ohne Zielvorgabe oder Streak-Panik.")
                 }
                 .listRowBackground(DS.surface1)
 
@@ -176,6 +189,13 @@ struct SettingsView: View {
                         }
                     } label: {
                         Label("Einführung wiederholen", systemImage: "sparkles")
+                    }
+                    ShareLink(
+                        item: MetricsDiagnosticsService.shared.feedbackReport(storageMode: storageMode),
+                        subject: Text("CueFlow Problembericht"),
+                        message: Text("Danke, dass du hilfst, CueFlow zuverlässiger zu machen.")
+                    ) {
+                        Label("Problem melden", systemImage: "exclamationmark.bubble")
                     }
                 } footer: {
                     versionFooter
@@ -260,6 +280,27 @@ struct SettingsView: View {
         } else {
             NotificationService.shared.cancelDailyReminder()
             saveReminderEnabled(false)
+        }
+    }
+
+    private func handleWeeklyRecapToggle(_ enabled: Bool) {
+        guard enabled else {
+            NotificationService.shared.cancelWeeklyRecap()
+            return
+        }
+        Task {
+            let authorized = await NotificationService.shared.requestAuthorization()
+            guard authorized else {
+                weeklyRecapEnabled = false
+                reminderPermissionDenied = true
+                return
+            }
+            reminderPermissionDenied = false
+            let summary = WeeklyRecap.summary(
+                reviews: reviews,
+                languageCode: activeLanguageCode
+            )
+            await NotificationService.shared.scheduleWeeklyRecap(summary)
         }
     }
 

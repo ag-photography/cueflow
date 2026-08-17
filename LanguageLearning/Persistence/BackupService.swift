@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 struct CueFlowBackup: Codable {
-    static let currentVersion = 2
+    static let currentVersion = 3
 
     let formatVersion: Int
     let exportedAt: Double
@@ -40,6 +40,11 @@ struct CueFlowBackup: Codable {
         let createdAt: Double
         let isPriority: Bool
         let priorityUntil: Double?
+        let level: String?
+        let phraseRegister: String?
+        let dialect: String?
+        let qualityStatus: String?
+        let contentSource: String?
         let schedule: ScheduleRecord?
         let reviews: [ReviewRecord]
     }
@@ -147,6 +152,11 @@ enum BackupService {
                     createdAt: phrase.createdAt.timeIntervalSince1970,
                     isPriority: phrase.isPriority,
                     priorityUntil: phrase.priorityUntil?.timeIntervalSince1970,
+                    level: phrase.levelRaw,
+                    phraseRegister: phrase.registerRaw,
+                    dialect: phrase.dialect,
+                    qualityStatus: phrase.qualityStatusRaw,
+                    contentSource: phrase.contentSourceRaw,
                     schedule: card.map {
                         .init(
                             direction: $0.directionRaw,
@@ -263,8 +273,10 @@ enum BackupService {
             guard let language = languages[record.languageCode] else { continue }
             let key = phraseKey(code: record.languageCode, source: record.sourceText, target: record.targetText)
             let phrase: Phrase
+            let isNewPhrase: Bool
             if let existing = phrases[key] {
                 phrase = existing
+                isNewPhrase = false
                 summary.phrasesMerged += 1
             } else {
                 phrase = Phrase(
@@ -278,9 +290,10 @@ enum BackupService {
                 context.insert(phrase)
                 context.insert(StudyCard(phrase: phrase))
                 phrases[key] = phrase
+                isNewPhrase = true
                 summary.phrasesAdded += 1
             }
-            merge(record, into: phrase, topics: topics)
+            merge(record, into: phrase, topics: topics, isNewPhrase: isNewPhrase)
             let card = phrase.cards?.first ?? {
                 let card = StudyCard(phrase: phrase)
                 context.insert(card)
@@ -338,7 +351,8 @@ enum BackupService {
     private static func merge(
         _ record: CueFlowBackup.PhraseRecord,
         into phrase: Phrase,
-        topics: [String: Topic]
+        topics: [String: Topic],
+        isNewPhrase: Bool
     ) {
         if phrase.transliteration == nil { phrase.transliteration = record.transliteration }
         if phrase.notes == nil { phrase.notes = record.notes }
@@ -353,6 +367,19 @@ enum BackupService {
         phrase.isPriority = phrase.isPriority || record.isPriority
         phrase.priorityUntil = [phrase.priorityUntil, record.priorityUntil.map(Date.init(timeIntervalSince1970:))]
             .compactMap { $0 }.max()
+        if let level = record.level { phrase.levelRaw = level }
+        if let phraseRegister = record.phraseRegister { phrase.registerRaw = phraseRegister }
+        if let dialect = record.dialect, phrase.dialect.isEmpty { phrase.dialect = dialect }
+        if let rawStatus = record.qualityStatus,
+           let incomingStatus = PhraseQualityStatus(rawValue: rawStatus),
+           isNewPhrase || incomingStatus.trustRank > phrase.qualityStatus.trustRank {
+            phrase.qualityStatus = incomingStatus
+        }
+        if let rawSource = record.contentSource,
+           let incomingSource = PhraseContentSource(rawValue: rawSource),
+           isNewPhrase || incomingSource.provenanceRank > phrase.contentSource.provenanceRank {
+            phrase.contentSource = incomingSource
+        }
         let restoredTopics = record.topicNames.compactMap {
             topics[topicKey(code: record.languageCode, name: $0)]
         }
@@ -440,6 +467,11 @@ enum BackupService {
                     createdAt: phrase.createdAt,
                     isPriority: false,
                     priorityUntil: nil,
+                    level: nil,
+                    phraseRegister: nil,
+                    dialect: nil,
+                    qualityStatus: nil,
+                    contentSource: nil,
                     schedule: nil,
                     reviews: (reviewsByTarget[targetKey] ?? []).map {
                         .init(

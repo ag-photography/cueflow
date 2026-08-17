@@ -223,6 +223,16 @@ struct TopicDetailView: View {
                     .font(.subheadline)
                     .foregroundStyle(DS.textSecondary)
                     .lineLimit(1)
+                HStack(spacing: 5) {
+                    if phrase.level != .unspecified { metadataChip(phrase.level.label) }
+                    if phrase.phraseRegister != .neutral { metadataChip(phrase.phraseRegister.label) }
+                    if !phrase.dialect.isEmpty { metadataChip(phrase.dialect) }
+                    if phrase.qualityStatus == .nativeVerified {
+                        Label("Geprüft", systemImage: "checkmark.seal.fill")
+                            .font(.caption2)
+                            .foregroundStyle(DS.accent)
+                    }
+                }
             }
             Spacer(minLength: 0)
             if phrase.isPriorityActive {
@@ -237,5 +247,15 @@ struct TopicDetailView: View {
         }
         .padding(.vertical, DS.space.sm)
         .contentShape(Rectangle())
+    }
+
+    private func metadataChip(_ label: String) -> some View {
+        Text(label)
+            .font(.caption2.weight(.medium))
+            .foregroundStyle(DS.textSecondary)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(DS.surface2)
+            .clipShape(Capsule())
     }
 }

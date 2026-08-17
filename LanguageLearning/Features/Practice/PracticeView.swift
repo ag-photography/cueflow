@@ -109,6 +109,7 @@ struct PracticeView: View {
     @State private var persistenceErrorMessage: String?
     @State private var isSessionPaused = false
     @State private var showingExitConfirmation = false
+    @State private var reviewedCardIDs: Set<String> = []
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
     @Namespace private var tileNamespace
@@ -118,6 +119,7 @@ struct PracticeView: View {
 
     let sessionTarget: Int
     let isFocusedSession: Bool
+    let scope: PracticeScope
     private let transliterationGracePeriod = 200
     private let speakHesitantStartDelaySec: Double = 4.0
     private let speakHesitantPauseSec: Double = 1.5
@@ -126,9 +128,14 @@ struct PracticeView: View {
     private let scheduler = SchedulerService()
     private let tts = TTSService.shared
 
-    init(sessionTarget: Int = 10, isFocusedSession: Bool = false) {
+    init(
+        sessionTarget: Int = 10,
+        isFocusedSession: Bool = false,
+        scope: PracticeScope = .recommended
+    ) {
         self.sessionTarget = max(1, sessionTarget)
         self.isFocusedSession = isFocusedSession
+        self.scope = scope
     }
 
     enum Phase {
@@ -164,6 +171,14 @@ struct PracticeView: View {
     private var cardsForActiveLanguage: [StudyCard] {
         guard let code = activeLanguage?.code else { return cards }
         return cards.filter { $0.phrase?.language?.code == code }
+    }
+
+    private var difficultCards: [StudyCard] {
+        DifficultPractice.candidates(
+            cards: cards,
+            reviews: reviews,
+            languageCode: activeLanguage?.code ?? "ru"
+        )
     }
 
     // MARK: - Body
@@ -281,6 +296,7 @@ struct PracticeView: View {
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Einheit schließen")
+            .accessibilityIdentifier("practice-close")
 
             Text("\(min(sessionCount + 1, sessionTarget)) von \(sessionTarget)")
                 .font(.subheadline.weight(.semibold).monospacedDigit())
@@ -736,6 +752,7 @@ struct PracticeView: View {
         }
 
         promptStart = nil
+        reviewedCardIDs.insert(String(describing: card.persistentModelID))
         sessionCount += 1
         if rating >= 3 { sessionCorrect += 1 }
 
@@ -920,6 +937,7 @@ struct PracticeView: View {
 
         choiceChosen = nil
         promptStart = nil
+        reviewedCardIDs.insert(String(describing: card.persistentModelID))
         sessionCount += 1
         if correct {
             sessionCorrect += 1
@@ -2037,7 +2055,8 @@ struct PracticeView: View {
                 actual: userAnswer,
                 acceptedAlternatives: alternatives,
                 responseTimeMs: elapsedMs,
-                useJudge: useJudge
+                useJudge: useJudge,
+                targetLanguage: card.phrase?.language?.germanLabel ?? "Russisch"
             )
             guard !Task.isCancelled,
                   interactionGate.accepts(token),
@@ -2164,6 +2183,7 @@ struct PracticeView: View {
         input = ""
         speech.clearTranscription()
         promptStart = nil
+        reviewedCardIDs.insert(String(describing: card.persistentModelID))
         sessionCount += 1
         if rating >= 3 {
             sessionCorrect += 1
@@ -2321,6 +2341,7 @@ struct PracticeView: View {
         sessionNeedsWork = 0
         sessionNewRecord = nil
         sessionCompletedMission = nil
+        reviewedCardIDs = []
     }
 
     private func advance() {
@@ -2331,8 +2352,14 @@ struct PracticeView: View {
         choiceChosen = nil
         selectedTileIDs = []
         reviewModeOverride = nil
-        let pool = cardsForActiveLanguage   // compute the language scan once
-        if let next = scheduler.nextCard(from: pool, reviews: reviews, dailyNewLimit: effectiveDailyLimit) {
+        let pool = scope == .difficultThisWeek ? difficultCards : cardsForActiveLanguage
+        let next: StudyCard?
+        if scope == .difficultThisWeek {
+            next = pool.first { !reviewedCardIDs.contains(String(describing: $0.persistentModelID)) }
+        } else {
+            next = scheduler.nextCard(from: pool, reviews: reviews, dailyNewLimit: effectiveDailyLimit)
+        }
+        if let next {
             if presentAsTiles(next) {
                 tileOptions = makeTileOptions(for: next)
             } else if presentAsChoice(next) {
@@ -2340,7 +2367,11 @@ struct PracticeView: View {
             }
             phase = .prompt(next)
         } else {
-            phase = .empty
+            if scope == .difficultThisWeek, sessionCount > 0 {
+                showingSessionSummary = true
+            } else {
+                phase = .empty
+            }
         }
     }
 

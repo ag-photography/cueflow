@@ -102,10 +102,13 @@ private struct TodayView: View {
 
     @AppStorage("sprintBest") private var sprintBest = 0
     @AppStorage("lastQuestCelebrationDay") private var lastQuestCelebrationDay = -1
+    @AppStorage("preferredSessionTarget") private var sessionTarget = 10
+    @AppStorage("weeklyRecapEnabled") private var weeklyRecapEnabled = false
     @State private var showingPractice = false
     @State private var showingSprint = false
+    @State private var showingConversation = false
     @State private var showingSettings = false
-    @State private var sessionTarget = 10
+    @State private var practiceScope: PracticeScope = .recommended
 
     private var activeLanguageCode: String { settings.first?.activeLanguageCode ?? "ru" }
     private var activeCards: [StudyCard] {
@@ -150,6 +153,13 @@ private struct TodayView: View {
     private var todayIndex: Int {
         Int(Calendar.current.startOfDay(for: .now).timeIntervalSinceReferenceDate / 86_400)
     }
+    private var difficultCards: [StudyCard] {
+        DifficultPractice.candidates(
+            cards: cards,
+            reviews: reviews,
+            languageCode: activeLanguageCode
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -157,8 +167,10 @@ private struct TodayView: View {
                 VStack(alignment: .leading, spacing: DS.space.lg) {
                     greeting
                     recommendedSession
+                    if !difficultCards.isEmpty { difficultPracticeCard }
                     dailyQuestCard
                     sprintCard
+                    conversationCard
                     if fastestRecall != nil || recentImprovement != nil { achievementCard }
                     missionCard
                 }
@@ -175,15 +187,71 @@ private struct TodayView: View {
                         Image(systemName: "person.crop.circle")
                     }
                     .accessibilityLabel("Einstellungen")
+                    .accessibilityIdentifier("today-settings")
                 }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
             .fullScreenCover(isPresented: $showingPractice) {
-                PracticeView(sessionTarget: sessionTarget, isFocusedSession: true)
+                PracticeView(
+                    sessionTarget: min(sessionTarget, practiceScope == .difficultThisWeek ? difficultCards.count : sessionTarget),
+                    isFocusedSession: true,
+                    scope: practiceScope
+                )
             }
             .fullScreenCover(isPresented: $showingSprint) { SprintView() }
-            .onAppear { celebrateCompletedQuestsIfNeeded() }
+            .fullScreenCover(isPresented: $showingConversation) { ConversationView() }
+            .onAppear {
+                celebrateCompletedQuestsIfNeeded()
+                WidgetSnapshotService.refresh(cards: cards, settings: settings)
+            }
+            .task { await refreshWeeklyRecap() }
+            .onChange(of: reviews.count) { _, _ in
+                WidgetSnapshotService.refresh(cards: cards, settings: settings)
+            }
+            .onChange(of: activeLanguageCode) { _, _ in
+                WidgetSnapshotService.refresh(cards: cards, settings: settings)
+            }
+            .onOpenURL { url in
+                guard url.scheme == "cueflow", url.host == "practice" else { return }
+                practiceScope = .recommended
+                showingPractice = true
+            }
         }
+    }
+
+    private var conversationCard: some View {
+        Button { showingConversation = true } label: {
+            HStack(spacing: DS.space.md) {
+                Image(systemName: "person.2.wave.2.fill")
+                    .font(.title2)
+                    .foregroundStyle(DS.accent)
+                    .frame(width: 54, height: 54)
+                    .background(DS.accentSoft)
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("GESPRÄCH")
+                        .font(.caption2.weight(.bold))
+                        .tracking(0.7)
+                        .foregroundStyle(DS.accent)
+                    Text("Im echten Kontext sprechen")
+                        .font(.headline)
+                        .foregroundStyle(DS.textPrimary)
+                    Text("Kurzes Rollenspiel mit deinen aktuellen Ausdrücken")
+                        .font(.caption)
+                        .foregroundStyle(DS.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(DS.textTertiary)
+            }
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
+            .modifier(DS.Elevation(level: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("conversation-start")
+        .accessibilityHint("Öffnet ein privates Rollenspiel auf dem Gerät")
     }
 
     private var dailyQuestCard: some View {
@@ -293,6 +361,15 @@ private struct TodayView: View {
         CompletionFeedbackService.shared.playCompletion()
     }
 
+    private func refreshWeeklyRecap() async {
+        guard weeklyRecapEnabled else { return }
+        let summary = WeeklyRecap.summary(
+            reviews: reviews,
+            languageCode: activeLanguageCode
+        )
+        await NotificationService.shared.scheduleWeeklyRecap(summary)
+    }
+
     private var greeting: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(greetingText)
@@ -333,6 +410,7 @@ private struct TodayView: View {
                 .foregroundStyle(DS.textSecondary)
 
             Button {
+                practiceScope = .recommended
                 showingPractice = true
             } label: {
                 Label("Einheit starten", systemImage: "arrow.right.circle.fill")
@@ -344,11 +422,45 @@ private struct TodayView: View {
                     .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
             }
             .buttonStyle(.plain)
+            .accessibilityIdentifier("recommended-session-start")
         }
         .padding(DS.space.lg)
         .background(DS.surface1)
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
         .modifier(DS.Elevation(level: 2))
+    }
+
+    private var difficultPracticeCard: some View {
+        Button {
+            practiceScope = .difficultThisWeek
+            showingPractice = true
+        } label: {
+            HStack(spacing: DS.space.md) {
+                Image(systemName: "arrow.trianglehead.2.clockwise.rotate.90")
+                    .font(.title2)
+                    .foregroundStyle(DS.gradeHesitant)
+                    .frame(width: 48, height: 48)
+                    .background(DS.gradeHesitant.opacity(0.12))
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Diese Woche schwer gefallen")
+                        .font(.headline)
+                        .foregroundStyle(DS.textPrimary)
+                    Text("\(difficultCards.count) \(difficultCards.count == 1 ? "Ausdruck" : "Ausdrücke") gezielt festigen")
+                        .font(.caption)
+                        .foregroundStyle(DS.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundStyle(DS.textTertiary)
+            }
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("difficult-practice-start")
+        .accessibilityHint("Startet eine Einheit nur mit kürzlich schwierigen Ausdrücken")
     }
 
     private var sprintCard: some View {
@@ -377,6 +489,7 @@ private struct TodayView: View {
             .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("sprint-start")
     }
 
     @ViewBuilder

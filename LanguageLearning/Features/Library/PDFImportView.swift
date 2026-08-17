@@ -219,6 +219,8 @@ struct PDFImportView: View {
                 language: language,
                 topics: [topic]
             )
+            phrase.contentSource = .tutorImport
+            phrase.qualityStatus = .unreviewed
             // Tutor PDF content is treated as homework: priority-surface it
             // for 14 days so the user drills new lecture vocab before
             // anything else, then it relaxes into the regular schedule.

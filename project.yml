@@ -33,12 +33,18 @@ targets:
     dependencies:
       - package: swift-fsrs
         product: FSRS
+      - target: CueFlowWidgets
+        embed: true
     info:
       path: LanguageLearning/Info.generated.plist
       properties:
         CFBundleDisplayName: CueFlow
         CFBundleShortVersionString: "1.0"
         CFBundleVersion: "41"
+        CFBundleURLTypes:
+          - CFBundleURLName: com.alex.cueflow
+            CFBundleURLSchemes:
+              - cueflow
         ITSAppUsesNonExemptEncryption: false
         UILaunchScreen:
           UIColorName: ""
@@ -62,6 +68,7 @@ targets:
     scheme:
       testTargets:
         - LanguageLearningTests
+        - LanguageLearningUITests
       gatherCoverageData: true
 
   LanguageLearningTests:
@@ -79,3 +86,38 @@ targets:
         # can reach the app's internal domain types.
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/LanguageLearning.app/LanguageLearning"
         BUNDLE_LOADER: "$(TEST_HOST)"
+
+  LanguageLearningUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: LanguageLearningUITests
+    dependencies:
+      - target: LanguageLearning
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: "YES"
+        PRODUCT_BUNDLE_IDENTIFIER: com.alex.cueflow.uitests
+        TEST_TARGET_NAME: LanguageLearning
+
+  CueFlowWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: CueFlowWidgets
+      - path: LanguageLearning/Shared/WidgetSnapshot.swift
+    info:
+      path: CueFlowWidgets/Info.generated.plist
+      properties:
+        CFBundleDisplayName: CueFlow
+        CFBundleShortVersionString: "1.0"
+        CFBundleVersion: "41"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alex.cueflow.widgets
+        CODE_SIGN_ENTITLEMENTS: CueFlowWidgets/CueFlowWidgets.entitlements
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: YES
+        APPLICATION_EXTENSION_API_ONLY: YES

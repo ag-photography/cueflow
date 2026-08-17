@@ -163,6 +163,8 @@ struct PasteImportView: View {
                 language: language,
                 topics: []
             )
+            phrase.contentSource = .manual
+            phrase.qualityStatus = .unreviewed
             if let topicName = line.topic {
                 let topic: Topic
                 if let existing = topicCache[topicName] {

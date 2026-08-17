@@ -172,6 +172,15 @@ struct LibraryView: View {
 
     private var managementList: some View {
         List {
+            Section {
+                NavigationLink {
+                    ContentReviewView()
+                } label: {
+                    Label("Inhalte prüfen", systemImage: "checkmark.seal")
+                }
+            } footer: {
+                Text("Neue manuelle und Tutor-Inhalte durchlaufen eine explizite Qualitätsprüfung.")
+            }
             if !activeTopics.isEmpty { activeTopicsSection }
             filterSection
             topicsSection

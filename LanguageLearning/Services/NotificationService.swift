@@ -12,6 +12,7 @@ final class NotificationService {
     static let shared = NotificationService()
 
     private let dailyIdentifier = "cueflow.daily"
+    private let weeklyIdentifier = "cueflow.weekly-recap"
 
     /// Asks the user for permission. Returns true if granted. Safe to call
     /// repeatedly — iOS only shows the prompt the first time.
@@ -54,6 +55,31 @@ final class NotificationService {
     func cancelDailyReminder() {
         UNUserNotificationCenter.current()
             .removePendingNotificationRequests(withIdentifiers: [dailyIdentifier])
+    }
+
+    func scheduleWeeklyRecap(_ summary: WeeklyRecapSummary) async {
+        cancelWeeklyRecap()
+        var components = DateComponents()
+        components.weekday = 1
+        components.hour = 10
+
+        let content = UNMutableNotificationContent()
+        content.title = "Deine CueFlow-Woche"
+        content.body = summary.notificationBody
+        content.sound = .default
+
+        let trigger = UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
+        let request = UNNotificationRequest(
+            identifier: weeklyIdentifier,
+            content: content,
+            trigger: trigger
+        )
+        try? await UNUserNotificationCenter.current().add(request)
+    }
+
+    func cancelWeeklyRecap() {
+        UNUserNotificationCenter.current()
+            .removePendingNotificationRequests(withIdentifiers: [weeklyIdentifier])
     }
 
     /// Snapshot of what's currently scheduled. Useful for debugging and the

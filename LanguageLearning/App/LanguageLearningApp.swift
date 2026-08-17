@@ -6,6 +6,7 @@ struct LanguageLearningApp: App {
     @StateObject private var startup: AppStartupCoordinator
 
     init() {
+        MetricsDiagnosticsService.shared.start()
         #if DEBUG
         let forceRecovery = ProcessInfo.processInfo.environment["CUEFLOW_FORCE_STORE_RECOVERY"] == "1"
         #else

@@ -78,7 +78,8 @@ struct GraderService {
         actual: String,
         acceptedAlternatives: [String],
         responseTimeMs: Int,
-        useJudge: Bool
+        useJudge: Bool,
+        targetLanguage: String = "Russian"
     ) async -> GradeResult {
         let baseline = grade(
             expected: expected,
@@ -97,7 +98,8 @@ struct GraderService {
             let verdict = await FoundationModelJudge().judge(
                 german: german,
                 expected: expected,
-                actual: actual
+                actual: actual,
+                targetLanguage: targetLanguage
             )
             return apply(verdict: verdict, to: baseline)
         }

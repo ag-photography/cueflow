@@ -21,6 +21,13 @@ actor StorePreparer {
         SeedData.consolidateSharedCards(context)
         SeedData.backfillExampleSentences(context)
         SeedData.markExistingUsersOnboarded(context)
+        #if DEBUG
+        if let code = ProcessInfo.processInfo.environment["CUEFLOW_ACTIVE_LANGUAGE"],
+           let row = try? context.fetch(FetchDescriptor<AppSettings>()).first {
+            row.activeLanguageCode = code
+            try? context.save()
+        }
+        #endif
     }
 }
 

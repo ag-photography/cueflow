@@ -29,6 +29,10 @@ struct PhraseEditorView: View {
     @State private var alternatives: [String] = []
     @State private var newAlternative: String = ""
     @State private var saveErrorMessage: String?
+    @State private var level: PhraseLevel = .unspecified
+    @State private var phraseRegister: PhraseRegister = .neutral
+    @State private var dialect = ""
+    @State private var qualityStatus: PhraseQualityStatus = .unreviewed
 
     var body: some View {
         NavigationStack {
@@ -47,6 +51,18 @@ struct PhraseEditorView: View {
                 }
                 Section("Notizen") {
                     TextField("Optional", text: $notes, axis: .vertical)
+                }
+                Section("Sprachgebrauch") {
+                    Picker("Niveau", selection: $level) {
+                        ForEach(PhraseLevel.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    Picker("Register", selection: $phraseRegister) {
+                        ForEach(PhraseRegister.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    TextField("Dialekt oder Region (optional)", text: $dialect)
+                    Picker("Inhaltsprüfung", selection: $qualityStatus) {
+                        ForEach(PhraseQualityStatus.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
                 }
                 Section("Themen") {
                     if allTopics.isEmpty {
@@ -141,6 +157,10 @@ struct PhraseEditorView: View {
         notes = phrase.notes ?? ""
         selectedTopicIDs = Set((phrase.topics ?? []).map { $0.persistentModelID })
         alternatives = phrase.acceptedAlternatives
+        level = phrase.level
+        phraseRegister = phrase.phraseRegister
+        dialect = phrase.dialect
+        qualityStatus = phrase.qualityStatus
     }
 
     private func save() {
@@ -153,6 +173,7 @@ struct PhraseEditorView: View {
             phrase.notes = notes.isEmpty ? nil : notes
             phrase.topics = topics
             phrase.acceptedAlternatives = alternatives
+            applyMetadata(to: phrase)
         } else {
             let language = targetLanguage
             let phrase = Phrase(
@@ -164,6 +185,8 @@ struct PhraseEditorView: View {
                 notes: notes.isEmpty ? nil : notes
             )
             phrase.acceptedAlternatives = alternatives
+            phrase.contentSource = .manual
+            applyMetadata(to: phrase)
             context.insert(phrase)
             context.insert(StudyCard(phrase: phrase))
         }
@@ -174,5 +197,12 @@ struct PhraseEditorView: View {
             context.rollback()
             saveErrorMessage = error.localizedDescription
         }
+    }
+
+    private func applyMetadata(to phrase: Phrase) {
+        phrase.level = level
+        phrase.phraseRegister = phraseRegister
+        phrase.dialect = dialect.trimmingCharacters(in: .whitespacesAndNewlines)
+        phrase.qualityStatus = qualityStatus
     }
 }

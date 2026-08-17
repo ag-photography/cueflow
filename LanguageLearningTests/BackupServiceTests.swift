@@ -18,6 +18,11 @@ struct BackupServiceTests {
             notes: "höflich"
         )
         phrase.acceptedAlternatives = ["Кофе пожалуйста"]
+        phrase.level = .a1
+        phrase.phraseRegister = .formal
+        phrase.dialect = "Standardrussisch"
+        phrase.qualityStatus = .nativeVerified
+        phrase.contentSource = .manual
         let card = StudyCard(phrase: phrase)
         card.reps = 7
         card.state = .review
@@ -71,6 +76,11 @@ struct BackupServiceTests {
         #expect(restored.topics?.first?.name == topic.name)
         #expect(restored.cards?.first?.reps == 7)
         #expect(restored.cards?.first?.reviews?.count == 1)
+        #expect(restored.level == .a1)
+        #expect(restored.phraseRegister == .formal)
+        #expect(restored.dialect == "Standardrussisch")
+        #expect(restored.qualityStatus == .nativeVerified)
+        #expect(restored.contentSource == .manual)
         #expect(try destination.fetch(FetchDescriptor<AppSettings>()).first?.hasCompletedOnboarding == true)
     }
 
@@ -99,6 +109,40 @@ struct BackupServiceTests {
         #expect(backup.phrases.count == 1)
         #expect(backup.phrases.first?.reviews.count == 1)
         #expect(backup.settings?.dailyNewLimit == 12)
+    }
+
+    @Test func mergeDoesNotDowngradeVerifiedContentMetadata() throws {
+        let source = try makeContext()
+        let sourceLanguage = Language(code: "ru", name: "Русский")
+        let imported = Phrase(sourceText: "Hallo", targetText: "Привет", language: sourceLanguage)
+        imported.qualityStatus = .unreviewed
+        imported.contentSource = .manual
+        source.insert(sourceLanguage)
+        source.insert(imported)
+        source.insert(StudyCard(phrase: imported))
+        try source.save()
+        let backup = BackupService.makeBackup(
+            languages: [sourceLanguage],
+            topics: [],
+            phrases: [imported],
+            settings: nil,
+            appVersion: "1.0"
+        )
+
+        let destination = try makeContext()
+        let destinationLanguage = Language(code: "ru", name: "Русский")
+        let verified = Phrase(sourceText: "Hallo", targetText: "Привет", language: destinationLanguage)
+        verified.qualityStatus = .nativeVerified
+        verified.contentSource = .bundled
+        destination.insert(destinationLanguage)
+        destination.insert(verified)
+        destination.insert(StudyCard(phrase: verified))
+        try destination.save()
+
+        _ = try BackupService.restore(backup, into: destination)
+
+        #expect(verified.qualityStatus == .nativeVerified)
+        #expect(verified.contentSource == .bundled)
     }
 
     private func makeContext() throws -> ModelContext {
