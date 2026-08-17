@@ -60,6 +60,7 @@ struct PracticeView: View {
     @Query private var reviews: [Review]
     @Query private var settings: [AppSettings]
     @Query private var languages: [Language]
+    @Query private var topics: [Topic]
 
     @State private var mode: CardDirection = .speakDeToRu   // "Üben" (speak-focused)
     @State private var phase: Phase = .loading
@@ -2450,7 +2451,12 @@ struct PracticeView: View {
         if scope == .difficultThisWeek {
             next = pool.first { !reviewedCardIDs.contains(String(describing: $0.persistentModelID)) }
         } else {
-            next = scheduler.nextCard(from: pool, reviews: reviews, dailyNewLimit: effectiveDailyLimit)
+            next = scheduler.nextCard(
+                from: pool,
+                reviews: reviews,
+                dailyNewLimit: effectiveDailyLimit,
+                tutorDailyNewTarget: tutorPacing?.dailyNewTarget ?? 0
+            )
         }
         if let next {
             if presentAsTiles(next) {
@@ -2503,13 +2509,20 @@ struct PracticeView: View {
         newCardsUnlocked ? .max : (settings.first?.dailyNewLimit ?? 10)
     }
 
+    private var tutorPacing: TutorFocusPacing? {
+        TutorFocusPlanner.pacing(
+            topics: topics.filter { $0.language?.code == activeLanguage?.code },
+            cards: cardsForActiveLanguage
+        )
+    }
+
     /// New cards still available to introduce in the current mode (active
     /// topics or priority/homework), regardless of the daily cap.
     private var availableNewCount: Int {
         cardsForActiveLanguage.filter(scope.includes).filter {
             $0.state == .new
             && (($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false)
-                || ($0.phrase?.isPriorityActive ?? false))
+                || ($0.phrase?.isTutorPriorityActive ?? false))
         }.count
     }
 

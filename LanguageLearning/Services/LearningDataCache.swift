@@ -91,6 +91,9 @@ final class LearningDataCache {
             signature.combine(topic.name)
             signature.combine(topic.isActive)
             signature.combine(topic.phrases?.count ?? 0)
+            signature.combine(topic.isTutorFocus)
+            signature.combine(topic.tutorFocusUntil)
+            signature.combine(topic.tutorNextLessonAt)
         }
         let nextFingerprint = signature.finalize()
         guard fingerprint != nextFingerprint else { return }

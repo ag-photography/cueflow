@@ -9,7 +9,7 @@ enum WidgetSnapshotService {
         let new = active.filter {
             $0.state == .new
                 && (($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false)
-                    || ($0.phrase?.isPriorityActive ?? false))
+                    || ($0.phrase?.isTutorPriorityActive ?? false))
         }.count
         let snapshot = CueFlowWidgetSnapshot(
             dueCount: due,

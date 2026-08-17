@@ -138,11 +138,17 @@ private struct TodayView: View {
     private var availableNewCount: Int {
         activeCards.filter {
             $0.state == .new && (($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false)
-                || ($0.phrase?.isPriorityActive ?? false))
+                || ($0.phrase?.isTutorPriorityActive ?? false))
         }.count
     }
     private var plannedNewCount: Int {
-        min(availableNewCount, settings.first?.dailyNewLimit ?? 10)
+        min(availableNewCount, max(settings.first?.dailyNewLimit ?? 10, tutorPacing?.dailyNewTarget ?? 0))
+    }
+    private var tutorPacing: TutorFocusPacing? {
+        TutorFocusPlanner.pacing(
+            topics: topics.filter { $0.language?.code == activeLanguageCode },
+            cards: activeCards
+        )
     }
     private var estimatedMinutes: Int {
         max(2, Int(ceil(Double(max(1, min(sessionTarget, dueCount + plannedNewCount))) * 0.55)))
@@ -213,7 +219,7 @@ private struct TodayView: View {
             .sheet(isPresented: $showingSettings) { SettingsView() }
             .fullScreenCover(isPresented: $showingPractice) {
                 PracticeView(
-                    sessionTarget: min(sessionTarget, practiceScope == .difficultThisWeek ? difficultCards.count : sessionTarget),
+                    sessionTarget: practiceSessionTarget,
                     isFocusedSession: true,
                     scope: practiceScope
                 )
@@ -524,6 +530,14 @@ private struct TodayView: View {
             Text("\(dueCount) Wiederholungen · \(plannedNewCount) neue Ausdrücke")
                 .font(.subheadline)
                 .foregroundStyle(DS.textSecondary)
+            if let tutorPacing, tutorPacing.remainingNewCount > 0 {
+                Label(
+                    "Tutor-Fokus: heute \(tutorPacing.dailyNewTarget) neue · \(tutorPacing.daysUntilLesson) Tage verbleibend",
+                    systemImage: "person.2.fill"
+                )
+                .font(.caption.weight(.medium))
+                .foregroundStyle(DS.accent)
+            }
             if verticalSizeClass != .compact {
                 Label("Etwa \(estimatedMinutes) Minuten", systemImage: "clock")
                     .font(.caption)
@@ -549,6 +563,18 @@ private struct TodayView: View {
         .background(DS.surface1)
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
         .modifier(DS.Elevation(level: 2))
+    }
+
+    private var practiceSessionTarget: Int {
+        switch practiceScope {
+        case .difficultThisWeek:
+            return min(sessionTarget, difficultCards.count)
+        case .topic:
+            return sessionTarget
+        case .recommended:
+            let tutorMinimum = dueCount + (tutorPacing?.dailyNewTarget ?? 0)
+            return max(sessionTarget, min(20, tutorMinimum))
+        }
     }
 
     private var difficultPracticeCard: some View {

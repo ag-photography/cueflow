@@ -2,19 +2,21 @@ import SwiftUI
 import SwiftData
 
 /// A short path from the current real-world lesson to the practice queue.
-/// Tutor phrases are activated and prioritised for two weeks, while still
-/// using the same FSRS schedule as every other phrase.
+/// Tutor phrases are activated until the lesson focus is completed. A next
+/// lesson date gives the scheduler a concrete daily preparation pace.
 struct TutorFocusView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query private var existingTopics: [Topic]
     @Query private var existingPhrases: [Phrase]
+    @Query private var existingCards: [StudyCard]
     @Query private var languages: [Language]
     @Query private var settings: [AppSettings]
 
     @State private var topicName = ""
     @State private var rawText = ""
     @State private var order: LineOrder = .deRu
+    @State private var nextLessonDate = Calendar.current.date(byAdding: .day, value: 7, to: .now) ?? .now
     @State private var saveErrorMessage: String?
 
     private var targetLanguage: Language? {
@@ -23,6 +25,14 @@ struct TutorFocusView: View {
     }
 
     private var targetLabel: String { targetLanguage?.germanLabel ?? "Zielsprache" }
+
+    private var tutorTopics: [Topic] {
+        existingTopics.filter {
+            $0.language?.code == targetLanguage?.code && $0.isTutorFocusActive
+        }.sorted {
+            ($0.tutorNextLessonAt ?? .distantFuture) < ($1.tutorNextLessonAt ?? .distantFuture)
+        }
+    }
 
     private var parsedLines: [ParsedLine] {
         rawText
@@ -37,13 +47,31 @@ struct TutorFocusView: View {
     var body: some View {
         NavigationStack {
             Form {
+                if !tutorTopics.isEmpty {
+                    Section {
+                        ForEach(tutorTopics, id: \.persistentModelID) { topic in
+                            existingFocusRow(topic)
+                        }
+                    } header: {
+                        Text(tutorTopics.count == 1 ? "Laufende Unterrichtseinheit" : "Laufende Unterrichtseinheiten")
+                    } footer: {
+                        Text("Auch ältere Tutor-Importe bleiben hier steuerbar. Abschließen beendet nur den Fokus; der langfristige Wiederholungsplan bleibt erhalten.")
+                    }
+                }
+
                 Section {
                     TextField("z. B. Jahreszeiten", text: $topicName)
                         .textInputAutocapitalization(.sentences)
+                    DatePicker(
+                        "Nächste Stunde",
+                        selection: $nextLessonDate,
+                        in: Calendar.current.startOfDay(for: .now)...,
+                        displayedComponents: .date
+                    )
                 } header: {
-                    Text("Thema aus deinem Unterricht")
+                    Text("Neue oder bestehende Einheit")
                 } footer: {
-                    Text("CueFlow aktiviert dieses Thema und bevorzugt seine Ausdrücke 14 Tage lang.")
+                    Text("CueFlow verteilt neue Ausdrücke so auf die verbleibenden Tage, dass du sie vor der nächsten Stunde mindestens einmal geübt hast.")
                 }
 
                 Section {
@@ -83,7 +111,7 @@ struct TutorFocusView: View {
                 }
 
                 Section {
-                    Label("Erscheint zuerst in fokussierten Einheiten", systemImage: "scope")
+                    Label("Tägliches Pensum passend zum nächsten Termin", systemImage: "calendar.badge.clock")
                     Label("Bleibt Teil deines langfristigen Lernplans", systemImage: "calendar.badge.clock")
                 } header: {
                     Text("So wirkt der Tutor-Fokus")
@@ -122,6 +150,75 @@ struct TutorFocusView: View {
             : "… = Frühling\n… = Sommer\n… = Im Herbst wird es kühler"
     }
 
+    @ViewBuilder
+    private func existingFocusRow(_ topic: Topic) -> some View {
+        let phraseIDs = Set((topic.phrases ?? []).map { String(describing: $0.persistentModelID) })
+        let topicCards = existingCards.filter {
+            guard let phrase = $0.phrase else { return false }
+            return phraseIDs.contains(String(describing: phrase.persistentModelID))
+        }
+        let introduced = topicCards.count { $0.state.isIntroduced }
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(topic.name).font(.headline)
+                    if let next = topic.tutorNextLessonAt {
+                        Text("Nächste Stunde: \(next.formatted(date: .abbreviated, time: .omitted))")
+                            .font(.caption)
+                            .foregroundStyle(DS.textSecondary)
+                    } else {
+                        Text("Laufend · Termin noch nicht gesetzt")
+                            .font(.caption)
+                            .foregroundStyle(DS.textSecondary)
+                    }
+                }
+                Spacer()
+                Text("\(introduced)/\(topicCards.count)")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(DS.textSecondary)
+            }
+            ProgressView(value: topicCards.isEmpty ? 0 : Double(introduced) / Double(topicCards.count))
+                .tint(DS.accent)
+            HStack {
+                Menu("Termin") {
+                    Button("In 7 Tagen") { update(topic, daysUntilLesson: 7) }
+                    Button("In 14 Tagen") { update(topic, daysUntilLesson: 14) }
+                    Button("Ohne Termin weiterführen") { update(topic, nextLessonAt: nil) }
+                }
+                .buttonStyle(.bordered)
+                Spacer()
+                Button("Abschließen", role: .destructive) { finish(topic) }
+                    .buttonStyle(.bordered)
+            }
+            .font(.caption)
+        }
+        .padding(.vertical, 4)
+    }
+
+    private func update(_ topic: Topic, daysUntilLesson: Int) {
+        let date = Calendar.current.date(byAdding: .day, value: daysUntilLesson, to: .now)
+        update(topic, nextLessonAt: date)
+    }
+
+    private func update(_ topic: Topic, nextLessonAt: Date?) {
+        topic.startTutorFocus(nextLessonAt: nextLessonAt)
+        persistChanges()
+    }
+
+    private func finish(_ topic: Topic) {
+        topic.finishTutorFocus()
+        persistChanges()
+    }
+
+    private func persistChanges() {
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            saveErrorMessage = error.localizedDescription
+        }
+    }
+
     private func commit() {
         guard let language = targetLanguage else { return }
         let topic = existingTopics.first {
@@ -130,12 +227,12 @@ struct TutorFocusView: View {
         } ?? Topic(name: trimmedTopicName, language: language, isActive: true)
 
         if topic.modelContext == nil { context.insert(topic) }
-        topic.isActive = true
+        topic.startTutorFocus(nextLessonAt: nextLessonDate)
 
         var signatures = Set(existingPhrases.map {
             "\($0.language?.code ?? "")|\(Phrase.normalize($0.sourceText))|\(Phrase.normalize($0.targetText))"
         })
-        let priorityEnd = Calendar.current.date(byAdding: .day, value: 14, to: .now)
+        let priorityEnd = topic.tutorFocusUntil
 
         for line in validLines {
             guard let source = line.source, let target = line.target else { continue }

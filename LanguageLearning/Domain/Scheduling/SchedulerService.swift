@@ -24,14 +24,15 @@ struct SchedulerService {
     func nextCard(
         from cards: [StudyCard],
         reviews: [Review] = [],
-        dailyNewLimit: Int = .max
+        dailyNewLimit: Int = .max,
+        tutorDailyNewTarget: Int = 0
     ) -> StudyCard? {
         let now = Date.now
 
         // 1. Priority due cards first (homework boost from PDF imports).
         //    Within priority, older-due cards still come first.
         let priorityDue = cards
-            .filter { $0.dueDate <= now && $0.state != .new && ($0.phrase?.isPriorityActive ?? false) }
+            .filter { $0.dueDate <= now && $0.state != .new && ($0.phrase?.isTutorPriorityActive ?? false) }
             .sorted { $0.dueDate < $1.dueDate }
         if let next = priorityDue.first { return next }
 
@@ -46,15 +47,23 @@ struct SchedulerService {
             .filter { $0.wasNew && calendar.isDateInToday($0.timestamp) }
             .count
         let remaining = dailyNewLimit - newReviewsToday
-        guard remaining > 0 else { return nil }
+        let tutorNewReviewsToday = reviews.filter {
+            $0.wasNew && calendar.isDateInToday($0.timestamp)
+                && ($0.card?.phrase?.isTutorPriorityActive ?? false)
+        }.count
 
         // 3. Priority new cards before regular new cards. Priority cards
         //    ignore the active-topic filter — homework should show up even
         //    if the user hasn't manually activated the topic. Newest first.
         let priorityNew = cards
-            .filter { $0.state == .new && ($0.phrase?.isPriorityActive ?? false) }
+            .filter { $0.state == .new && ($0.phrase?.isTutorPriorityActive ?? false) }
             .sorted { ($0.phrase?.createdAt ?? .distantPast) > ($1.phrase?.createdAt ?? .distantPast) }
-        if let next = priorityNew.first { return next }
+        if let next = priorityNew.first,
+           remaining > 0 || tutorNewReviewsToday < tutorDailyNewTarget {
+            return next
+        }
+
+        guard remaining > 0 else { return nil }
 
         // 4. Regular new cards (only from active topics). Newest first, so
         //    freshly-added/-activated content is what you see next.

@@ -110,6 +110,33 @@ struct SchedulerServiceTests {
         #expect(next === card)
     }
 
+    @Test func tutorPacingCanIntroduceRequiredCardAfterGeneralDailyLimit() throws {
+        let ctx = try makeContext()
+        let topic = Topic(name: "Jahreszeiten", isActive: true)
+        topic.startTutorFocus(nextLessonAt: Date.now.addingTimeInterval(2 * 86_400))
+        let phrase = Phrase(sourceText: "Frühling", targetText: "весна", topics: [topic])
+        phrase.contentSource = .tutorImport
+        let card = StudyCard(phrase: phrase)
+        ctx.insert(topic); ctx.insert(phrase); ctx.insert(card)
+
+        let completedRegularLimit = (0..<3).map { _ in
+            let review = Review(
+                card: card, rating: 3, autoGradeRating: 3, userAnswer: "",
+                mode: .typeDeToRu, responseTimeMs: 900, gradeTier: 1, wasNew: true
+            )
+            // These represent regular cards, so don't count them against the
+            // tutor-specific preparation target.
+            review.card = nil
+            return review
+        }
+        let next = scheduler.nextCard(
+            from: [card], reviews: completedRegularLimit,
+            dailyNewLimit: 3, tutorDailyNewTarget: 2
+        )
+
+        #expect(next === card)
+    }
+
     @Test func topicScopeOnlyIncludesCardsFromTheChosenTutorFocus() throws {
         let ctx = try makeContext()
         let seasons = Topic(name: "Jahreszeiten", isActive: true)

@@ -9,6 +9,7 @@ struct BackupServiceTests {
         let source = try makeContext()
         let russian = Language(code: "ru", name: "Русский")
         let topic = Topic(name: "Im Café", language: russian, isActive: true)
+        topic.startTutorFocus(nextLessonAt: Date(timeIntervalSince1970: 1_700_604_800))
         let phrase = Phrase(
             sourceText: "Einen Kaffee, bitte.",
             targetText: "Кофе, пожалуйста.",
@@ -74,6 +75,8 @@ struct BackupServiceTests {
         #expect(restored.transliteration == phrase.transliteration)
         #expect(restored.acceptedAlternatives == phrase.acceptedAlternatives)
         #expect(restored.topics?.first?.name == topic.name)
+        #expect(restored.topics?.first?.isTutorFocus == true)
+        #expect(restored.topics?.first?.tutorNextLessonAt == topic.tutorNextLessonAt)
         #expect(restored.cards?.first?.reps == 7)
         #expect(restored.cards?.first?.reviews?.count == 1)
         #expect(restored.level == .a1)

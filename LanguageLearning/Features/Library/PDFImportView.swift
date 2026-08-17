@@ -221,9 +221,8 @@ struct PDFImportView: View {
             )
             phrase.contentSource = .tutorImport
             phrase.qualityStatus = .unreviewed
-            // Tutor PDF content is treated as homework: priority-surface it
-            // for 14 days so the user drills new lecture vocab before
-            // anything else, then it relaxes into the regular schedule.
+            // Keep the legacy phrase flag for restored older builds. The
+            // topic-level tutor focus below now owns the durable lifecycle.
             phrase.isPriority = true
             phrase.priorityUntil = Calendar.current.date(byAdding: .day, value: 14, to: .now)
             context.insert(phrase)
@@ -233,7 +232,8 @@ struct PDFImportView: View {
         // Activate every touched topic so the freshly imported vocab actually
         // surfaces in the practice queue.
         for topic in topicCache.values where touchedTopics.contains(topic.persistentModelID) {
-            topic.isActive = true
+            let nextLesson = Calendar.current.date(byAdding: .day, value: 7, to: .now)
+            topic.startTutorFocus(nextLessonAt: nextLesson)
         }
 
         do {

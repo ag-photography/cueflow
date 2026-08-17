@@ -123,6 +123,12 @@ final class Topic {
     var parent: Topic?
     var language: Language?
     var isActive: Bool = false
+    /// Persistent lesson focus. Existing tutor-import topics are inferred as
+    /// focused until the learner explicitly finishes them.
+    var isTutorFocus: Bool = false
+    var tutorFocusStartedAt: Date?
+    var tutorFocusUntil: Date?
+    var tutorNextLessonAt: Date?
 
     @Relationship(deleteRule: .nullify, inverse: \Topic.parent)
     var children: [Topic]? = []
@@ -140,6 +146,40 @@ final class Topic {
         self.language = language
         self.parent = parent
         self.isActive = isActive
+    }
+
+    var containsTutorMaterial: Bool {
+        (phrases ?? []).contains { $0.contentSource == .tutorImport || $0.isPriority }
+    }
+
+    func isTutorFocusActive(at date: Date) -> Bool {
+        guard isTutorFocus || containsTutorMaterial else { return false }
+        guard let tutorFocusUntil else { return true }
+        return tutorFocusUntil >= date
+    }
+
+    var isTutorFocusActive: Bool {
+        isTutorFocusActive(at: .now)
+    }
+
+    func startTutorFocus(
+        nextLessonAt: Date?,
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) {
+        isTutorFocus = true
+        isActive = true
+        tutorFocusStartedAt = tutorFocusStartedAt ?? now
+        tutorNextLessonAt = nextLessonAt
+        tutorFocusUntil = nextLessonAt.flatMap {
+            calendar.date(byAdding: .day, value: 7, to: $0)
+        }
+    }
+
+    func finishTutorFocus() {
+        isTutorFocus = false
+        tutorFocusUntil = .now
+        tutorNextLessonAt = nil
     }
 }
 
@@ -215,6 +255,13 @@ final class Phrase {
         guard isPriority else { return false }
         if let until = priorityUntil, until < .now { return false }
         return true
+    }
+
+    /// Tutor lesson focus supersedes the legacy phrase-level 14-day flag.
+    /// This keeps older imports working while allowing a lesson to remain in
+    /// focus until it is completed or its configured consolidation window ends.
+    var isTutorPriorityActive: Bool {
+        isPriorityActive || (topics ?? []).contains(where: \.isTutorFocusActive)
     }
 
     var level: PhraseLevel {

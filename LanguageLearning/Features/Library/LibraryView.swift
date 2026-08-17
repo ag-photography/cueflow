@@ -340,16 +340,23 @@ struct LibraryView: View {
         CurriculumPlanner.recommendation(from: curriculumProgress)?.id
     }
 
-    private var tutorFocusTopic: Topic? {
-        // Priority is the scheduler-level source of truth. Pick the most
-        // recently added lesson when several tutor imports are still active.
-        learningTopics
-            .filter { topic in (topic.phrases ?? []).contains { $0.isPriorityActive } }
-            .max { lhs, rhs in
-                let left = (lhs.phrases ?? []).map(\.createdAt).max() ?? .distantPast
-                let right = (rhs.phrases ?? []).map(\.createdAt).max() ?? .distantPast
-                return left < right
-            }
+    private var tutorFocusTopics: [Topic] {
+        learningTopics.filter(\.isTutorFocusActive).sorted {
+            ($0.tutorNextLessonAt ?? .distantFuture) < ($1.tutorNextLessonAt ?? .distantFuture)
+        }
+    }
+    private var tutorFocusTopic: Topic? { tutorFocusTopics.first }
+    private var tutorFocusProgress: (introduced: Int, total: Int) {
+        let phrases = Dictionary(
+            tutorFocusTopics.flatMap { $0.phrases ?? [] }.map {
+                (String(describing: $0.persistentModelID), $0)
+            },
+            uniquingKeysWith: { first, _ in first }
+        ).values
+        return (
+            phrases.count { phrase in (phrase.cards ?? []).contains { $0.state.isIntroduced } },
+            phrases.count
+        )
     }
 
     private var tutorFocusCard: some View {
@@ -368,11 +375,13 @@ struct LibraryView: View {
                         .tracking(1.1)
                         .foregroundStyle(DS.accent)
                     if let tutorFocusTopic {
-                        Text(tutorFocusTopic.name)
+                        Text(tutorFocusTopics.count == 1
+                             ? tutorFocusTopic.name
+                             : "\(tutorFocusTopics.count) laufende Einheiten")
                             .font(.title3.weight(.bold))
                             .foregroundStyle(DS.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("\(tutorFocusTopic.phrases?.filter(\.isPriorityActive).count ?? 0) Ausdrücke aus deinem Unterricht werden bevorzugt.")
+                        Text("\(tutorFocusProgress.introduced) von \(tutorFocusProgress.total) Ausdrücken vorbereitet" + tutorDeadlineText)
                             .font(.subheadline)
                             .foregroundStyle(DS.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -381,7 +390,7 @@ struct LibraryView: View {
                             .font(.title3.weight(.bold))
                             .foregroundStyle(DS.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("Füge z. B. „Jahreszeiten“ hinzu. Die Ausdrücke erscheinen 14 Tage lang bevorzugt.")
+                        Text("Füge z. B. „Jahreszeiten“ und den Termin deiner nächsten Stunde hinzu.")
                             .font(.subheadline)
                             .foregroundStyle(DS.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -430,6 +439,13 @@ struct LibraryView: View {
             }
         }
         .dsCard(elevation: 1, padding: DS.space.md)
+    }
+
+    private var tutorDeadlineText: String {
+        guard let date = tutorFocusTopics.compactMap(\.tutorNextLessonAt).min() else {
+            return " · Termin noch nicht gesetzt."
+        }
+        return " · nächste Stunde \(date.formatted(date: .abbreviated, time: .omitted))."
     }
 
     private var scenarioCollections: some View {

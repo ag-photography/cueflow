@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 struct CueFlowBackup: Codable {
-    static let currentVersion = 3
+    static let currentVersion = 4
 
     let formatVersion: Int
     let exportedAt: Double
@@ -24,6 +24,10 @@ struct CueFlowBackup: Codable {
         let languageCode: String
         let parentName: String?
         let isActive: Bool
+        let isTutorFocus: Bool?
+        let tutorFocusStartedAt: Double?
+        let tutorFocusUntil: Double?
+        let tutorNextLessonAt: Double?
     }
 
     struct PhraseRecord: Codable {
@@ -132,7 +136,11 @@ enum BackupService {
                     name: topic.name,
                     languageCode: code,
                     parentName: topic.parent?.name,
-                    isActive: topic.isActive
+                    isActive: topic.isActive,
+                    isTutorFocus: topic.isTutorFocus,
+                    tutorFocusStartedAt: topic.tutorFocusStartedAt?.timeIntervalSince1970,
+                    tutorFocusUntil: topic.tutorFocusUntil?.timeIntervalSince1970,
+                    tutorNextLessonAt: topic.tutorNextLessonAt?.timeIntervalSince1970
                 )
             },
             phrases: phrases.compactMap { phrase in
@@ -248,8 +256,10 @@ enum BackupService {
             let key = topicKey(code: record.languageCode, name: record.name)
             if let existing = topics[key] {
                 existing.isActive = existing.isActive || record.isActive
+                mergeTutorFocus(record, into: existing)
             } else {
                 let topic = Topic(name: record.name, language: language, isActive: record.isActive)
+                mergeTutorFocus(record, into: topic)
                 context.insert(topic)
                 topics[key] = topic
                 summary.topicsAdded += 1
@@ -346,6 +356,22 @@ enum BackupService {
             context.rollback()
             throw error
         }
+    }
+
+    private static func mergeTutorFocus(_ record: CueFlowBackup.TopicRecord, into topic: Topic) {
+        topic.isTutorFocus = topic.isTutorFocus || (record.isTutorFocus ?? false)
+        topic.tutorFocusStartedAt = [
+            topic.tutorFocusStartedAt,
+            record.tutorFocusStartedAt.map(Date.init(timeIntervalSince1970:)),
+        ].compactMap { $0 }.min()
+        topic.tutorFocusUntil = [
+            topic.tutorFocusUntil,
+            record.tutorFocusUntil.map(Date.init(timeIntervalSince1970:)),
+        ].compactMap { $0 }.max()
+        topic.tutorNextLessonAt = [
+            topic.tutorNextLessonAt,
+            record.tutorNextLessonAt.map(Date.init(timeIntervalSince1970:)),
+        ].compactMap { $0 }.max()
     }
 
     private static func merge(
@@ -449,7 +475,16 @@ enum BackupService {
                 defaultTransliterationVisible: true
             )],
             topics: legacy.topics.map {
-                .init(name: $0.name, languageCode: languageCode, parentName: $0.parent, isActive: $0.isActive)
+                .init(
+                    name: $0.name,
+                    languageCode: languageCode,
+                    parentName: $0.parent,
+                    isActive: $0.isActive,
+                    isTutorFocus: nil,
+                    tutorFocusStartedAt: nil,
+                    tutorFocusUntil: nil,
+                    tutorNextLessonAt: nil
+                )
             },
             phrases: legacy.phrases.map { phrase in
                 let targetKey = Phrase.normalize(phrase.targetText)
