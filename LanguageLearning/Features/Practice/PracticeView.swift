@@ -2,11 +2,6 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-private struct PracticeTile: Identifiable, Equatable {
-    let id: Int
-    let text: String
-}
-
 /// A small deterministic gate for the practice lifecycle. Every delayed or
 /// asynchronous result carries a generation token; changing card, mode,
 /// language, or screen invalidates it so stale work cannot mutate the session.
@@ -91,7 +86,7 @@ struct PracticeView: View {
     // the option the user tapped (nil until they answer).
     @State private var choiceOptions: [String] = []
     @State private var choiceChosen: String? = nil
-    @State private var tileOptions: [PracticeTile] = []
+    @State private var tileOptions: [WordTile] = []
     @State private var selectedTileIDs: [Int] = []
     @State private var reviewModeOverride: CardDirection?
     // "Sag es im Satz" screen (after scoring, young cards only): flips true once
@@ -613,13 +608,14 @@ struct PracticeView: View {
                     .tint(DS.textSecondary)
                     .disabled(selectedTileIDs.isEmpty)
                 Button("Prüfen") {
-                    let answer = selected.map(\.text).joined(separator: " ")
+                    let answer = TileConstruction.answer(selectedIDs: selectedTileIDs, from: tileOptions)
                     reviewModeOverride = .typeDeToRu
                     submit(revealed: false, answerOverride: answer)
                 }
                 .buttonStyle(.borderedProminent)
                 .tint(DS.accent)
-                .disabled(selected.count != tileOptions.count || interactionGate.isBusy)
+                .disabled(!TileConstruction.isComplete(selectedIDs: selectedTileIDs, tiles: tileOptions)
+                    || interactionGate.isBusy)
             }
             .frame(maxWidth: .infinity, alignment: .trailing)
         }
@@ -2241,9 +2237,8 @@ struct PracticeView: View {
         return (card.phrase?.targetText.split(whereSeparator: { $0.isWhitespace }).count ?? 0) > 1
     }
 
-    private func makeTileOptions(for card: StudyCard) -> [PracticeTile] {
-        let words = card.phrase?.targetText.split(whereSeparator: { $0.isWhitespace }).map(String.init) ?? []
-        return words.enumerated().map { PracticeTile(id: $0.offset, text: $0.element) }.shuffled()
+    private func makeTileOptions(for card: StudyCard) -> [WordTile] {
+        TileConstruction.tokens(for: card.phrase?.targetText ?? "").shuffled()
     }
 
     /// The configured daily new-card limit — unless the user has tapped
