@@ -2,6 +2,11 @@ import SwiftUI
 import SwiftData
 import UIKit
 
+private struct PracticeTile: Identifiable, Equatable {
+    let id: Int
+    let text: String
+}
+
 /// A small deterministic gate for the practice lifecycle. Every delayed or
 /// asynchronous result carries a generation token; changing card, mode,
 /// language, or screen invalidates it so stale work cannot mutate the session.
@@ -86,6 +91,9 @@ struct PracticeView: View {
     // the option the user tapped (nil until they answer).
     @State private var choiceOptions: [String] = []
     @State private var choiceChosen: String? = nil
+    @State private var tileOptions: [PracticeTile] = []
+    @State private var selectedTileIDs: [Int] = []
+    @State private var reviewModeOverride: CardDirection?
     // "Sag es im Satz" screen (after scoring, young cards only): flips true once
     // the user has recorded the sentence at least once, which reveals "Weiter".
     @State private var sentenceSpoken = false
@@ -532,6 +540,8 @@ struct PracticeView: View {
         case .prompt(let card):
             if mode == .flipDeToRu {
                 flipCardScreen(card: card)
+            } else if presentAsTiles(card) {
+                tileConstructionScreen(card: card)
             } else if presentAsChoice(card) {
                 // "Wählen" mode, or "Üben" easing a new card in via recognition.
                 chooseCardScreen(card: card)
@@ -547,6 +557,65 @@ struct PracticeView: View {
         case .empty:
             emptyContent
         }
+    }
+
+    // MARK: - Productive tile fallback
+
+    private func tileConstructionScreen(card: StudyCard) -> some View {
+        let isRTL = card.phrase?.language?.isRTL == true
+        let selected = selectedTileIDs.compactMap { id in tileOptions.first { $0.id == id } }
+        let remaining = tileOptions.filter { !selectedTileIDs.contains($0.id) }
+        return VStack(spacing: DS.space.md) {
+            resumeSpeakingBanner
+            topicChips(card: card)
+            heroPrompt(card: card)
+            VStack(alignment: isRTL ? .trailing : .leading, spacing: DS.space.sm) {
+                Text("Baue die Antwort")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(DS.textSecondary)
+                Text(selected.isEmpty ? "Tippe die Wörter in der richtigen Reihenfolge." : selected.map(\.text).joined(separator: " "))
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(selected.isEmpty ? DS.textTertiary : DS.textPrimary)
+                    .multilineTextAlignment(isRTL ? .trailing : .leading)
+                    .frame(maxWidth: .infinity, minHeight: 70, alignment: isRTL ? .trailing : .leading)
+                    .padding(DS.space.md)
+                    .background(DS.surface1)
+                    .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+                    .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+            }
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: DS.space.sm)], spacing: DS.space.sm) {
+                ForEach(remaining) { tile in
+                    Button(tile.text) { selectedTileIDs.append(tile.id) }
+                        .font(.body.weight(.medium))
+                        .foregroundStyle(DS.textPrimary)
+                        .frame(minHeight: 48)
+                        .frame(maxWidth: .infinity)
+                        .background(DS.surface1)
+                        .clipShape(RoundedRectangle(cornerRadius: DS.radius.sm))
+                        .buttonStyle(.plain)
+                }
+            }
+            .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+
+            HStack(spacing: DS.space.sm) {
+                Button("Zurücksetzen") { selectedTileIDs.removeAll() }
+                    .buttonStyle(.bordered)
+                    .tint(DS.textSecondary)
+                    .disabled(selectedTileIDs.isEmpty)
+                Button("Prüfen") {
+                    let answer = selected.map(\.text).joined(separator: " ")
+                    reviewModeOverride = .typeDeToRu
+                    submit(revealed: false, answerOverride: answer)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(DS.accent)
+                .disabled(selected.count != tileOptions.count || interactionGate.isBusy)
+            }
+            .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(.vertical, DS.space.md)
+        .onAppear { if promptStart == nil { promptStart = .now } }
     }
 
     // MARK: - Flip card mode
@@ -1141,7 +1210,9 @@ struct PracticeView: View {
             guard !Task.isCancelled, interactionGate.accepts(token) else { return }
             guard speechAuthorized == true else {
                 interactionGate.finish(token)
-                speechErrorMessage = "Mikrofon- und Spracherkennungs-Berechtigung erforderlich."
+                speechErrorMessage = nil
+                speechMuted = true
+                phase = .loading
                 return
             }
             do {
@@ -1149,7 +1220,9 @@ struct PracticeView: View {
                 interactionGate.finish(token)
             } catch {
                 interactionGate.finish(token)
-                speechErrorMessage = error.localizedDescription
+                speechErrorMessage = nil
+                speechMuted = true
+                phase = .loading
             }
         }
     }
@@ -1832,7 +1905,7 @@ struct PracticeView: View {
 
     // MARK: - Logic
 
-    private func submit(revealed: Bool) {
+    private func submit(revealed: Bool, answerOverride: String? = nil) {
         guard let token = interactionGate.begin(.grading) else { return }
         let card: StudyCard
         switch phase {
@@ -1844,7 +1917,7 @@ struct PracticeView: View {
         let elapsedMs = Int((promptStart.map { Date.now.timeIntervalSince($0) } ?? 0) * 1000)
         let expected = card.phrase?.targetText ?? ""
         let alternatives = card.phrase?.acceptedAlternatives ?? []
-        let userAnswer = (mode == .speakDeToRu) ? speech.transcription : input
+        let userAnswer = answerOverride ?? ((mode == .speakDeToRu) ? speech.transcription : input)
         let useJudge = settings.first?.useAIGradingAssist == true
         inputFocused = false
 
@@ -1867,6 +1940,7 @@ struct PracticeView: View {
                 card: card,
                 baseline: baseline,
                 revealed: revealed,
+                applySpeechHesitancy: answerOverride == nil,
                 userAnswer: userAnswer,
                 elapsedMs: elapsedMs
             )
@@ -1877,6 +1951,7 @@ struct PracticeView: View {
         card: StudyCard,
         baseline: GradeResult,
         revealed: Bool,
+        applySpeechHesitancy: Bool,
         userAnswer: String,
         elapsedMs: Int
     ) {
@@ -1894,7 +1969,7 @@ struct PracticeView: View {
                 editedWords: result.editedWords,
                 totalEdits: result.totalEdits
             )
-        } else if mode == .speakDeToRu, result.autoGrade == .perfect {
+        } else if mode == .speakDeToRu, applySpeechHesitancy, result.autoGrade == .perfect {
             let h = speech.hesitancy
             if h.startDelaySec > speakHesitantStartDelaySec || h.longestPauseSec > speakHesitantPauseSec {
                 result = GradeResult(
@@ -1948,7 +2023,7 @@ struct PracticeView: View {
                 rating: rating,
                 autoGradeRating: result.autoGrade.suggestedRating,
                 userAnswer: userAnswer,
-                mode: mode,
+                mode: reviewModeOverride ?? mode,
                 responseTimeMs: responseTimeMs,
                 gradeTier: result.tier,
                 wasNew: wasNew
@@ -1982,7 +2057,8 @@ struct PracticeView: View {
             consecutiveProductiveRecalls = 0
             sessionNeedsWork += 1
         }
-        if mode == .speakDeToRu, !userAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if (reviewModeOverride ?? mode) == .speakDeToRu,
+           !userAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             sessionSpokenAnswers += 1
             sessionSpokenWords += max(1, userAnswer.split(whereSeparator: { $0.isWhitespace }).count)
         }
@@ -2091,9 +2167,13 @@ struct PracticeView: View {
         invalidateInteraction()
         showingGradeDetails = false
         choiceChosen = nil
+        selectedTileIDs = []
+        reviewModeOverride = nil
         let pool = cardsForActiveLanguage   // compute the language scan once
         if let next = scheduler.nextCard(from: pool, reviews: reviews, dailyNewLimit: effectiveDailyLimit) {
-            if presentAsChoice(next) {
+            if presentAsTiles(next) {
+                tileOptions = makeTileOptions(for: next)
+            } else if presentAsChoice(next) {
                 choiceOptions = makeChoiceOptions(for: next, pool: pool)
             }
             phase = .prompt(next)
@@ -2107,7 +2187,17 @@ struct PracticeView: View {
     /// ask the user to *speak* a word they've just met.
     private func presentAsChoice(_ card: StudyCard) -> Bool {
         mode == .chooseDeToRu
-            || (mode == .speakDeToRu && (card.state == .new || speechMuted))
+            || (mode == .speakDeToRu && (card.state == .new || (speechMuted && !presentAsTiles(card))))
+    }
+
+    private func presentAsTiles(_ card: StudyCard) -> Bool {
+        guard mode == .speakDeToRu, speechMuted, card.state != .new else { return false }
+        return (card.phrase?.targetText.split(whereSeparator: { $0.isWhitespace }).count ?? 0) > 1
+    }
+
+    private func makeTileOptions(for card: StudyCard) -> [PracticeTile] {
+        let words = card.phrase?.targetText.split(whereSeparator: { $0.isWhitespace }).map(String.init) ?? []
+        return words.enumerated().map { PracticeTile(id: $0.offset, text: $0.element) }.shuffled()
     }
 
     /// The configured daily new-card limit — unless the user has tapped
