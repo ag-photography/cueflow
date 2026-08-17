@@ -70,6 +70,8 @@ struct PracticeView: View {
     @State private var sessionSpokenWords: Int = 0
     @State private var sessionNewlyRecalled: [String] = []
     @State private var sessionNeedsWork: Int = 0
+    @State private var sessionNewRecord: (source: String, milliseconds: Int)?
+    @State private var sessionCompletedMission: String?
     @State private var showingSessionSummary = false
     @State private var speechAuthorized: Bool? = nil
     @State private var speechErrorMessage: String?
@@ -104,6 +106,7 @@ struct PracticeView: View {
     @State private var showingExitConfirmation = false
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
+    @Namespace private var tileNamespace
     // Lets the fixed-size serif prompt grow with Dynamic Type (capped so very
     // large accessibility sizes don't push the input off-screen).
     @ScaledMetric(relativeTo: .largeTitle) private var heroTypeScale: CGFloat = 1
@@ -577,33 +580,69 @@ struct PracticeView: View {
                 Text("Baue die Antwort")
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(DS.textSecondary)
-                Text(selected.isEmpty ? "Tippe die Wörter in der richtigen Reihenfolge." : selected.map(\.text).joined(separator: " "))
-                    .font(.title3.weight(.semibold))
-                    .foregroundStyle(selected.isEmpty ? DS.textTertiary : DS.textPrimary)
-                    .multilineTextAlignment(isRTL ? .trailing : .leading)
-                    .frame(maxWidth: .infinity, minHeight: 70, alignment: isRTL ? .trailing : .leading)
-                    .padding(DS.space.md)
-                    .background(DS.surface1)
-                    .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
-                    .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+                Group {
+                    if selected.isEmpty {
+                        Text("Tippe die Wörter in der richtigen Reihenfolge.")
+                            .font(.subheadline)
+                            .foregroundStyle(DS.textTertiary)
+                    } else {
+                        LazyVGrid(
+                            columns: [GridItem(.adaptive(minimum: 76), spacing: DS.space.xs)],
+                            spacing: DS.space.xs
+                        ) {
+                            ForEach(selected) { tile in
+                                Button(tile.text) {
+                                    UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                                    withAnimation(reduceMotion ? .none : .spring(response: 0.28, dampingFraction: 0.78)) {
+                                        selectedTileIDs.removeAll { $0 == tile.id }
+                                    }
+                                }
+                                .font(.body.weight(.semibold))
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, DS.space.sm)
+                                .frame(minHeight: 42)
+                                .frame(maxWidth: .infinity)
+                                .background(DS.accent)
+                                .clipShape(RoundedRectangle(cornerRadius: DS.radius.sm))
+                                .matchedGeometryEffect(id: tile.id, in: tileNamespace)
+                                .buttonStyle(.plain)
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, minHeight: 70, alignment: isRTL ? .trailing : .leading)
+                .padding(DS.space.md)
+                .background(DS.surface1)
+                .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+                .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
             }
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: DS.space.sm)], spacing: DS.space.sm) {
                 ForEach(remaining) { tile in
-                    Button(tile.text) { selectedTileIDs.append(tile.id) }
+                    Button(tile.text) {
+                        UIImpactFeedbackGenerator(style: .soft).impactOccurred()
+                        withAnimation(reduceMotion ? .none : .spring(response: 0.28, dampingFraction: 0.78)) {
+                            selectedTileIDs.append(tile.id)
+                        }
+                    }
                         .font(.body.weight(.medium))
                         .foregroundStyle(DS.textPrimary)
                         .frame(minHeight: 48)
                         .frame(maxWidth: .infinity)
                         .background(DS.surface1)
                         .clipShape(RoundedRectangle(cornerRadius: DS.radius.sm))
+                        .matchedGeometryEffect(id: tile.id, in: tileNamespace)
                         .buttonStyle(.plain)
                 }
             }
             .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
 
             HStack(spacing: DS.space.sm) {
-                Button("Zurücksetzen") { selectedTileIDs.removeAll() }
+                Button("Zurücksetzen") {
+                    withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) {
+                        selectedTileIDs.removeAll()
+                    }
+                }
                     .buttonStyle(.bordered)
                     .tint(DS.textSecondary)
                     .disabled(selectedTileIDs.isEmpty)
@@ -1758,6 +1797,22 @@ struct PracticeView: View {
                     color: DS.gradePerfect
                 )
             }
+            if let sessionNewRecord {
+                recapRow(
+                    icon: "timer",
+                    title: "Neue persönliche Bestzeit",
+                    detail: "„\(sessionNewRecord.source)“ · \(String(format: "%.1f", Double(sessionNewRecord.milliseconds) / 1_000)) s",
+                    color: DS.gradeHesitant
+                )
+            }
+            if let sessionCompletedMission {
+                recapRow(
+                    icon: "checkmark.seal.fill",
+                    title: "Mission gesprächsbereit",
+                    detail: sessionCompletedMission,
+                    color: DS.gradePerfect
+                )
+            }
             recapRow(
                 icon: sessionNeedsWork == 0 ? "checkmark.circle" : "arrow.clockwise",
                 title: sessionNeedsWork == 0 ? "Sicher durch die Runde" : "Noch unsicher",
@@ -2047,6 +2102,11 @@ struct PracticeView: View {
         else { return }
         var savedAlternative: String?
         let wasNewBeforeReview = card.state == .new
+        let exerciseMode = reviewModeOverride ?? mode
+        let cardLanguageCode = card.phrase?.language?.code
+        let priorEvents = LearningMotivation.events(from: reviews.filter {
+            $0.card?.phrase?.language?.code == cardLanguageCode
+        })
         do {
             let wasNew = card.state == .new
             try scheduler.record(rating: rating, on: card)
@@ -2066,7 +2126,7 @@ struct PracticeView: View {
                 rating: rating,
                 autoGradeRating: result.autoGrade.suggestedRating,
                 userAnswer: userAnswer,
-                mode: reviewModeOverride ?? mode,
+                mode: exerciseMode,
                 responseTimeMs: responseTimeMs,
                 gradeTier: result.tier,
                 wasNew: wasNew
@@ -2082,6 +2142,14 @@ struct PracticeView: View {
             return
         }
         if let savedAlternative { showSavedBanner(for: savedAlternative) }
+        captureMeaningfulSessionEvents(
+            card: card,
+            result: result,
+            rating: rating,
+            responseTimeMs: responseTimeMs,
+            exerciseMode: exerciseMode,
+            priorEvents: priorEvents
+        )
 
         input = ""
         speech.clearTranscription()
@@ -2100,7 +2168,7 @@ struct PracticeView: View {
             consecutiveProductiveRecalls = 0
             sessionNeedsWork += 1
         }
-        if (reviewModeOverride ?? mode) == .speakDeToRu,
+        if exerciseMode == .speakDeToRu,
            !userAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             sessionSpokenAnswers += 1
             sessionSpokenWords += max(1, userAnswer.split(whereSeparator: { $0.isWhitespace }).count)
@@ -2117,6 +2185,45 @@ struct PracticeView: View {
             showingSessionSummary = true
         } else {
             phase = .loading
+        }
+    }
+
+    private func captureMeaningfulSessionEvents(
+        card: StudyCard,
+        result: GradeResult,
+        rating: Int,
+        responseTimeMs: Int,
+        exerciseMode: CardDirection,
+        priorEvents: [LearningEvent]
+    ) {
+        guard rating >= 3,
+              result.tier >= 3,
+              responseTimeMs > 0,
+              exerciseMode == .speakDeToRu || exerciseMode == .typeDeToRu,
+              let phrase = card.phrase
+        else { return }
+
+        let priorBest = LearningMotivation.fastestStrongRecall(events: priorEvents)?.responseTimeMs
+        if priorBest == nil || responseTimeMs < priorBest! {
+            sessionNewRecord = (phrase.sourceText, responseTimeMs)
+        }
+
+        let phraseID = String(describing: phrase.persistentModelID)
+        for topic in phrase.topics {
+            let topicPhraseIDs = Set(topic.phrases.map { String(describing: $0.persistentModelID) })
+            let priorFraction = LearningMotivation.strongRecallFraction(
+                events: priorEvents,
+                phraseIDs: topicPhraseIDs
+            )
+            guard priorFraction < 0.8 else { continue }
+            var strongIDs = Set(priorEvents.filter(\.isStrongProductiveRecall).map(\.phraseID))
+            strongIDs.insert(phraseID)
+            let newFraction = Double(strongIDs.intersection(topicPhraseIDs).count)
+                / Double(max(1, topicPhraseIDs.count))
+            if newFraction >= 0.8 {
+                sessionCompletedMission = topic.name
+                break
+            }
         }
     }
 
@@ -2202,6 +2309,8 @@ struct PracticeView: View {
         sessionSpokenWords = 0
         sessionNewlyRecalled = []
         sessionNeedsWork = 0
+        sessionNewRecord = nil
+        sessionCompletedMission = nil
     }
 
     private func advance() {

@@ -12,6 +12,7 @@ struct ProfileView: View {
     @Query(sort: \Review.timestamp, order: .reverse) private var reviews: [Review]
     @Query(sort: \Topic.name) private var topics: [Topic]
     @Query(sort: \Language.code) private var languages: [Language]
+    @Query private var settings: [AppSettings]
 
     // Speaking-volume scoreboard — shared with Sprint via UserDefaults.
     @AppStorage("sprintBest") private var sprintBest: Int = 0
@@ -30,6 +31,7 @@ struct ProfileView: View {
             ScrollView {
                 VStack(spacing: DS.space.lg) {
                     speakingSection
+                    capabilitySection
                     miniStatsRow
                     topicProgress
                     weeklyChart
@@ -60,6 +62,97 @@ struct ProfileView: View {
                 }
             }
         }
+    }
+
+    private var activeLanguageCode: String { settings.first?.activeLanguageCode ?? "ru" }
+    private var activeEvents: [LearningEvent] {
+        LearningMotivation.events(from: reviews.filter {
+            $0.card?.phrase?.language?.code == activeLanguageCode
+        })
+    }
+
+    private var capabilitySection: some View {
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            sectionHeader("Was du sagen kannst")
+            VStack(spacing: DS.space.md) {
+                ForEach(ScenarioDefinition.defaults) { scenario in
+                    capabilityRow(scenario)
+                }
+                if let record = LearningMotivation.fastestStrongRecall(events: activeEvents) {
+                    Divider().overlay(DS.surface2)
+                    HStack(spacing: DS.space.sm) {
+                        Image(systemName: "timer").foregroundStyle(DS.gradeHesitant)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Persönliche Bestzeit")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(DS.textPrimary)
+                            Text("„\(record.sourceText)“ · \(String(format: "%.1f", Double(record.responseTimeMs) / 1_000)) s")
+                                .font(.caption)
+                                .foregroundStyle(DS.textSecondary)
+                        }
+                        Spacer()
+                    }
+                }
+            }
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        }
+    }
+
+    private func capabilityRow(_ scenario: ScenarioDefinition) -> some View {
+        let matchingTopics = topics.filter {
+            $0.language?.code == activeLanguageCode
+                && scenario.topicTerms.contains(baseTopicName($0.name))
+        }
+        let phraseIDs = Set(matchingTopics.flatMap(\.phrases).map {
+            String(describing: $0.persistentModelID)
+        })
+        let fraction = LearningMotivation.strongRecallFraction(
+            events: activeEvents,
+            phraseIDs: phraseIDs
+        )
+        return HStack(spacing: DS.space.sm) {
+            Image(systemName: scenario.systemImage)
+                .foregroundStyle(fraction >= 0.8 ? DS.gradePerfect : DS.accent)
+                .frame(width: 34, height: 34)
+                .background((fraction >= 0.8 ? DS.gradePerfect : DS.accent).opacity(0.10))
+                .clipShape(Circle())
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(scenario.title)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(DS.textPrimary)
+                    Spacer()
+                    Text("\(Int((fraction * 100).rounded()))%")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(DS.textSecondary)
+                }
+                ProgressView(value: fraction)
+                    .tint(fraction >= 0.8 ? DS.gradePerfect : DS.accent)
+                Text(capabilityLabel(fraction))
+                    .font(.caption2)
+                    .foregroundStyle(DS.textTertiary)
+            }
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private func capabilityLabel(_ fraction: Double) -> String {
+        switch fraction {
+        case 0.8...: return "Gesprächsbereit"
+        case 0.4...: return "Im Aufbau"
+        case 0.01...: return "Erste sichere Abrufe"
+        default: return "Noch nicht begonnen"
+        }
+    }
+
+    private func baseTopicName(_ name: String) -> String {
+        name.replacingOccurrences(
+            of: #"\s*\([A-Z]{2}\)$"#,
+            with: "",
+            options: .regularExpression
+        )
     }
 
     // MARK: - Streak hero

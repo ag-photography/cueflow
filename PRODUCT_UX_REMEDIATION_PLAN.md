@@ -19,10 +19,12 @@ Implemented on `codex/shared-learning-progress`:
 - learner-facing missions separated from advanced content management;
 - Sprint preparation/countdown, relevant learned-content pool, skipped-answer reveal, and honest recap;
 - productive-output progress, capability-based session recap, and event-based—not random—milestones;
+- truthful daily quests, scenario collections, capability paths, personal records, and measured comeback moments;
+- tactile word-tile motion plus a restrained completion chime and success haptics;
 - immediate settings persistence, recoverable content saves, confirmed destructive actions, and a German-source String Catalog;
 - dark-mode design tokens, RTL handling, Dynamic Type support, VoiceOver labels, Reduce Motion handling, and iPad content-width adaptation.
 
-Automated validation currently passes 65 tests on an iPhone 17 / iOS 26.5 simulator. Before a public release, the remaining gates are physical-device interruption and microphone testing, accessibility testing across the full device matrix, native-speaker review of Russian and Arabic content, and a measured external beta. These are release-validation tasks rather than unfinished core product architecture.
+Automated validation currently passes 70 tests on an iPhone 17 / iOS 26.5 simulator. Before a public release, the remaining gates are physical-device interruption and microphone testing, accessibility testing across the full device matrix, native-speaker review of Russian and Arabic content, and a measured external beta. These are release-validation tasks rather than unfinished core product architecture.
 
 ## Executive assessment
 

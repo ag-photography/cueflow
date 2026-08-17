@@ -18,6 +18,7 @@ struct LibraryView: View {
     @Query(sort: \Phrase.createdAt, order: .reverse) private var phrases: [Phrase]
     @Query(sort: \Language.code) private var languages: [Language]
     @Query private var settings: [AppSettings]
+    @Query private var reviews: [Review]
 
     @State private var searchText = ""
     @State private var languageFilter = ""          // "" = all languages
@@ -193,6 +194,8 @@ struct LibraryView: View {
                 .padding(.vertical, DS.space.xs)
             }
 
+            scenarioCollectionsSection
+
             Section("Missionen") {
                 ForEach(learningTopics.prefix(16)) { topic in
                     missionRow(topic)
@@ -207,6 +210,85 @@ struct LibraryView: View {
             }
         }
         .listStyle(.insetGrouped)
+    }
+
+    private var activeLearningEvents: [LearningEvent] {
+        let code = settings.first?.activeLanguageCode ?? "ru"
+        return LearningMotivation.events(from: reviews.filter {
+            $0.card?.phrase?.language?.code == code
+        })
+    }
+
+    private var scenarioCollectionsSection: some View {
+        Section("Situationen") {
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: DS.space.sm) {
+                    ForEach(ScenarioDefinition.defaults) { scenario in
+                        scenarioCard(scenario)
+                    }
+                }
+                .padding(.vertical, DS.space.xs)
+            }
+            .listRowInsets(EdgeInsets(top: 0, leading: DS.space.md, bottom: 0, trailing: 0))
+        }
+    }
+
+    private func scenarioCard(_ scenario: ScenarioDefinition) -> some View {
+        let matchedTopics = learningTopics.filter {
+            scenario.topicTerms.contains(baseTopicName($0.name))
+        }
+        let phraseIDs = Set(matchedTopics.flatMap(\.phrases).map {
+            String(describing: $0.persistentModelID)
+        })
+        let fraction = LearningMotivation.strongRecallFraction(
+            events: activeLearningEvents,
+            phraseIDs: phraseIDs
+        )
+        return Button {
+            for topic in matchedTopics { topic.isActive = true }
+            guard persistContext() else { return }
+            selectedTopic = matchedTopics.first
+        } label: {
+            VStack(alignment: .leading, spacing: DS.space.sm) {
+                HStack {
+                    Image(systemName: scenario.systemImage)
+                        .font(.headline)
+                        .foregroundStyle(.white)
+                        .frame(width: 38, height: 38)
+                        .background(DS.accent)
+                        .clipShape(Circle())
+                    Spacer()
+                    if fraction >= 0.8 {
+                        Image(systemName: "checkmark.seal.fill")
+                            .foregroundStyle(DS.gradePerfect)
+                    }
+                }
+                Text(scenario.title)
+                    .font(.headline)
+                    .foregroundStyle(DS.textPrimary)
+                Text(scenario.outcome)
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+                    .lineLimit(3)
+                ProgressView(value: fraction)
+                    .tint(fraction >= 0.8 ? DS.gradePerfect : DS.accent)
+                Text(phraseIDs.isEmpty ? "Noch keine passenden Inhalte" : capabilityLabel(fraction))
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(DS.textTertiary)
+            }
+            .padding(DS.space.md)
+            .frame(width: 224, height: 196, alignment: .topLeading)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
+            .overlay(
+                RoundedRectangle(cornerRadius: DS.radius.lg)
+                    .stroke(DS.accent.opacity(0.12), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(matchedTopics.isEmpty)
+        .accessibilityLabel("\(scenario.title), \(capabilityLabel(fraction))")
+        .accessibilityHint("Aktiviert die passenden Missionen")
     }
 
     private var learningTopics: [Topic] {
@@ -224,7 +306,11 @@ struct LibraryView: View {
             phrase.cards.first?.state.isIntroduced == true
         }.count
         let total = topic.phrases.count
-        let fraction = total > 0 ? Double(introduced) / Double(total) : 0
+        let phraseIDs = Set(topic.phrases.map { String(describing: $0.persistentModelID) })
+        let fraction = LearningMotivation.strongRecallFraction(
+            events: activeLearningEvents,
+            phraseIDs: phraseIDs
+        )
         return Button {
             if !topic.isActive {
                 topic.isActive = true
@@ -247,7 +333,9 @@ struct LibraryView: View {
                     .foregroundStyle(DS.textSecondary)
                 ProgressView(value: fraction)
                     .tint(DS.accent)
-                Text(introduced == 0 ? "Noch nicht begonnen" : "\(introduced) von \(total) produktiv eingeführt")
+                Text(introduced == 0
+                    ? "Noch nicht begonnen"
+                    : "\(capabilityLabel(fraction)) · \(introduced) von \(total) kennengelernt")
                     .font(.caption2)
                     .foregroundStyle(DS.textTertiary)
             }
@@ -255,6 +343,23 @@ struct LibraryView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint(topic.isActive ? "Öffnet diese Mission" : "Aktiviert und öffnet diese Mission")
+    }
+
+    private func capabilityLabel(_ fraction: Double) -> String {
+        switch fraction {
+        case 0.8...: return "Gesprächsbereit"
+        case 0.4...: return "Im Aufbau"
+        case 0.01...: return "Erste sichere Abrufe"
+        default: return "Neu"
+        }
+    }
+
+    private func baseTopicName(_ name: String) -> String {
+        name.replacingOccurrences(
+            of: #"\s*\([A-Z]{2}\)$"#,
+            with: "",
+            options: .regularExpression
+        )
     }
 
     // MARK: - Active chip strip
