@@ -37,6 +37,16 @@
         }
       }
     },
+    "%@, %@, %lld von %lld Ausdrücken" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$@, %3$lld von %4$lld Ausdrücken"
+          }
+        }
+      }
+    },
     "%@, %lld Phrasen" : {
       "localizations" : {
         "de" : {
@@ -89,10 +99,16 @@
         }
       }
     },
+    "%lld automatische Hinweise" : {
+
+    },
     "%lld fällig" : {
 
     },
     "%lld gesagt" : {
+
+    },
+    "%lld kurze Gesprächszüge" : {
 
     },
     "%lld neue Karten, %@" : {
@@ -154,6 +170,9 @@
         }
       }
     },
+    "%lld/5" : {
+
+    },
     "%lld×" : {
 
     },
@@ -197,6 +216,9 @@
 
     },
     "Aktive Themen liefern neue Karten. Wiederholungen kommen weiter aus allen Themen." : {
+
+    },
+    "Aktiviere eine Mission mit mindestens drei Ausdrücken." : {
 
     },
     "Aktivieren" : {
@@ -280,6 +302,9 @@
     "Aufnahme stoppen" : {
 
     },
+    "Ausdruck noch einmal anhören" : {
+
+    },
     "Auto-Grade vs. Override" : {
 
     },
@@ -319,7 +344,13 @@
     "CueFlow-Gespräch starten" : {
 
     },
+    "CueFlow-Hörstudio starten" : {
+
+    },
     "DE" : {
+
+    },
+    "DEIN LERNWEG" : {
 
     },
     "DEINE MOMENTE" : {
@@ -329,6 +360,9 @@
 
     },
     "Das Tageslimit kannst du in den Einstellungen ändern (Üben → Neue Karten pro Tag)." : {
+
+    },
+    "Das war eine Rhythmusübung – keine Aussprachebewertung." : {
 
     },
     "Datei" : {
@@ -343,6 +377,9 @@
     "Deaktivieren" : {
 
     },
+    "Dein Weg ins Gespräch" : {
+
+    },
     "Dein bereits gespeicherter Fortschritt bleibt erhalten." : {
 
     },
@@ -350,6 +387,9 @@
 
     },
     "Deine Lernreise wird vorbereitet …" : {
+
+    },
+    "Deine Sammlung" : {
 
     },
     "Deine erste Übung wird vorbereitet." : {
@@ -383,6 +423,9 @@
 
     },
     "Die tägliche Erinnerung ist ein sanfter Impuls. Der Rückblick fasst sonntags echte Antworten, neue Ausdrücke und erfolgreiche Sprechabrufe zusammen — ohne Zielvorgabe oder Streak-Panik." : {
+
+    },
+    "Diese Woche" : {
 
     },
     "Diese Woche schwer gefallen" : {
@@ -449,6 +492,9 @@
     "Erinnerungen" : {
 
     },
+    "Erst verstehen, dann nachsprechen" : {
+
+    },
     "Erste Einheit starten" : {
 
     },
@@ -465,6 +511,9 @@
 
     },
     "Fortschritt" : {
+
+    },
+    "Fähigkeiten, nächste Stufe und Wochenmissionen" : {
 
     },
     "Für die Offline-Optimierung der FSRS-Gewichte mit fsrs-optimizer (Python). Format: card_id, review_time, rating." : {
@@ -521,6 +570,18 @@
     "Hol die richtigen Wörter selbst hervor — und sprich sie aus. So wird aus Verstehen echte Gesprächsfähigkeit." : {
 
     },
+    "HÖRSTUDIO" : {
+
+    },
+    "Hören → verstehen → nachsprechen" : {
+
+    },
+    "Hörstudio" : {
+
+    },
+    "Hörstudio abschließen" : {
+
+    },
     "Ich höre zu … Tippe zum Stoppen" : {
 
     },
@@ -563,7 +624,13 @@
     "Intensiv · etwa 15 Min." : {
 
     },
+    "Jeder Schritt wächst nur durch Antworten, die du selbst formulierst." : {
+
+    },
     "Jetzt du – sprich den Satz" : {
+
+    },
+    "Jetzt nachsprechen" : {
 
     },
     "Jetzt selbst sagen" : {
@@ -590,13 +657,25 @@
     "Klangeffekte" : {
 
     },
+    "Kompletten Lernweg ansehen" : {
+
+    },
     "Konnte ich nicht" : {
+
+    },
+    "Kursentwürfe: vor Veröffentlichung sprachlich prüfen." : {
 
     },
     "Kurze Antworten · privat auf dem Gerät · ohne Bewertung" : {
 
     },
+    "Kurze Hörimpulse mit langsamem Modell" : {
+
+    },
     "Kurzes Rollenspiel mit deinen aktuellen Ausdrücken" : {
+
+    },
+    "Langsam" : {
 
     },
     "Langsam anhören" : {
@@ -606,6 +685,9 @@
 
     },
     "Lernen" : {
+
+    },
+    "Lernweg" : {
 
     },
     "Letzte 7 Tage" : {
@@ -633,6 +715,12 @@
 
     },
     "Mit iCloud werden Lernstand und Inhalte privat über deine Apple-ID synchronisiert. Ohne verfügbaren Account bleibt alles vollständig auf diesem Gerät nutzbar. Sicherungen lassen sich zusätzlich exportieren und wiederherstellen." : {
+
+    },
+    "Nachgesprochen" : {
+
+    },
+    "Nachsprechen" : {
 
     },
     "Name" : {
@@ -680,6 +768,9 @@
     "Noch nicht begonnen" : {
 
     },
+    "Noch nicht genug Hörmaterial" : {
+
+    },
     "Nochmal ansehen" : {
 
     },
@@ -689,10 +780,16 @@
     "Notizen" : {
 
     },
+    "Nächster Ausdruck" : {
+
+    },
     "Nächster sinnvoller Fokus" : {
 
     },
     "Nächstes Ziel" : {
+
+    },
+    "Nächstes Ziel: %@" : {
 
     },
     "OK" : {
@@ -818,6 +915,9 @@
     "Sicherung wiederherstellen" : {
 
     },
+    "Sieh, was du schon anwenden kannst" : {
+
+    },
     "Situationen" : {
 
     },
@@ -843,6 +943,9 @@
 
     },
     "Sprechtempo %@" : {
+
+    },
+    "Sprich Rhythmus und Melodie nach" : {
 
     },
     "Sprich den Satz" : {
@@ -891,6 +994,9 @@
 
     },
     "Startet eine Einheit nur mit kürzlich schwierigen Ausdrücken" : {
+
+    },
+    "Startet fünf unbewertete Hör- und Nachsprechübungen" : {
 
     },
     "Startthemen" : {
@@ -993,6 +1099,9 @@
     "War schwerer – früher zeigen" : {
 
     },
+    "Was bedeutet dieser Ausdruck?" : {
+
+    },
     "Was willst du als Nächstes können?" : {
 
     },
@@ -1091,6 +1200,9 @@
 
     },
     "Öffnet ein privates Rollenspiel auf dem Gerät" : {
+
+    },
+    "Öffnet fünf kurze Hör- und Nachsprechübungen." : {
 
     },
     "Übe heute eine Runde, um die Serie zu starten." : {

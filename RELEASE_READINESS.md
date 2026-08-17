@@ -74,7 +74,8 @@ Fragen zum Datenschutz: [SUPPORT-EMAIL]
 - [x] project generation succeeds from `project.yml`;
 - [x] app and widget compile on the iOS 26.5 simulator SDK;
 - [x] unit tests cover core domain and persistence behavior;
-- [x] UI smoke tests cover the primary session, tabs, large accessibility text, Arabic configuration, guided role-play entry, and landscape reachability;
+- [x] UI smoke tests cover the primary session, tabs, large accessibility text, Arabic configuration, guided role-play entry, landscape reachability, capability path, and listening studio;
+- [x] the unit/performance suite covers 117 named tests / 127 executions, including 20,000-event progression analysis, and CI enforces a 14% app-target coverage floor;
 - [x] clean iPad Pro 13-inch startup and adaptive sidebar layout are visually checked with native multitasking/orientation declarations;
 - [x] clean startup and additive model migration are smoke-tested over existing simulator data;
 - [x] privacy manifest, microphone and speech usage descriptions, URL scheme, App Group, iCloud, and widget entitlements exist;
@@ -108,4 +109,4 @@ Run every row on the release archive, recording device, OS, result, and issue li
 
 ## Review notes draft
 
-CueFlow does not require an account. On first launch, select Russian or Arabic and complete or skip the guided speaking step. Microphone and speech permissions are requested only when a speaking action begins; all other practice remains usable if permission is denied. Apple Intelligence grading and conversation require a compatible device and degrade gracefully when unavailable. The app contains no purchases or gated practice.
+CueFlow does not require an account. On first launch, select Russian or Arabic and complete or skip the guided speaking step. Microphone and speech permissions are requested only when a speaking action begins; all other practice remains usable if permission is denied. Guided conversations and the listening studio work without Apple Intelligence; optional Apple Intelligence grading degrades gracefully when unavailable. The app contains no purchases or gated practice.

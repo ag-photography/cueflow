@@ -40,6 +40,14 @@ struct ContentReviewView: View {
                             Label(sourceLabel(phrase.contentSource), systemImage: "tray.and.arrow.down")
                                 .font(.caption2)
                                 .foregroundStyle(DS.textTertiary)
+                            let issues = ContentQualityValidator.issues(
+                                for: ContentQualityCandidate(phrase: phrase)
+                            )
+                            if !issues.isEmpty {
+                                Label("\(issues.count) automatische Hinweise", systemImage: "exclamationmark.triangle.fill")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(DS.gradeWrong)
+                            }
                         }
                     }
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {

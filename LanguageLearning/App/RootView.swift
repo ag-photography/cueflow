@@ -123,6 +123,8 @@ private struct TodayView: View {
     @State private var showingPractice = false
     @State private var showingSprint = false
     @State private var showingConversation = false
+    @State private var showingListeningLab = false
+    @State private var showingSkillPath = false
     @State private var showingSettings = false
     @State private var practiceScope: PracticeScope = .recommended
 
@@ -185,7 +187,9 @@ private struct TodayView: View {
                     recommendedSession
                     if !difficultCards.isEmpty { difficultPracticeCard }
                     dailyQuestCard
+                    skillPathCard
                     sprintCard
+                    listeningCard
                     conversationCard
                     if fastestRecall != nil || recentImprovement != nil { achievementCard }
                     missionCard
@@ -215,7 +219,9 @@ private struct TodayView: View {
                 )
             }
             .fullScreenCover(isPresented: $showingSprint) { SprintView() }
+            .fullScreenCover(isPresented: $showingListeningLab) { ListeningLabView() }
             .fullScreenCover(isPresented: $showingConversation) { ConversationView() }
+            .navigationDestination(isPresented: $showingSkillPath) { SkillPathView() }
             .onAppear {
                 celebrateCompletedQuestsIfNeeded()
                 WidgetSnapshotService.refresh(cards: cards, settings: settings)
@@ -229,9 +235,16 @@ private struct TodayView: View {
                 WidgetSnapshotService.refresh(cards: cards, settings: settings)
             }
             .onOpenURL { url in
-                guard url.scheme == "cueflow", url.host == "practice" else { return }
-                practiceScope = .recommended
-                showingPractice = true
+                guard url.scheme == "cueflow" else { return }
+                switch url.host {
+                case "practice":
+                    practiceScope = .recommended
+                    showingPractice = true
+                case "listening": showingListeningLab = true
+                case "skill-path": showingSkillPath = true
+                case "conversation": showingConversation = true
+                default: break
+                }
             }
         }
     }
@@ -243,6 +256,8 @@ private struct TodayView: View {
             showingPractice = true
         case .conversation:
             showingConversation = true
+        case .listening:
+            showingListeningLab = true
         case nil:
             break
         }
@@ -281,6 +296,73 @@ private struct TodayView: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("conversation-start")
         .accessibilityHint("Öffnet ein privates Rollenspiel auf dem Gerät")
+    }
+
+    private var skillPathCard: some View {
+        Button { showingSkillPath = true } label: {
+            HStack(spacing: DS.space.md) {
+                Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath.fill")
+                    .font(.title2)
+                    .foregroundStyle(.white)
+                    .frame(width: 54, height: 54)
+                    .background(DS.accent)
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("DEIN LERNWEG")
+                        .font(.caption2.weight(.bold))
+                        .tracking(0.7)
+                        .foregroundStyle(DS.accent)
+                    Text("Sieh, was du schon anwenden kannst")
+                        .font(.headline)
+                        .foregroundStyle(DS.textPrimary)
+                    Text("Fähigkeiten, nächste Stufe und Wochenmissionen")
+                        .font(.caption)
+                        .foregroundStyle(DS.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundStyle(DS.textTertiary)
+            }
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
+            .modifier(DS.Elevation(level: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("skill-path-start")
+    }
+
+    private var listeningCard: some View {
+        Button { showingListeningLab = true } label: {
+            HStack(spacing: DS.space.md) {
+                Image(systemName: "ear.and.waveform")
+                    .font(.title2)
+                    .foregroundStyle(DS.accent)
+                    .frame(width: 54, height: 54)
+                    .background(DS.accentSoft)
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("HÖRSTUDIO")
+                        .font(.caption2.weight(.bold))
+                        .tracking(0.7)
+                        .foregroundStyle(DS.accent)
+                    Text("Erst verstehen, dann nachsprechen")
+                        .font(.headline)
+                        .foregroundStyle(DS.textPrimary)
+                    Text("Kurze Hörimpulse mit langsamem Modell")
+                        .font(.caption)
+                        .foregroundStyle(DS.textSecondary)
+                }
+                Spacer()
+                Image(systemName: "chevron.right").foregroundStyle(DS.textTertiary)
+            }
+            .padding(DS.space.md)
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
+            .modifier(DS.Elevation(level: 1))
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("listening-lab-start")
+        .accessibilityHint("Startet fünf unbewertete Hör- und Nachsprechübungen")
     }
 
     private var dailyQuestCard: some View {

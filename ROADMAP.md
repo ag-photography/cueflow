@@ -2,7 +2,7 @@
 
 **Updated:** 17 August 2026
 
-**Current train:** 1.0, build 42
+**Current train:** 1.0, build 43
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.
 
 ## Product promise
@@ -24,9 +24,12 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 - Russian and Arabic language packs with canonical Arabic script, RTL presentation, locale-specific TTS/ASR, and optional transliteration;
 - 60-second spoken Sprint, difficult-this-week practice, 3/7/15-minute session defaults, and universal guided Russian/Arabic role-play that does not require Apple Intelligence;
 - evidence-based speech feedback using recognized words, confidence, and hesitation signals, with slow playback and one conservative immediate retry—explicitly not presented as phoneme scoring;
+- an unscored five-item listening/shadowing studio, recorded-reference fallback architecture, Arabic enhanced-voice selection, and separate step/completion sound signatures;
 - adaptive scaffolding after repeated difficulty, curriculum prerequisites and recommendations, and learner-facing structural error-pattern insights;
+- a capability-path map, evidence-based unlocks, three weekly missions, and five collectible milestones tied to productive recall rather than arbitrary points;
+- six Russian and six Arabic guided situations; shopping, hotel, and pharmacy are longer draft scenarios, and shopping contains authored answer branches;
 - bundled A1 Russian and Arabic content, bundled OpenRussian material, tutor PDF import, paste/manual entry, topic journeys, and scenario collections;
-- phrase-level CEFR, register, dialect, provenance, and editorial/native-review status with an explicit review queue;
+- phrase-level CEFR, register, dialect, provenance, editorial/native-review status, structural content linting, and an explicit review queue;
 - compact corrections, optional detail, contextual example sentences, and capability-based session recaps.
 
 ### Motivation without dark patterns
@@ -45,6 +48,7 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 - MetricKit diagnostics with a privacy-filtered in-app problem report;
 - String Catalog, dark mode, Dynamic Type, RTL, VoiceOver labels, Reduce Motion behavior, scene restoration, iPad sidebar adaptation, multitasking, and all supported orientations;
 - deterministic launch overrides and an XCTest UI smoke suite.
+- executable quality-gate and non-overwriting archive scripts, with a 14% app-target coverage regression floor.
 
 ## Release gates
 
@@ -63,9 +67,9 @@ The detailed device matrix, store copy, privacy draft, and screenshot plan are i
 
 Only prioritize these after beta evidence:
 
-- learner-authored conversation scenarios and conversation-specific pronunciation feedback;
+- learner-authored conversation scenarios and true phoneme-level pronunciation feedback;
 - English UI and additional language packs;
-- Apple Watch and App Intents/Shortcuts;
+- Apple Watch;
 - audio recorded by native speakers for the highest-use phrases;
 - OCR for image-only tutor documents;
 - adaptive FSRS weight refitting from an explicitly exported, privacy-preserving dataset.

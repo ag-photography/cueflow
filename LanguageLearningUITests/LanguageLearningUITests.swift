@@ -77,4 +77,29 @@ final class LanguageLearningUITests: XCTestCase {
         XCTAssertTrue(app.buttons["recommended-session-start"].isHittable)
         XCUIDevice.shared.orientation = .portrait
     }
+
+    func testSkillPathIsDiscoverableFromToday() {
+        let app = launch()
+        let entry = app.buttons["skill-path-start"]
+        for _ in 0..<3 where !entry.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(entry.waitForExistence(timeout: 4))
+        entry.tap()
+        XCTAssertTrue(app.otherElements["skill-path"].waitForExistence(timeout: 4)
+            || app.scrollViews.firstMatch.waitForExistence(timeout: 1))
+        XCTAssertTrue(app.staticTexts["Dein Weg ins Gespräch"].exists)
+    }
+
+    func testListeningLabOpensWithoutSpeechPermission() {
+        let app = launch()
+        let entry = app.buttons["listening-lab-start"]
+        for _ in 0..<5 where !entry.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(entry.waitForExistence(timeout: 4))
+        entry.tap()
+        XCTAssertTrue(app.navigationBars["Hörstudio"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.buttons["Schließen"].exists)
+    }
 }

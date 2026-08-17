@@ -2,10 +2,30 @@ import Foundation
 
 struct GuidedRoleplay: Identifiable, Equatable, Sendable {
     struct Step: Equatable, Sendable {
+        struct Branch: Equatable, Sendable {
+            let signals: [String]
+            let partnerReply: String
+        }
+
         let partnerText: String
         let learnerGoal: String
         let referenceAnswers: [String]
         let partnerReply: String
+        let branches: [Branch]
+
+        init(
+            partnerText: String,
+            learnerGoal: String,
+            referenceAnswers: [String],
+            partnerReply: String,
+            branches: [Branch] = []
+        ) {
+            self.partnerText = partnerText
+            self.learnerGoal = learnerGoal
+            self.referenceAnswers = referenceAnswers
+            self.partnerReply = partnerReply
+            self.branches = branches
+        }
     }
 
     let id: String
@@ -42,9 +62,13 @@ enum GuidedRoleplayEngine {
         let step = scenario.steps[stepIndex]
         let support = support(for: learnerText, references: step.referenceAnswers)
         let nextIndex = stepIndex + 1
+        let normalizedAnswer = FuzzyMatcher.normalize(learnerText)
+        let reply = step.branches.first(where: { branch in
+            branch.signals.contains { normalizedAnswer.contains(FuzzyMatcher.normalize($0)) }
+        })?.partnerReply ?? step.partnerReply
         return GuidedRoleplayProgress(
             support: support,
-            partnerReply: step.partnerReply,
+            partnerReply: reply,
             nextPartnerText: scenario.steps.indices.contains(nextIndex)
                 ? scenario.steps[nextIndex].partnerText
                 : nil,
@@ -162,6 +186,60 @@ enum GuidedRoleplayLibrary {
                 )
             ],
             closingText: "Счастливого пути!"
+        ),
+        GuidedRoleplay(
+            id: "ru-shopping",
+            title: "Einkaufen",
+            subtitle: "Fragen, wählen und bezahlen",
+            systemImage: "bag.fill",
+            languageCode: "ru",
+            steps: [
+                .init(partnerText: "Здравствуйте! Я могу вам помочь?", learnerGoal: "Sage, dass du ein Hemd suchst.", referenceAnswers: ["Я ищу рубашку."], partnerReply: "Какой цвет вы хотите?"),
+                .init(
+                    partnerText: "Какой цвет вы хотите?",
+                    learnerGoal: "Wähle blau oder weiß.",
+                    referenceAnswers: ["Синюю, пожалуйста.", "Белую, пожалуйста."],
+                    partnerReply: "Хорошо, вот белая рубашка.",
+                    branches: [
+                        .init(signals: ["син"], partnerReply: "Хорошо, вот синяя рубашка."),
+                        .init(signals: ["бел"], partnerReply: "Хорошо, вот белая рубашка.")
+                    ]
+                ),
+                .init(partnerText: "Вот рубашка.", learnerGoal: "Frage, ob du sie anprobieren kannst.", referenceAnswers: ["Можно примерить?", "Я могу её примерить?"], partnerReply: "Конечно, примерочная там."),
+                .init(partnerText: "Примерочная там.", learnerGoal: "Sage, dass sie gut passt.", referenceAnswers: ["Она хорошо сидит.", "Мне подходит."], partnerReply: "Отлично. Вы её берёте?"),
+                .init(partnerText: "Вы её берёте?", learnerGoal: "Sage ja und frage nach Kartenzahlung.", referenceAnswers: ["Да. Можно оплатить картой?"], partnerReply: "Да, конечно.")
+            ],
+            closingText: "Спасибо за покупку!"
+        ),
+        GuidedRoleplay(
+            id: "ru-hotel",
+            title: "Im Hotel",
+            subtitle: "Einchecken und Wichtiges klären",
+            systemImage: "bed.double.fill",
+            languageCode: "ru",
+            steps: [
+                .init(partnerText: "Добрый вечер! У вас есть бронь?", learnerGoal: "Sage, dass du eine Reservierung hast.", referenceAnswers: ["Да, у меня есть бронь."], partnerReply: "На какое имя?"),
+                .init(partnerText: "На какое имя?", learnerGoal: "Nenne deinen Namen.", referenceAnswers: ["На имя Алекс Мюллер.", "Меня зовут Алекс Мюллер."], partnerReply: "Спасибо. Вы на две ночи?"),
+                .init(partnerText: "Вы на две ночи?", learnerGoal: "Bestätige zwei Nächte.", referenceAnswers: ["Да, на две ночи."], partnerReply: "Вот ваш ключ. Завтрак с семи часов."),
+                .init(partnerText: "Завтрак с семи часов.", learnerGoal: "Frage nach dem WLAN-Passwort.", referenceAnswers: ["Какой пароль от Wi-Fi?", "Скажите, пожалуйста, пароль от Wi-Fi."], partnerReply: "Пароль написан на ключе."),
+                .init(partnerText: "Пароль написан на ключе.", learnerGoal: "Frage, wann du auschecken musst.", referenceAnswers: ["Во сколько нужно выехать?", "Когда выезд?"], partnerReply: "До одиннадцати часов.")
+            ],
+            closingText: "Приятного отдыха!"
+        ),
+        GuidedRoleplay(
+            id: "ru-pharmacy",
+            title: "In der Apotheke",
+            subtitle: "Beschwerden erklären und nachfragen",
+            systemImage: "cross.case.fill",
+            languageCode: "ru",
+            steps: [
+                .init(partnerText: "Здравствуйте. Чем я могу помочь?", learnerGoal: "Sage, dass du Kopfschmerzen hast.", referenceAnswers: ["У меня болит голова.", "У меня головная боль."], partnerReply: "Как давно у вас болит голова?"),
+                .init(partnerText: "Как давно?", learnerGoal: "Sage: seit heute Morgen.", referenceAnswers: ["С сегодняшнего утра.", "С утра."], partnerReply: "У вас есть температура?"),
+                .init(partnerText: "У вас есть температура?", learnerGoal: "Sage, dass du kein Fieber hast.", referenceAnswers: ["Нет, температуры нет."], partnerReply: "У вас есть аллергия на лекарства?"),
+                .init(partnerText: "Есть аллергия на лекарства?", learnerGoal: "Sage, dass dir keine bekannt ist.", referenceAnswers: ["Нет, насколько я знаю.", "Я не знаю ни о какой аллергии."], partnerReply: "Тогда можно принять эту таблетку."),
+                .init(partnerText: "Можно принять эту таблетку.", learnerGoal: "Frage, wie oft du sie nehmen sollst.", referenceAnswers: ["Как часто её принимать?", "Сколько раз в день?"], partnerReply: "До двух раз в день после еды.")
+            ],
+            closingText: "Если не станет лучше, обратитесь к врачу."
         )
     ]
 
@@ -249,6 +327,60 @@ enum GuidedRoleplayLibrary {
                 )
             ],
             closingText: "رحلة سعيدة!"
+        ),
+        GuidedRoleplay(
+            id: "ar-shopping",
+            title: "Einkaufen",
+            subtitle: "Fragen, wählen und bezahlen",
+            systemImage: "bag.fill",
+            languageCode: "ar",
+            steps: [
+                .init(partnerText: "مرحباً! هل أستطيع مساعدتك؟", learnerGoal: "Sage, dass du ein Hemd suchst.", referenceAnswers: ["أبحث عن قميص."], partnerReply: "أي لون تريد؟"),
+                .init(
+                    partnerText: "أي لون تريد؟",
+                    learnerGoal: "Wähle blau oder weiß.",
+                    referenceAnswers: ["الأزرق من فضلك.", "الأبيض من فضلك."],
+                    partnerReply: "حسناً، هذا هو القميص الأبيض.",
+                    branches: [
+                        .init(signals: ["أزرق", "الأزرق"], partnerReply: "حسناً، هذا هو القميص الأزرق."),
+                        .init(signals: ["أبيض", "الأبيض"], partnerReply: "حسناً، هذا هو القميص الأبيض.")
+                    ]
+                ),
+                .init(partnerText: "هذا هو القميص.", learnerGoal: "Frage, ob du ihn anprobieren kannst.", referenceAnswers: ["هل يمكنني أن أقيسه؟"], partnerReply: "بالتأكيد، غرفة القياس هناك."),
+                .init(partnerText: "غرفة القياس هناك.", learnerGoal: "Sage, dass er gut passt.", referenceAnswers: ["مقاسه مناسب.", "يناسبني جيداً."], partnerReply: "ممتاز. هل ستأخذه؟"),
+                .init(partnerText: "هل ستأخذه؟", learnerGoal: "Sage ja und frage nach Kartenzahlung.", referenceAnswers: ["نعم. هل يمكنني الدفع بالبطاقة؟"], partnerReply: "نعم، بالتأكيد.")
+            ],
+            closingText: "شكراً لشرائك!"
+        ),
+        GuidedRoleplay(
+            id: "ar-hotel",
+            title: "Im Hotel",
+            subtitle: "Einchecken und Wichtiges klären",
+            systemImage: "bed.double.fill",
+            languageCode: "ar",
+            steps: [
+                .init(partnerText: "مساء الخير! هل لديك حجز؟", learnerGoal: "Sage, dass du eine Reservierung hast.", referenceAnswers: ["نعم، لدي حجز."], partnerReply: "بأي اسم؟"),
+                .init(partnerText: "بأي اسم؟", learnerGoal: "Nenne deinen Namen.", referenceAnswers: ["باسم أليكس مولر.", "اسمي أليكس مولر."], partnerReply: "شكراً. ستبقى ليلتين؟"),
+                .init(partnerText: "ستبقى ليلتين؟", learnerGoal: "Bestätige zwei Nächte.", referenceAnswers: ["نعم، ليلتين."], partnerReply: "هذا مفتاحك. الإفطار من الساعة السابعة."),
+                .init(partnerText: "الإفطار من الساعة السابعة.", learnerGoal: "Frage nach dem WLAN-Passwort.", referenceAnswers: ["ما كلمة مرور الواي فاي؟"], partnerReply: "كلمة المرور مكتوبة على المفتاح."),
+                .init(partnerText: "كلمة المرور على المفتاح.", learnerGoal: "Frage, wann du auschecken musst.", referenceAnswers: ["متى يجب أن أغادر الغرفة؟", "متى تسجيل المغادرة؟"], partnerReply: "قبل الساعة الحادية عشرة.")
+            ],
+            closingText: "نتمنى لك إقامة سعيدة!"
+        ),
+        GuidedRoleplay(
+            id: "ar-pharmacy",
+            title: "In der Apotheke",
+            subtitle: "Beschwerden erklären und nachfragen",
+            systemImage: "cross.case.fill",
+            languageCode: "ar",
+            steps: [
+                .init(partnerText: "مرحباً. كيف أستطيع مساعدتك؟", learnerGoal: "Sage, dass du Kopfschmerzen hast.", referenceAnswers: ["لدي صداع.", "رأسي يؤلمني."], partnerReply: "منذ متى لديك هذا الصداع؟"),
+                .init(partnerText: "منذ متى؟", learnerGoal: "Sage: seit heute Morgen.", referenceAnswers: ["منذ هذا الصباح."], partnerReply: "هل لديك حمى؟"),
+                .init(partnerText: "هل لديك حمى؟", learnerGoal: "Sage, dass du kein Fieber hast.", referenceAnswers: ["لا، ليست لدي حمى."], partnerReply: "هل لديك حساسية من أي دواء؟"),
+                .init(partnerText: "هل لديك حساسية من أي دواء؟", learnerGoal: "Sage, dass dir keine bekannt ist.", referenceAnswers: ["لا، ليس حسب علمي."], partnerReply: "يمكنك أن تأخذ هذا القرص."),
+                .init(partnerText: "يمكنك أن تأخذ هذا القرص.", learnerGoal: "Frage, wie oft du ihn nehmen sollst.", referenceAnswers: ["كم مرة آخذه؟", "كم مرة في اليوم؟"], partnerReply: "مرتين في اليوم بعد الطعام كحد أقصى.")
+            ],
+            closingText: "إذا لم تتحسن، راجع الطبيب."
         )
     ]
 }

@@ -6,11 +6,11 @@ struct GuidedRoleplayTests {
         let russian = GuidedRoleplayLibrary.scenarios(languageCode: "ru")
         let arabic = GuidedRoleplayLibrary.scenarios(languageCode: "ar")
 
-        #expect(russian.count == 3)
-        #expect(arabic.count == 3)
+        #expect(russian.count == 6)
+        #expect(arabic.count == 6)
         #expect(russian.map(\.title) == arabic.map(\.title))
-        #expect(russian.allSatisfy { $0.steps.count == 3 })
-        #expect(arabic.allSatisfy { $0.steps.count == 3 })
+        #expect(russian.allSatisfy { $0.steps.count >= 3 })
+        #expect(arabic.allSatisfy { $0.steps.count >= 3 })
     }
 
     @Test func exactReferenceNeedsNoScaffoldAndAdvances() throws {
@@ -51,5 +51,16 @@ struct GuidedRoleplayTests {
 
         #expect(progress.isComplete)
         #expect(progress.nextPartnerText == nil)
+    }
+
+    @Test func authoredSignalsCreateARealConversationBranch() throws {
+        let scenario = try #require(GuidedRoleplayLibrary.scenarios(languageCode: "ru")
+            .first { $0.id == "ru-shopping" })
+        let progress = try #require(GuidedRoleplayEngine.progress(
+            scenario: scenario,
+            stepIndex: 1,
+            learnerText: "Синюю, пожалуйста."
+        ))
+        #expect(progress.partnerReply.contains("синяя"))
     }
 }

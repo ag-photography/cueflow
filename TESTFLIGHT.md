@@ -7,6 +7,7 @@ The repository is configured for bundle ID `com.alex.cueflow`, widget extension 
 1. Update `CFBundleVersion` for both app and widget in [`project.yml`](project.yml).
 2. Run `xcodegen generate`.
 3. Run the unit and UI suites on the pinned simulator runtime.
+   The complete automated gate is available as `ci_scripts/run_quality_gate.sh`.
 4. Test Russian and Arabic speech, audio routing, interruption recovery, backup/restore, iCloud fallback, and widget deep linking on physical devices.
 5. Confirm [`RELEASE_READINESS.md`](RELEASE_READINESS.md) has no unresolved launch-blocking gate.
 6. Commit the generated-source changes, but not the generated `.xcodeproj` if it remains ignored.
@@ -15,6 +16,7 @@ The repository is configured for bundle ID `com.alex.cueflow`, widget extension 
 
 1. Open `LanguageLearning.xcodeproj` and select **Any iOS Device (arm64)**.
 2. Choose **Product → Archive**.
+   Alternatively run `ci_scripts/create_release_archive.sh`; it refuses to overwrite an existing archive.
 3. In Organizer choose **Distribute App → TestFlight & App Store → Distribute**.
 4. Keep automatic signing enabled and upload symbols.
 5. Wait for App Store Connect processing, then inspect every processing warning before assigning testers.
@@ -29,6 +31,7 @@ On a clean install and an upgrade over the previous TestFlight build:
 - start/exit/complete a session in Russian and Arabic;
 - deny speech permission and confirm non-speaking fallback;
 - run Sprint, difficult practice, and conversation availability/fallback;
+- open the capability path, listening studio, and their `cueflow://skill-path` / `cueflow://listening` routes;
 - create/import/edit/review content;
 - export, alter data, and restore a backup;
 - launch offline and with iCloud signed out;

@@ -5,6 +5,11 @@ import SwiftData
 /// single configuration entry rather than another set of switches throughout
 /// the app. Content remains independently bundled and versioned.
 struct LanguagePack: Equatable, Sendable {
+    enum ScriptDirection: String, Codable, Sendable { case leftToRight, rightToLeft }
+    enum LearningFeature: String, CaseIterable, Codable, Sendable {
+        case speechRecognition, speechSynthesis, transliteration, guidedRoleplay, listeningLab
+    }
+
     let code: String
     let nativeName: String
     let germanLabel: String
@@ -12,23 +17,59 @@ struct LanguagePack: Equatable, Sendable {
     let speechLocale: String
     let isRTL: Bool
     let defaultTransliterationVisible: Bool
+    let scriptDirection: ScriptDirection
+    let contentVersion: Int
+    let supportedFeatures: Set<LearningFeature>
+    let dialectLabels: [String]
 
     static let russian = LanguagePack(
         code: "ru", nativeName: "Русский", germanLabel: "Russisch",
         ttsLocale: "ru-RU", speechLocale: "ru-RU", isRTL: false,
-        defaultTransliterationVisible: true
+        defaultTransliterationVisible: true,
+        scriptDirection: .leftToRight,
+        contentVersion: 1,
+        supportedFeatures: Set(LearningFeature.allCases),
+        dialectLabels: ["Standardrussisch"]
     )
 
     static let arabic = LanguagePack(
         code: "ar", nativeName: "العربية", germanLabel: "Arabisch",
         ttsLocale: "ar-SA", speechLocale: "ar-SA", isRTL: true,
-        defaultTransliterationVisible: true
+        defaultTransliterationVisible: true,
+        scriptDirection: .rightToLeft,
+        contentVersion: 1,
+        supportedFeatures: Set(LearningFeature.allCases),
+        dialectLabels: ["Modernes Hocharabisch", "Dialekt nicht angegeben"]
     )
 
     static let supported: [LanguagePack] = [.russian, .arabic]
 
     static func configuration(for code: String) -> LanguagePack? {
         supported.first { $0.code == code }
+    }
+
+    static func validationIssues(in packs: [LanguagePack]) -> [String] {
+        var issues: [String] = []
+        let duplicateCodes = Dictionary(grouping: packs, by: \.code).filter { $0.value.count > 1 }.keys
+        issues += duplicateCodes.map { "Sprachcode mehrfach vorhanden: \($0)" }
+        for pack in packs {
+            if pack.code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                issues.append("Sprachpaket ohne Code")
+            }
+            if pack.nativeName.isEmpty || pack.germanLabel.isEmpty {
+                issues.append("\(pack.code): Anzeigenamen fehlen")
+            }
+            if pack.ttsLocale.isEmpty || pack.speechLocale.isEmpty {
+                issues.append("\(pack.code): Sprach-Locale fehlt")
+            }
+            if pack.isRTL != (pack.scriptDirection == .rightToLeft) {
+                issues.append("\(pack.code): Schreibrichtung ist widersprüchlich")
+            }
+            if pack.contentVersion < 1 {
+                issues.append("\(pack.code): Inhaltsversion muss positiv sein")
+            }
+        }
+        return issues.sorted()
     }
 }
 

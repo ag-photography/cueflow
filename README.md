@@ -8,6 +8,9 @@ CueFlow is a privacy-first native iOS language coach for German speakers learnin
 - on-device Russian and Arabic speech recognition, speech synthesis, grading, and optional Apple Intelligence assistance;
 - focused 3/7/15-minute sessions, difficult-this-week practice, a 60-second spoken Sprint, and guided Russian/Arabic role-plays on every supported device;
 - honest speech-recognition evidence, slow reference playback, immediate retry, adaptive scaffolding, curriculum recommendations, and recurring learning-pattern insights;
+- an evidence-based capability path with unlocks, weekly missions, collectible milestones, and no artificial currency or practice gates;
+- a five-item listening and shadowing studio with normal/slow playback, bounded recording, and explicit non-diagnostic feedback;
+- six Russian and six Arabic guided situations, including longer shopping, hotel, and pharmacy drafts with authored response branches;
 - practical topic journeys, curated starters, tutor imports, phrase metadata, and an editorial/native-speaker review queue;
 - progress centered on successful recalls, spoken output, recovery, and fluency—not hearts or streak anxiety;
 - private CloudKit sync when available, reliable local fallback, complete JSON backup/restore, widgets, Siri/App Shortcuts, and MetricKit diagnostics;
@@ -50,6 +53,8 @@ xcodebuild test -scheme LanguageLearning \
 ```
 
 The simulator suite covers domain, persistence, migrations, backup, launch recovery, engagement selection, notification summaries, widget snapshots, primary navigation, large text, and Arabic configuration. Microphone quality, audio routes, offline speech models, haptics, and interruption handling still require physical-device validation.
+
+Run the complete local quality gate, including the current app-coverage regression floor, with `ci_scripts/run_quality_gate.sh`. `ci_scripts/create_release_archive.sh` creates a non-overwriting signed archive when the Apple signing environment is available.
 
 ## Structure
 

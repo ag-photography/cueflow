@@ -16,17 +16,19 @@ final class TTSService {
 
     private let synthesizer = AVSpeechSynthesizer()
     private(set) var bestRussianVoice: AVSpeechSynthesisVoice?
+    private(set) var bestArabicVoice: AVSpeechSynthesisVoice?
     private(set) var bestGermanVoice: AVSpeechSynthesisVoice?
 
     init() {
         bestRussianVoice = Self.pickBestVoice(language: "ru-RU")
+        bestArabicVoice = Self.pickBestVoice(language: "ar-SA")
         bestGermanVoice = Self.pickBestVoice(language: "de-DE")
     }
 
     /// Speak the supplied text in the given language, optionally repeated
     /// `times` times with `gap` seconds between repeats. Cancels any utterance
     /// currently in progress so rapid taps don't queue up. Supports `ru-RU`
-    /// and `de-DE` with cached best-quality voices; other locales fall back
+    /// `ar-SA`, and `de-DE` with cached best-quality voices; other locales fall back
     /// to the system default voice for that language.
     func speak(
         _ text: String,
@@ -86,6 +88,7 @@ final class TTSService {
     private func preferredVoice(for language: String) -> AVSpeechSynthesisVoice? {
         switch language {
         case "ru-RU": return bestRussianVoice
+        case "ar-SA": return bestArabicVoice
         case "de-DE": return bestGermanVoice
         default: return nil
         }

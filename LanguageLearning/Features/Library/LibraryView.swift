@@ -243,6 +243,12 @@ struct LibraryView: View {
 
     private var scenarioCollectionsSection: some View {
         Section("Situationen") {
+            NavigationLink {
+                SkillPathView()
+            } label: {
+                Label("Kompletten Lernweg ansehen", systemImage: "point.bottomleft.forward.to.point.topright.scurvepath.fill")
+                    .font(.subheadline.weight(.semibold))
+            }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.space.sm) {
                     ForEach(ScenarioDefinition.defaults) { scenario in

@@ -57,6 +57,31 @@ final class CompletionFeedbackService {
         }
     }
 
+    /// A lighter single-note acknowledgement for correct steps inside a
+    /// session. The two-note signature remains reserved for completion.
+    func playStepSuccess() {
+        guard UserDefaults.standard.object(forKey: "soundEffectsEnabled") as? Bool ?? true else {
+            UISelectionFeedbackGenerator().selectionChanged()
+            return
+        }
+        UISelectionFeedbackGenerator().selectionChanged()
+        playBuffer(makeStepBuffer())
+    }
+
+    private func playBuffer(_ buffer: AVAudioPCMBuffer) {
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            try session.setActive(true)
+            if !engine.isRunning { try engine.start() }
+            player.stop()
+            player.scheduleBuffer(buffer, at: nil, options: .interrupts)
+            player.play()
+        } catch {
+            // Haptic and visual feedback remain available.
+        }
+    }
+
     private func makeCompletionBuffer() -> AVAudioPCMBuffer {
         let duration = 0.42
         let frameCount = AVAudioFrameCount(format.sampleRate * duration)
@@ -69,6 +94,19 @@ final class CompletionFeedbackService {
             let first = bellVoice(time: time, start: 0, frequency: 659.25, decay: 10.5)
             let second = bellVoice(time: time, start: 0.13, frequency: 987.77, decay: 8.5)
             samples[frame] = Float(min(0.72, first * 0.42 + second * 0.50))
+        }
+        return buffer
+    }
+
+    private func makeStepBuffer() -> AVAudioPCMBuffer {
+        let duration = 0.16
+        let frameCount = AVAudioFrameCount(format.sampleRate * duration)
+        let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount)!
+        buffer.frameLength = frameCount
+        guard let samples = buffer.floatChannelData?[0] else { return buffer }
+        for frame in 0..<Int(frameCount) {
+            let time = Double(frame) / format.sampleRate
+            samples[frame] = Float(bellVoice(time: time, start: 0, frequency: 783.99, decay: 18) * 0.34)
         }
         return buffer
     }

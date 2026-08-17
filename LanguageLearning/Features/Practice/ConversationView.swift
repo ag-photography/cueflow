@@ -95,7 +95,7 @@ struct ConversationView: View {
                                 Text(roleplay.subtitle)
                                     .font(.subheadline)
                                     .foregroundStyle(DS.textSecondary)
-                                Text("3 kurze Gesprächszüge")
+                                Text("\(roleplay.steps.count) kurze Gesprächszüge")
                                     .font(.caption.weight(.semibold))
                                     .foregroundStyle(DS.accent)
                             }
@@ -113,6 +113,9 @@ struct ConversationView: View {
                     .accessibilityHint("Startet das Rollenspiel")
                 }
                 Label("Rollenspiele verändern deinen FSRS-Lernplan nicht.", systemImage: "checkmark.shield")
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+                Label("Kursentwürfe: vor Veröffentlichung sprachlich prüfen.", systemImage: "person.crop.circle.badge.checkmark")
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
             }

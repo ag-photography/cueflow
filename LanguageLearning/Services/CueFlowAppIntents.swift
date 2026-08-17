@@ -4,6 +4,7 @@ import Foundation
 enum CueFlowPendingAction: String, Sendable {
     case practice
     case conversation
+    case listening
 
     private static let key = "pendingAppIntentAction"
 
@@ -46,6 +47,18 @@ struct StartCueFlowConversationIntent: AppIntent {
     }
 }
 
+struct StartCueFlowListeningIntent: AppIntent {
+    static let title: LocalizedStringResource = "CueFlow-Hörstudio starten"
+    static let description = IntentDescription("Öffnet fünf kurze Hör- und Nachsprechübungen.")
+    static let openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        CueFlowPendingAction.store(.listening)
+        return .result()
+    }
+}
+
 struct CueFlowShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(
@@ -65,6 +78,15 @@ struct CueFlowShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "Gespräch",
             systemImageName: "person.2.wave.2.fill"
+        )
+        AppShortcut(
+            intent: StartCueFlowListeningIntent(),
+            phrases: [
+                "Hörstudio mit \(.applicationName) starten",
+                "Mit \(.applicationName) nachsprechen"
+            ],
+            shortTitle: "Hörstudio",
+            systemImageName: "ear.and.waveform"
         )
     }
 }
