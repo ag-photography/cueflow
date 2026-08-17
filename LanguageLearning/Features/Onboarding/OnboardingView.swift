@@ -30,6 +30,7 @@ struct OnboardingView: View {
     @State private var selectedPurpose = "Reisen"
     @State private var firstSpeechSucceeded = false
     @State private var firstSpeechUnavailable = false
+    @State private var onboardingSpeechGeneration = UUID()
     @StateObject private var speech = SpeechRecognitionService()
 
     /// Curated beginner topics offered on the topic-selection page. A small,
@@ -131,6 +132,12 @@ struct OnboardingView: View {
             speech.stop()
             if let locale = activeLanguage?.speechLocale { speech.setLocale(locale) }
         }
+        .onChange(of: index) { _, newIndex in
+            guard pages.indices.contains(newIndex), pages[newIndex] != .firstSuccess else { return }
+            onboardingSpeechGeneration = UUID()
+            speech.stop()
+            TTSService.shared.stop()
+        }
         .onChange(of: speech.transcription) { _, newValue in
             guard let phrase = firstPhrase, !firstSpeechSucceeded else { return }
             if SprintMatcher.matches(spokenTail: newValue, target: phrase.targetText) {
@@ -140,6 +147,7 @@ struct OnboardingView: View {
             }
         }
         .onDisappear {
+            onboardingSpeechGeneration = UUID()
             speech.stop()
             TTSService.shared.stop()
         }
@@ -318,10 +326,17 @@ struct OnboardingView: View {
                     .padding(.horizontal, DS.space.md)
                     .dsFlashcardSurface()
 
-                    Button(action: startFirstSpeech) {
+                    Button {
+                        if speech.isRecording {
+                            onboardingSpeechGeneration = UUID()
+                            speech.stop()
+                        } else {
+                            startFirstSpeech()
+                        }
+                    } label: {
                         Label(
-                            firstSpeechSucceeded ? "Geschafft" : (speech.isRecording ? "Ich höre zu …" : "Jetzt selbst sagen"),
-                            systemImage: firstSpeechSucceeded ? "checkmark.circle.fill" : "mic.fill"
+                            firstSpeechSucceeded ? "Geschafft" : (speech.isRecording ? "Aufnahme stoppen" : "Jetzt selbst sagen"),
+                            systemImage: firstSpeechSucceeded ? "checkmark.circle.fill" : (speech.isRecording ? "stop.fill" : "mic.fill")
                         )
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.white)
@@ -330,7 +345,7 @@ struct OnboardingView: View {
                         .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
-                    .disabled(firstSpeechSucceeded || speech.isRecording)
+                    .disabled(firstSpeechSucceeded)
 
                     if firstSpeechUnavailable {
                         Text("Sprechen ist gerade nicht verfügbar. Du kannst trotzdem fortfahren und später erneut probieren.")
@@ -382,8 +397,14 @@ struct OnboardingView: View {
         guard !speech.isRecording else { return }
         TTSService.shared.stop()
         firstSpeechUnavailable = false
+        let generation = UUID()
+        onboardingSpeechGeneration = generation
         Task {
             let authorized = await speech.requestAuthorization()
+            guard onboardingSpeechGeneration == generation,
+                  pages.indices.contains(index),
+                  pages[index] == .firstSuccess
+            else { return }
             guard authorized else {
                 firstSpeechUnavailable = true
                 return

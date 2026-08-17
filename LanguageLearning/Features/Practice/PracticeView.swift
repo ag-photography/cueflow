@@ -65,6 +65,11 @@ struct PracticeView: View {
     @State private var showingSprint = false
     @State private var sessionCount: Int = 0
     @State private var sessionCorrect: Int = 0
+    @State private var consecutiveProductiveRecalls: Int = 0
+    @State private var sessionSpokenAnswers: Int = 0
+    @State private var sessionSpokenWords: Int = 0
+    @State private var sessionNewlyRecalled: [String] = []
+    @State private var sessionNeedsWork: Int = 0
     @State private var showingSessionSummary = false
     @State private var speechAuthorized: Bool? = nil
     @State private var speechErrorMessage: String?
@@ -800,7 +805,6 @@ struct PracticeView: View {
         sessionCount += 1
         if correct {
             sessionCorrect += 1
-            maybeTriggerSurprisePraise()
         }
 
         if sessionCount >= sessionTarget {
@@ -1653,14 +1657,33 @@ struct PracticeView: View {
                     .onAppear { markStreakCelebrated(milestone) }
             }
             Spacer()
-            Text("\(sessionCorrect)/\(sessionCount)")
-                .font(.system(size: 72, weight: .bold, design: .rounded))
-                .foregroundStyle(DS.accent)
-            Text(sessionAccuracyMessage)
-                .font(.title3)
-                .multilineTextAlignment(.center)
-                .foregroundStyle(DS.textSecondary)
-                .padding(.horizontal)
+            VStack(spacing: DS.space.xs) {
+                Text("Heute gesprochen")
+                    .font(.headline)
+                    .foregroundStyle(DS.textPrimary)
+                Text("\(sessionSpokenAnswers)")
+                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .foregroundStyle(DS.accent)
+                Text("Antworten · \(sessionSpokenWords) Wörter")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.textSecondary)
+            }
+            if let recalled = sessionNewlyRecalled.first {
+                recapRow(
+                    icon: "sparkles",
+                    title: "Neu abrufbar",
+                    detail: "„\(recalled)“",
+                    color: DS.gradePerfect
+                )
+            }
+            recapRow(
+                icon: sessionNeedsWork == 0 ? "checkmark.circle" : "arrow.clockwise",
+                title: sessionNeedsWork == 0 ? "Sicher durch die Runde" : "Noch unsicher",
+                detail: sessionNeedsWork == 0
+                    ? sessionAccuracyMessage
+                    : "\(sessionNeedsWork) \(sessionNeedsWork == 1 ? "Ausdruck kommt" : "Ausdrücke kommen") bald wieder.",
+                color: sessionNeedsWork == 0 ? DS.gradePerfect : DS.gradeHesitant
+            )
             Spacer()
             Button {
                 resetSession()
@@ -1677,7 +1700,7 @@ struct PracticeView: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal)
-            Button("Pause") {
+            Button(isFocusedSession ? "Fertig" : "Pause") {
                 resetSession()
                 showingSessionSummary = false
                 if isFocusedSession {
@@ -1690,7 +1713,25 @@ struct PracticeView: View {
             .padding(.bottom)
         }
         .padding()
-        .presentationDetents([.medium])
+        .presentationDetents([.large])
+    }
+
+    private func recapRow(icon: String, title: String, detail: String, color: Color) -> some View {
+        HStack(alignment: .top, spacing: DS.space.sm) {
+            Image(systemName: icon)
+                .foregroundStyle(color)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DS.textPrimary)
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, DS.space.md)
     }
 
     private var sessionAccuracyMessage: String {
@@ -1887,6 +1928,7 @@ struct PracticeView: View {
               let token = interactionGate.begin(.persistence)
         else { return }
         var savedAlternative: String?
+        let wasNewBeforeReview = card.state == .new
         do {
             let wasNew = card.state == .new
             try scheduler.record(rating: rating, on: card)
@@ -1929,10 +1971,20 @@ struct PracticeView: View {
         sessionCount += 1
         if rating >= 3 {
             sessionCorrect += 1
-            // Variable-ratio reinforcement: ~12% chance per correct answer
-            // to trigger a surprise praise. The banner shows on the next
-            // prompt screen for ~2.5s, then fades.
-            maybeTriggerSurprisePraise()
+            consecutiveProductiveRecalls += 1
+            if wasNewBeforeReview,
+               let phrase = card.phrase?.targetText,
+               !sessionNewlyRecalled.contains(phrase) {
+                sessionNewlyRecalled.append(phrase)
+            }
+            maybeCelebrateProductiveRun()
+        } else {
+            consecutiveProductiveRecalls = 0
+            sessionNeedsWork += 1
+        }
+        if mode == .speakDeToRu, !userAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            sessionSpokenAnswers += 1
+            sessionSpokenWords += max(1, userAnswer.split(whereSeparator: { $0.isWhitespace }).count)
         }
 
         // Young card with a sentence we ship? Detour through the spoken
@@ -1981,13 +2033,12 @@ struct PracticeView: View {
         }
     }
 
-    /// Slot-machine-style variable reward: rare bonus praise on top of the
-    /// normal grade. Only fires on confirmed correct ratings, so it always
-    /// celebrates real progress. Configurable; can be disabled in Settings.
-    private func maybeTriggerSurprisePraise() {
+    /// Event-based feedback only: every claim corresponds to a measured run of
+    /// productive recalls. Recognition-only introductions never increment it.
+    private func maybeCelebrateProductiveRun() {
         guard settings.first?.surpriseRewardsEnabled ?? true else { return }
-        guard Double.random(in: 0..<1) < 0.12 else { return }
-        let praise = Self.surprisePraises.randomElement() ?? "🎯"
+        guard [3, 5, 10].contains(consecutiveProductiveRecalls) else { return }
+        let praise = "\(consecutiveProductiveRecalls) selbst abgerufen — stark."
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         withAnimation(reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.4, dampingFraction: 0.7)) {
             surprisePraiseBanner = praise
@@ -2024,22 +2075,14 @@ struct PracticeView: View {
             .transition(.move(edge: .top).combined(with: .opacity))
     }
 
-    private static let surprisePraises: [String] = [
-        "🎯  Sauber!",
-        "💫  Auf Flammen.",
-        "🔥  Starker Abruf.",
-        "⭐  Das hat gesessen.",
-        "✨  Im Fluss.",
-        "🚀  Du fliegst.",
-        "💡  Klick.",
-        "🏆  Stark.",
-        "🌟  Volltreffer.",
-        "💪  Solide."
-    ]
-
     private func resetSession() {
         sessionCount = 0
         sessionCorrect = 0
+        consecutiveProductiveRecalls = 0
+        sessionSpokenAnswers = 0
+        sessionSpokenWords = 0
+        sessionNewlyRecalled = []
+        sessionNeedsWork = 0
     }
 
     private func advance() {

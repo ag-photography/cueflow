@@ -85,11 +85,11 @@ struct SettingsView: View {
                         }
                     }
                     Toggle("KI-Bewertungshilfe", isOn: $useAIGradingAssist)
-                    Toggle("Überraschungs-Belohnungen", isOn: $surpriseRewardsEnabled)
+                    Toggle("Abruf-Meilensteine", isOn: $surpriseRewardsEnabled)
                 } header: {
                     Text("Üben")
                 } footer: {
-                    Text("Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Überraschungs-Belohnungen sind eine gelegentliche Mini-Feier nach richtigen Antworten.")
+                    Text("Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Abruf-Meilensteine würdigen echte Serien selbständig produzierter Antworten.")
                 }
                 .listRowBackground(DS.surface1)
 
