@@ -34,7 +34,7 @@ final class LanguageLearningUITests: XCTestCase {
         XCTAssertTrue(app.tabBars.buttons["Bibliothek"].exists)
         XCTAssertTrue(app.tabBars.buttons["Fortschritt"].exists)
         app.tabBars.buttons["Bibliothek"].tap()
-        XCTAssertTrue(app.navigationBars["Bibliothek"].waitForExistence(timeout: 3))
+        XCTAssertTrue(app.staticTexts["Was willst du als Nächstes können?"].waitForExistence(timeout: 5))
     }
 
     func testAccessibilityTextSizeKeepsPrimaryActionReachable() {
@@ -61,7 +61,20 @@ final class LanguageLearningUITests: XCTestCase {
         XCTAssertTrue(entry.waitForExistence(timeout: 3))
         entry.tap()
         XCTAssertTrue(app.navigationBars["Gespräch"].waitForExistence(timeout: 4))
+        let cafe = app.buttons["roleplay-ru-cafe"]
+        XCTAssertTrue(cafe.waitForExistence(timeout: 3))
+        cafe.tap()
+        XCTAssertTrue(app.staticTexts["Deine Aufgabe"].waitForExistence(timeout: 3))
         app.buttons["Schließen"].tap()
         XCTAssertTrue(app.tabBars.buttons["Heute"].waitForExistence(timeout: 4))
+    }
+
+    func testLandscapeKeepsPrimaryActionReachable() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 8))
+        XCUIDevice.shared.orientation = .landscapeLeft
+        XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.buttons["recommended-session-start"].isHittable)
+        XCUIDevice.shared.orientation = .portrait
     }
 }

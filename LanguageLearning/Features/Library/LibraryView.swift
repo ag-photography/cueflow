@@ -98,6 +98,7 @@ struct LibraryView: View {
                     managementList
                 }
             }
+            .accessibilityIdentifier("library-root")
             .navigationTitle("Bibliothek")
             .navigationDestination(item: $selectedTopic) { topic in
                 TopicDetailView(topic: topic)
@@ -227,6 +228,18 @@ struct LibraryView: View {
             $0.card?.phrase?.language?.code == code
         })
     }
+    private var curriculumProgress: [CurriculumStepProgress] {
+        let fractions = Dictionary(uniqueKeysWithValues: ScenarioDefinition.defaults.map {
+            ($0.id, scenarioFraction($0))
+        })
+        return CurriculumPlanner.progress(
+            scenarios: ScenarioDefinition.defaults,
+            fractions: fractions
+        )
+    }
+    private var recommendedScenarioID: String? {
+        CurriculumPlanner.recommendation(from: curriculumProgress)?.id
+    }
 
     private var scenarioCollectionsSection: some View {
         Section("Situationen") {
@@ -267,7 +280,11 @@ struct LibraryView: View {
                         .background(DS.accent)
                         .clipShape(Circle())
                     Spacer()
-                    if fraction >= 0.8 {
+                    if recommendedScenarioID == scenario.id {
+                        Label("Empfohlen", systemImage: "sparkles")
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(DS.accent)
+                    } else if fraction >= 0.8 {
                         Image(systemName: "checkmark.seal.fill")
                             .foregroundStyle(DS.gradePerfect)
                     }
@@ -286,7 +303,7 @@ struct LibraryView: View {
                     .foregroundStyle(DS.textTertiary)
             }
             .padding(DS.space.md)
-            .frame(width: 224, height: 196, alignment: .topLeading)
+            .frame(width: 236, height: 204, alignment: .topLeading)
             .background(DS.surface1)
             .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
             .overlay(
@@ -298,6 +315,19 @@ struct LibraryView: View {
         .disabled(matchedTopics.isEmpty)
         .accessibilityLabel("\(scenario.title), \(capabilityLabel(fraction))")
         .accessibilityHint("Aktiviert die passenden Missionen")
+    }
+
+    private func scenarioFraction(_ scenario: ScenarioDefinition) -> Double {
+        let matchedTopics = learningTopics.filter {
+            scenario.topicTerms.contains(baseTopicName($0.name))
+        }
+        let phraseIDs = Set(matchedTopics.flatMap { $0.phrases ?? [] }.map {
+            String(describing: $0.persistentModelID)
+        })
+        return LearningMotivation.strongRecallFraction(
+            events: activeLearningEvents,
+            phraseIDs: phraseIDs
+        )
     }
 
     private var learningTopics: [Topic] {

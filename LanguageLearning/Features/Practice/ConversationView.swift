@@ -4,11 +4,14 @@ import SwiftData
 struct ConversationView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var settings: [AppSettings]
-    @Query private var phrases: [Phrase]
-    @Query(sort: \Topic.name) private var topics: [Topic]
 
     @StateObject private var speech = SpeechRecognitionService()
+    @State private var selectedScenario: GuidedRoleplay?
     @State private var turns: [ConversationTurn] = []
+    @State private var stepIndex = 0
+    @State private var independentTurns = 0
+    @State private var coachingNote: String?
+    @State private var isComplete = false
     @State private var draft = ""
     @State private var isThinking = false
     @State private var errorMessage: String?
@@ -16,32 +19,25 @@ struct ConversationView: View {
 
     private var languageCode: String { settings.first?.activeLanguageCode ?? "ru" }
     private var pack: LanguagePack { LanguagePack.configuration(for: languageCode) ?? .russian }
-    private var activeTopic: Topic? {
-        topics.first { $0.isActive && $0.language?.code == languageCode }
-    }
-    private var scenario: String { activeTopic?.name ?? "Alltag und erste Begegnung" }
-    private var vocabulary: [String] {
-        let topicPhrases = activeTopic?.phrases ?? []
-        let pool = topicPhrases.isEmpty
-            ? phrases.filter { $0.language?.code == languageCode }
-            : topicPhrases
-        return Array(pool.prefix(40).map(\.targetText))
-    }
+    private var scenario: String { selectedScenario?.title ?? "Gespräch" }
     private var canSend: Bool {
-        coachAvailable && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isThinking
-    }
-    private var coachAvailable: Bool {
-        if #available(iOS 26.0, *) { return ConversationCoach.isAvailable }
-        return false
+        selectedScenario != nil
+            && !isComplete
+            && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !isThinking
     }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                contextHeader
-                Divider()
-                conversation
-                if coachAvailable { composer } else { unavailableFooter }
+                if selectedScenario == nil {
+                    scenarioPicker
+                } else {
+                    contextHeader
+                    Divider()
+                    conversation
+                    if isComplete { completionFooter } else { composer }
+                }
             }
             .background(DS.surface0)
             .navigationTitle("Gespräch")
@@ -53,12 +49,6 @@ struct ConversationView: View {
             }
             .onAppear {
                 speech.setLocale(pack.speechLocale)
-                if turns.isEmpty {
-                    turns = [.init(
-                        speaker: .coach,
-                        text: openingLine
-                    )]
-                }
             }
             .onDisappear {
                 speech.stop()
@@ -78,17 +68,58 @@ struct ConversationView: View {
         }
     }
 
-    private var unavailableFooter: some View {
-        Label(
-            "Gespräch benötigt Apple Intelligence auf einem unterstützten Gerät. Alle regulären Übungen bleiben verfügbar.",
-            systemImage: "apple.intelligence"
-        )
-        .font(.footnote)
-        .foregroundStyle(DS.textSecondary)
-        .padding(DS.space.md)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.ultraThinMaterial)
-        .accessibilityElement(children: .combine)
+    private var scenarioPicker: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: DS.space.lg) {
+                VStack(alignment: .leading, spacing: DS.space.xs) {
+                    Text("Wo möchtest du sprechen?")
+                        .font(.system(.title, design: .serif, weight: .bold))
+                        .foregroundStyle(DS.textPrimary)
+                    Text("Geführte Rollenspiele funktionieren auf jedem Gerät. Du antwortest frei; Beispiele helfen nur, wenn du sie brauchst.")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textSecondary)
+                }
+                ForEach(GuidedRoleplayLibrary.scenarios(languageCode: languageCode)) { roleplay in
+                    Button { begin(roleplay) } label: {
+                        HStack(spacing: DS.space.md) {
+                            Image(systemName: roleplay.systemImage)
+                                .font(.title2)
+                                .foregroundStyle(DS.accent)
+                                .frame(width: 52, height: 52)
+                                .background(DS.accentSoft)
+                                .clipShape(Circle())
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(roleplay.title)
+                                    .font(.headline)
+                                    .foregroundStyle(DS.textPrimary)
+                                Text(roleplay.subtitle)
+                                    .font(.subheadline)
+                                    .foregroundStyle(DS.textSecondary)
+                                Text("3 kurze Gesprächszüge")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundStyle(DS.accent)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .foregroundStyle(DS.textTertiary)
+                        }
+                        .padding(DS.space.md)
+                        .background(DS.surface1)
+                        .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
+                        .modifier(DS.Elevation(level: 1))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("roleplay-\(roleplay.id)")
+                    .accessibilityHint("Startet das Rollenspiel")
+                }
+                Label("Rollenspiele verändern deinen FSRS-Lernplan nicht.", systemImage: "checkmark.shield")
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+            }
+            .padding(DS.space.md)
+            .frame(maxWidth: 680)
+            .frame(maxWidth: .infinity)
+        }
     }
 
     private var contextHeader: some View {
@@ -129,6 +160,16 @@ struct ConversationView: View {
                             Spacer()
                         }
                         .padding(.horizontal, DS.space.md)
+                    }
+                    if let coachingNote {
+                        Label(coachingNote, systemImage: "lightbulb.fill")
+                            .font(.footnote)
+                            .foregroundStyle(DS.textSecondary)
+                            .padding(DS.space.sm)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(DS.accentSoft)
+                            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+                            .padding(.horizontal, DS.space.md)
                     }
                 }
                 .padding(.vertical, DS.space.md)
@@ -172,6 +213,25 @@ struct ConversationView: View {
 
     private var composer: some View {
         VStack(spacing: DS.space.sm) {
+            if let roleplay = selectedScenario, roleplay.steps.indices.contains(stepIndex) {
+                HStack(alignment: .top, spacing: DS.space.xs) {
+                    Image(systemName: "quote.bubble.fill")
+                        .foregroundStyle(DS.accent)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Deine Aufgabe")
+                            .font(.caption.weight(.bold))
+                            .foregroundStyle(DS.accent)
+                        Text(roleplay.steps[stepIndex].learnerGoal)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(DS.textPrimary)
+                    }
+                    Spacer()
+                    Text("\(stepIndex + 1)/\(roleplay.steps.count)")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(DS.textTertiary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
             if speech.isRecording {
                 Label("Ich höre zu … Tippe zum Stoppen", systemImage: "waveform")
                     .font(.caption.weight(.semibold))
@@ -214,11 +274,25 @@ struct ConversationView: View {
         .background(.ultraThinMaterial)
     }
 
-    private var openingLine: String {
-        switch languageCode {
-        case "ar": return "مرحباً! كيف حالك اليوم؟"
-        default: return "Привет! Как у тебя сегодня дела?"
+    private var completionFooter: some View {
+        VStack(spacing: DS.space.sm) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.title2)
+                .foregroundStyle(DS.gradePerfect)
+            Text("Gespräch geschafft")
+                .font(.headline)
+                .foregroundStyle(DS.textPrimary)
+            Text("\(independentTurns) von \(selectedScenario?.steps.count ?? 0) Antworten ohne Beispielhilfe formuliert")
+                .font(.subheadline)
+                .foregroundStyle(DS.textSecondary)
+                .multilineTextAlignment(.center)
+            Button("Anderes Gespräch wählen") { resetConversation() }
+                .buttonStyle(.borderedProminent)
+                .tint(DS.accent)
         }
+        .padding(DS.space.md)
+        .frame(maxWidth: .infinity)
+        .background(.ultraThinMaterial)
     }
 
     private func toggleRecording() {
@@ -244,31 +318,54 @@ struct ConversationView: View {
 
     private func submit() {
         let text = draft.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !isThinking else { return }
+        guard !text.isEmpty,
+              !isThinking,
+              let roleplay = selectedScenario,
+              let progress = GuidedRoleplayEngine.progress(
+                scenario: roleplay,
+                stepIndex: stepIndex,
+                learnerText: text
+              )
+        else { return }
         if speech.isRecording { speech.stop() }
-        let priorTurns = turns
         turns.append(.init(speaker: .learner, text: text))
         draft = ""
         isThinking = true
-
-        Task {
-            do {
-                guard #available(iOS 26.0, *), ConversationCoach.isAvailable else {
-                    throw ConversationCoachError.unavailable
-                }
-                let response = try await ConversationCoach().reply(
-                    targetLanguage: pack.germanLabel,
-                    scenario: scenario,
-                    vocabulary: vocabulary,
-                    turns: priorTurns,
-                    learnerText: text
-                )
-                turns.append(.init(speaker: .coach, text: response))
-                TTSService.shared.speak(response, language: pack.ttsLocale)
-            } catch {
-                errorMessage = error.localizedDescription
-            }
-            isThinking = false
+        switch progress.support {
+        case .independent:
+            independentTurns += 1
+            coachingNote = nil
+        case .close(let reference):
+            coachingNote = "Nahe an einer möglichen Formulierung: \(reference)"
+        case .model(let reference):
+            coachingNote = "Eine mögliche Formulierung: \(reference)"
         }
+        turns.append(.init(speaker: .coach, text: progress.partnerReply))
+        TTSService.shared.speak(progress.partnerReply, language: pack.ttsLocale)
+        stepIndex += 1
+        isComplete = progress.isComplete
+        isThinking = false
+        if isComplete { CompletionFeedbackService.shared.playCompletion() }
+    }
+
+    private func begin(_ roleplay: GuidedRoleplay) {
+        selectedScenario = roleplay
+        stepIndex = 0
+        independentTurns = 0
+        coachingNote = nil
+        isComplete = false
+        turns = [.init(speaker: .coach, text: roleplay.openingText)]
+        TTSService.shared.speak(roleplay.openingText, language: pack.ttsLocale)
+    }
+
+    private func resetConversation() {
+        speech.stop()
+        selectedScenario = nil
+        turns = []
+        draft = ""
+        stepIndex = 0
+        independentTurns = 0
+        coachingNote = nil
+        isComplete = false
     }
 }

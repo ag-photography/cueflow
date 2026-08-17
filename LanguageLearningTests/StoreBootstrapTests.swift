@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import LanguageLearning
 
@@ -46,5 +47,17 @@ struct StoreBootstrapTests {
         #expect(result.isRecovering)
         #expect(result.mode == .recovery)
         #expect(result.recoveryMessage?.contains("sicheren Sitzung") == true)
+    }
+
+    @Test func persistentStoreParentExistsBeforeSwiftDataOpensIt() throws {
+        let url = try StoreBootstrap.persistentStoreURL()
+        var isDirectory: ObjCBool = false
+
+        #expect(url.lastPathComponent == "LanguageLearning.store")
+        #expect(FileManager.default.fileExists(
+            atPath: url.deletingLastPathComponent().path,
+            isDirectory: &isDirectory
+        ))
+        #expect(isDirectory.boolValue)
     }
 }

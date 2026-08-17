@@ -2,7 +2,7 @@
 
 **Updated:** 17 August 2026
 
-**Current train:** 1.0, build 41
+**Current train:** 1.0, build 42
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.
 
 ## Product promise
@@ -22,7 +22,9 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 - FSRS-6 scheduling, pinned to an exact dependency revision;
 - speaking-first adaptive sessions with choice, tiles, typing, speech, reveal, retry, and fallback states;
 - Russian and Arabic language packs with canonical Arabic script, RTL presentation, locale-specific TTS/ASR, and optional transliteration;
-- 60-second spoken Sprint, difficult-this-week practice, 3/7/15-minute session defaults, and vocabulary-scoped on-device role-play;
+- 60-second spoken Sprint, difficult-this-week practice, 3/7/15-minute session defaults, and universal guided Russian/Arabic role-play that does not require Apple Intelligence;
+- evidence-based speech feedback using recognized words, confidence, and hesitation signals, with slow playback and one conservative immediate retry—explicitly not presented as phoneme scoring;
+- adaptive scaffolding after repeated difficulty, curriculum prerequisites and recommendations, and learner-facing structural error-pattern insights;
 - bundled A1 Russian and Arabic content, bundled OpenRussian material, tutor PDF import, paste/manual entry, topic journeys, and scenario collections;
 - phrase-level CEFR, register, dialect, provenance, and editorial/native-review status with an explicit review queue;
 - compact corrections, optional detail, contextual example sentences, and capability-based session recaps.
@@ -39,9 +41,9 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 - SwiftUI/SwiftData app with native three-tab navigation and adaptive content width;
 - account-aware asynchronous SwiftData startup, private CloudKit sync when available, local fallback, and an in-memory recovery session if persistent storage cannot open;
 - versioned full JSON backup and idempotent restore, including settings, topics, phrases, schedule, and review history;
-- Home Screen and Lock Screen widgets with due count and `cueflow://practice` deep link;
+- Home Screen and Lock Screen widgets with due count and `cueflow://practice` deep link, plus Siri/App Shortcuts for practice and conversations;
 - MetricKit diagnostics with a privacy-filtered in-app problem report;
-- String Catalog, dark mode, Dynamic Type, RTL, VoiceOver labels, Reduce Motion behavior, and iPad sizing;
+- String Catalog, dark mode, Dynamic Type, RTL, VoiceOver labels, Reduce Motion behavior, scene restoration, iPad sidebar adaptation, multitasking, and all supported orientations;
 - deterministic launch overrides and an XCTest UI smoke suite.
 
 ## Release gates

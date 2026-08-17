@@ -32,7 +32,8 @@ final class TTSService {
         _ text: String,
         language: String = "ru-RU",
         times: Int = 1,
-        gap: TimeInterval = 1.5
+        gap: TimeInterval = 1.5,
+        rate: Float = 0.9
     ) {
         guard !text.isEmpty, times > 0 else { return }
         configureAudioSessionForPlayback()
@@ -43,7 +44,7 @@ final class TTSService {
         for i in 0..<times {
             let utterance = AVSpeechUtterance(string: text)
             utterance.voice = voice
-            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * 0.9
+            utterance.rate = AVSpeechUtteranceDefaultSpeechRate * min(1.2, max(0.5, rate))
             if i > 0 {
                 utterance.preUtteranceDelay = gap
             }

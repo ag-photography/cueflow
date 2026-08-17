@@ -6,10 +6,11 @@ CueFlow is a privacy-first native iOS language coach for German speakers learnin
 
 - adaptive FSRS-6 sessions that progress from recognition to tiles, unaided production, and speech;
 - on-device Russian and Arabic speech recognition, speech synthesis, grading, and optional Apple Intelligence assistance;
-- focused 3/7/15-minute sessions, difficult-this-week practice, a 60-second spoken Sprint, and short vocabulary-scoped role-plays;
+- focused 3/7/15-minute sessions, difficult-this-week practice, a 60-second spoken Sprint, and guided Russian/Arabic role-plays on every supported device;
+- honest speech-recognition evidence, slow reference playback, immediate retry, adaptive scaffolding, curriculum recommendations, and recurring learning-pattern insights;
 - practical topic journeys, curated starters, tutor imports, phrase metadata, and an editorial/native-speaker review queue;
 - progress centered on successful recalls, spoken output, recovery, and fluency—not hearts or streak anxiety;
-- private CloudKit sync when available, reliable local fallback, complete JSON backup/restore, widgets, and MetricKit diagnostics;
+- private CloudKit sync when available, reliable local fallback, complete JSON backup/restore, widgets, Siri/App Shortcuts, and MetricKit diagnostics;
 - VoiceOver-aware, Dynamic Type, dark mode, Reduce Motion, RTL Arabic, and adaptive iPhone/iPad layout.
 
 CueFlow has no account system, ads, behavioral tracking, server-side analytics, subscription, or practice gate. CloudKit uses the learner's Apple account and the app remains fully useful offline and without iCloud.

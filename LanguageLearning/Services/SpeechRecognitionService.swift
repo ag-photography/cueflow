@@ -13,6 +13,7 @@ import Speech
 @MainActor
 final class SpeechRecognitionService: ObservableObject {
     @Published private(set) var transcription: String = ""
+    @Published private(set) var segments: [RecognizedSpeechSegment] = []
     @Published private(set) var isRecording: Bool = false
     @Published private(set) var lastError: String?
 
@@ -112,6 +113,14 @@ final class SpeechRecognitionService: ObservableObject {
                     }
                     self.lastSpeechAt = now
                     self.transcription = result.bestTranscription.formattedString
+                    self.segments = result.bestTranscription.segments.map {
+                        RecognizedSpeechSegment(
+                            text: $0.substring,
+                            confidence: $0.confidence,
+                            timestamp: $0.timestamp,
+                            duration: $0.duration
+                        )
+                    }
                 }
                 if let error {
                     self.lastError = error.localizedDescription
@@ -124,6 +133,7 @@ final class SpeechRecognitionService: ObservableObject {
 
     func clearTranscription() {
         transcription = ""
+        segments = []
         lastError = nil
         hesitancy = HesitancySignal(startDelaySec: 0, longestPauseSec: 0)
     }

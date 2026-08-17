@@ -60,6 +60,7 @@ enum StoreBootstrap {
             let configuration = ModelConfiguration(
                 "LanguageLearning",
                 schema: schema,
+                url: try persistentStoreURL(),
                 cloudKitDatabase: .none
             )
             return try ModelContainer(
@@ -114,6 +115,7 @@ enum StoreBootstrap {
         let configuration = ModelConfiguration(
             "LanguageLearning",
             schema: schema,
+            url: try persistentStoreURL(),
             cloudKitDatabase: .automatic
         )
         let container = try ModelContainer(
@@ -122,5 +124,21 @@ enum StoreBootstrap {
             configurations: configuration
         )
         return StoreBootstrapResult(container: container, recoveryMessage: nil, mode: .iCloud)
+    }
+
+    /// SwiftData selects the App Group once the widget entitlement exists, but
+    /// Core Data otherwise attempts (and logs) a failed first open before it
+    /// creates `Library/Application Support`. Create the exact parent eagerly
+    /// so a clean install starts without a recovery cycle. The URL matches the
+    /// path used by earlier builds, preserving existing stores.
+    static func persistentStoreURL(fileManager: FileManager = .default) throws -> URL {
+        let root = fileManager.containerURL(
+            forSecurityApplicationGroupIdentifier: CueFlowWidgetSnapshot.suiteName
+        ) ?? URL.applicationSupportDirectory
+        let support = root.lastPathComponent == "Application Support"
+            ? root
+            : root.appendingPathComponent("Library/Application Support", isDirectory: true)
+        try fileManager.createDirectory(at: support, withIntermediateDirectories: true)
+        return support.appendingPathComponent("LanguageLearning.store", isDirectory: false)
     }
 }

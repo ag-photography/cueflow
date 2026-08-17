@@ -74,7 +74,8 @@ Fragen zum Datenschutz: [SUPPORT-EMAIL]
 - [x] project generation succeeds from `project.yml`;
 - [x] app and widget compile on the iOS 26.5 simulator SDK;
 - [x] unit tests cover core domain and persistence behavior;
-- [x] UI smoke tests cover the primary session, tabs, large accessibility text, and Arabic configuration;
+- [x] UI smoke tests cover the primary session, tabs, large accessibility text, Arabic configuration, guided role-play entry, and landscape reachability;
+- [x] clean iPad Pro 13-inch startup and adaptive sidebar layout are visually checked with native multitasking/orientation declarations;
 - [x] clean startup and additive model migration are smoke-tested over existing simulator data;
 - [x] privacy manifest, microphone and speech usage descriptions, URL scheme, App Group, iCloud, and widget entitlements exist;
 - [x] complete versioned backup and merge restore exist;

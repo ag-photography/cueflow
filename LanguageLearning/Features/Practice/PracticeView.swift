@@ -96,6 +96,8 @@ struct PracticeView: View {
     @State private var tileOptions: [WordTile] = []
     @State private var selectedTileIDs: [Int] = []
     @State private var reviewModeOverride: CardDirection?
+    @State private var lastSubmissionWasSpeech = false
+    @State private var retryWasNeeded = false
     // "Sag es im Satz" screen (after scoring, young cards only): flips true once
     // the user has recorded the sentence at least once, which reveals "Weiter".
     @State private var sentenceSpoken = false
@@ -1307,6 +1309,9 @@ struct PracticeView: View {
             VStack(spacing: DS.space.md) {
                 revealHero(card: card, result: result)
                 revealAnswerCard(card: card, result: result)
+                if lastSubmissionWasSpeech, !userAnswer.isEmpty {
+                    spokenRecallCard(card: card, userAnswer: userAnswer)
+                }
                 if shouldShowTransliteration, let translit = card.phrase?.transliteration {
                     Text(translit)
                         .font(.footnote)
@@ -1319,6 +1324,48 @@ struct PracticeView: View {
             .padding(.vertical, DS.space.md)
         }
         .onAppear { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) }
+    }
+
+    private func spokenRecallCard(card: StudyCard, userAnswer: String) -> some View {
+        let signal = SpokenRecallAnalyzer.analyze(
+            expected: card.phrase?.targetText ?? "",
+            actual: userAnswer,
+            segments: speech.segments,
+            startDelaySec: speech.hesitancy.startDelaySec,
+            longestPauseSec: speech.hesitancy.longestPauseSec
+        )
+        return VStack(alignment: .leading, spacing: DS.space.xs) {
+            Label(
+                signal.headline,
+                systemImage: signal.isClearSignal ? "waveform.badge.checkmark" : "waveform.badge.magnifyingglass"
+            )
+            .font(.subheadline.weight(.bold))
+            .foregroundStyle(signal.isClearSignal ? DS.gradePerfect : DS.accent)
+            ForEach(signal.notes, id: \.self) { note in
+                Text(note)
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+            }
+            Text("Hinweis der Spracherkennung, keine phonetische Aussprachebewertung.")
+                .font(.caption2)
+                .foregroundStyle(DS.textTertiary)
+            Button {
+                tts.speak(
+                    card.phrase?.targetText ?? "",
+                    language: card.phrase?.language?.ttsLocale ?? "ru-RU",
+                    rate: 0.62
+                )
+            } label: {
+                Label("Langsam anhören", systemImage: "tortoise.fill")
+                    .font(.caption.weight(.semibold))
+            }
+            .foregroundStyle(DS.accent)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(DS.space.sm)
+        .background(DS.accentSoft.opacity(0.72))
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        .accessibilityElement(children: .combine)
     }
 
     /// Big grade-themed hero panel — animates in with a spring on appear so
@@ -1630,6 +1677,19 @@ struct PracticeView: View {
         let suggested = result.autoGrade.suggestedRating
         let recalled = suggested >= 3   // perfect / hesitant = recalled it
         VStack(spacing: DS.space.sm) {
+            if lastSubmissionWasSpeech && !retryWasNeeded {
+                Button {
+                    retrySpokenAnswer(card)
+                } label: {
+                    Label("Noch einmal sagen", systemImage: "arrow.counterclockwise")
+                        .font(.headline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                }
+                .buttonStyle(.bordered)
+                .tint(DS.accent)
+                .disabled(interactionGate.isBusy)
+            }
             primaryButton(title: "Weiter", disabled: false) {
                 confirm(rating: suggested, card: card, result: result,
                         userAnswer: userAnswer, responseTimeMs: responseTimeMs)
@@ -1654,6 +1714,17 @@ struct PracticeView: View {
             .disabled(interactionGate.isBusy)
         }
         .padding(.top, DS.space.sm)
+    }
+
+    private func retrySpokenAnswer(_ card: StudyCard) {
+        guard case .reveal(let current, _, _, _) = phase, current === card else { return }
+        invalidateInteraction()
+        retryWasNeeded = true
+        lastSubmissionWasSpeech = false
+        speech.clearTranscription()
+        input = ""
+        promptStart = .now
+        phase = .prompt(card)
     }
 
     private func gradeChip(for grade: AutoGrade) -> some View {
@@ -2044,6 +2115,9 @@ struct PracticeView: View {
         let expected = card.phrase?.targetText ?? ""
         let alternatives = card.phrase?.acceptedAlternatives ?? []
         let userAnswer = answerOverride ?? ((mode == .speakDeToRu) ? speech.transcription : input)
+        lastSubmissionWasSpeech = answerOverride == nil
+            && mode == .speakDeToRu
+            && !speech.transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let useJudge = settings.first?.useAIGradingAssist == true
         inputFocused = false
 
@@ -2090,6 +2164,15 @@ struct PracticeView: View {
             let copiedCorrectly = result.normalizedActual == result.normalizedExpected
             result = GradeResult(
                 autoGrade: copiedCorrectly ? .studied : .wrong,
+                tier: result.tier,
+                normalizedExpected: result.normalizedExpected,
+                normalizedActual: result.normalizedActual,
+                editedWords: result.editedWords,
+                totalEdits: result.totalEdits
+            )
+        } else if retryWasNeeded && (result.autoGrade == .perfect || result.autoGrade == .hesitant) {
+            result = GradeResult(
+                autoGrade: .minor,
                 tier: result.tier,
                 normalizedExpected: result.normalizedExpected,
                 normalizedActual: result.normalizedActual,
@@ -2352,6 +2435,8 @@ struct PracticeView: View {
         choiceChosen = nil
         selectedTileIDs = []
         reviewModeOverride = nil
+        lastSubmissionWasSpeech = false
+        retryWasNeeded = false
         let pool = scope == .difficultThisWeek ? difficultCards : cardsForActiveLanguage
         let next: StudyCard?
         if scope == .difficultThisWeek {
@@ -2379,13 +2464,25 @@ struct PracticeView: View {
     /// (speakDeToRu) for brand-new cards — a gentle recognition step before we
     /// ask the user to *speak* a word they've just met.
     private func presentAsChoice(_ card: StudyCard) -> Bool {
-        mode == .chooseDeToRu
-            || (mode == .speakDeToRu && (card.state == .new || (speechMuted && !presentAsTiles(card))))
+        mode == .chooseDeToRu || (mode == .speakDeToRu && smartPresentation(for: card) == .choice)
     }
 
     private func presentAsTiles(_ card: StudyCard) -> Bool {
-        guard mode == .speakDeToRu, speechMuted, card.state != .new else { return false }
-        return (card.phrase?.targetText.split(whereSeparator: { $0.isWhitespace }).count ?? 0) > 1
+        mode == .speakDeToRu && smartPresentation(for: card) == .tiles
+    }
+
+    private func smartPresentation(for card: StudyCard) -> AdaptivePresentation {
+        let ratings = reviews
+            .filter { $0.card === card }
+            .sorted { $0.timestamp > $1.timestamp }
+            .prefix(3)
+            .map(\.rating)
+        return AdaptiveExercisePolicy.presentation(
+            state: card.state,
+            targetWordCount: card.phrase?.targetText.split(whereSeparator: { $0.isWhitespace }).count ?? 0,
+            speechAvailable: !speechMuted,
+            recentRatings: ratings
+        )
     }
 
     private func makeTileOptions(for card: StudyCard) -> [WordTile] {

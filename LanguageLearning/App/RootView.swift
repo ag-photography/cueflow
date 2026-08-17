@@ -63,6 +63,7 @@ struct RootView: View {
 private struct MainTabView: View {
     private enum Tab: String { case today, library, progress }
     @State private var selection: Tab
+    @SceneStorage("cueFlow.mainTab") private var restoredSelection = Tab.today.rawValue
 
     init() {
         #if DEBUG
@@ -88,6 +89,20 @@ private struct MainTabView: View {
                 .tag(Tab.progress)
                 .tabItem { Label("Fortschritt", systemImage: "chart.bar.fill") }
         }
+        .tabViewStyle(.sidebarAdaptable)
+        .onAppear {
+            #if DEBUG
+            if ProcessInfo.processInfo.environment["CUEFLOW_INITIAL_TAB"] == nil,
+               let restored = Tab(rawValue: restoredSelection) {
+                selection = restored
+            }
+            #else
+            if let restored = Tab(rawValue: restoredSelection) { selection = restored }
+            #endif
+        }
+        .onChange(of: selection) { _, newValue in
+            restoredSelection = newValue.rawValue
+        }
     }
 }
 
@@ -95,6 +110,7 @@ private struct MainTabView: View {
 /// enough context to understand why today's session is useful.
 private struct TodayView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Query private var cards: [StudyCard]
     @Query private var reviews: [Review]
     @Query private var settings: [AppSettings]
@@ -164,7 +180,7 @@ private struct TodayView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: DS.space.lg) {
+                VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? DS.space.sm : DS.space.lg) {
                     greeting
                     recommendedSession
                     if !difficultCards.isEmpty { difficultPracticeCard }
@@ -203,6 +219,7 @@ private struct TodayView: View {
             .onAppear {
                 celebrateCompletedQuestsIfNeeded()
                 WidgetSnapshotService.refresh(cards: cards, settings: settings)
+                consumePendingAction()
             }
             .task { await refreshWeeklyRecap() }
             .onChange(of: reviews.count) { _, _ in
@@ -216,6 +233,18 @@ private struct TodayView: View {
                 practiceScope = .recommended
                 showingPractice = true
             }
+        }
+    }
+
+    private func consumePendingAction() {
+        switch CueFlowPendingAction.consume() {
+        case .practice:
+            practiceScope = .recommended
+            showingPractice = true
+        case .conversation:
+            showingConversation = true
+        case nil:
+            break
         }
     }
 
@@ -373,16 +402,18 @@ private struct TodayView: View {
     private var greeting: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(greetingText)
-                .font(.system(.largeTitle, design: .serif, weight: .bold))
+                .font(.system(verticalSizeClass == .compact ? .title2 : .largeTitle, design: .serif, weight: .bold))
                 .foregroundStyle(DS.textPrimary)
-            Text(reviewsToday == 0 ? "Bereit, etwas spontan abzurufen?" : "Heute schon \(reviewsToday) Antworten produziert.")
-                .font(.subheadline)
-                .foregroundStyle(DS.textSecondary)
+            if verticalSizeClass != .compact {
+                Text(reviewsToday == 0 ? "Bereit, etwas spontan abzurufen?" : "Heute schon \(reviewsToday) Antworten produziert.")
+                    .font(.subheadline)
+                    .foregroundStyle(DS.textSecondary)
+            }
         }
     }
 
     private var recommendedSession: some View {
-        VStack(alignment: .leading, spacing: DS.space.md) {
+        VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? DS.space.xs : DS.space.md) {
             HStack {
                 Label("Empfohlen", systemImage: "sparkles")
                     .font(.caption.weight(.semibold))
@@ -400,14 +431,16 @@ private struct TodayView: View {
             }
 
             Text("Weiterlernen")
-                .font(.title2.weight(.bold))
+                .font((verticalSizeClass == .compact ? Font.title3 : Font.title2).weight(.bold))
                 .foregroundStyle(DS.textPrimary)
             Text("\(dueCount) Wiederholungen · \(plannedNewCount) neue Ausdrücke")
                 .font(.subheadline)
                 .foregroundStyle(DS.textSecondary)
-            Label("Etwa \(estimatedMinutes) Minuten", systemImage: "clock")
-                .font(.caption)
-                .foregroundStyle(DS.textSecondary)
+            if verticalSizeClass != .compact {
+                Label("Etwa \(estimatedMinutes) Minuten", systemImage: "clock")
+                    .font(.caption)
+                    .foregroundStyle(DS.textSecondary)
+            }
 
             Button {
                 practiceScope = .recommended
@@ -417,14 +450,14 @@ private struct TodayView: View {
                     .font(.headline.weight(.bold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 16)
+                    .padding(.vertical, verticalSizeClass == .compact ? 10 : 16)
                     .background(DS.accent)
                     .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("recommended-session-start")
         }
-        .padding(DS.space.lg)
+        .padding(verticalSizeClass == .compact ? DS.space.md : DS.space.lg)
         .background(DS.surface1)
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
         .modifier(DS.Elevation(level: 2))

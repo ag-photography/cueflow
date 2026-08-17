@@ -25,7 +25,7 @@ Implemented on `main`:
 - an in-memory safe-session fallback when the persistent store cannot open, replacing an ordinary launch crash with an explicit data-retention warning;
 - dark-mode design tokens, RTL handling, Dynamic Type support, VoiceOver labels, Reduce Motion handling, and iPad content-width adaptation.
 
-Automated validation currently passes 91 named unit tests (101 parameterized executions) and five end-to-end UI tests on an iPhone 17 / iOS 26.5 simulator. Before a public release, the remaining gates are physical-device interruption and microphone testing, accessibility testing across the full device matrix, native-speaker review of Russian and Arabic content, and a measured external beta. These are release-validation tasks rather than unfinished core product architecture.
+Automated validation currently passes 103 named unit tests (113 parameterized executions) and six end-to-end UI tests on an iPhone 17 / iOS 26.5 simulator, plus a clean iPad Pro 13-inch launch and visual check. Before a public release, the remaining gates are physical-device interruption and microphone testing, accessibility testing across the full device matrix, native-speaker review of Russian and Arabic content, and a measured external beta. These are release-validation tasks rather than unfinished core product architecture.
 
 ## Executive assessment
 

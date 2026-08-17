@@ -32,6 +32,7 @@ struct ProfileView: View {
                 VStack(spacing: DS.space.lg) {
                     speakingSection
                     capabilitySection
+                    if !learningPatterns.isEmpty { learningPatternSection }
                     miniStatsRow
                     topicProgress
                     weeklyChart
@@ -70,11 +71,52 @@ struct ProfileView: View {
             $0.card?.phrase?.language?.code == activeLanguageCode
         })
     }
+    private var activeReviews: [Review] {
+        reviews.filter { $0.card?.phrase?.language?.code == activeLanguageCode }
+    }
+    private var scenarioFractions: [String: Double] {
+        Dictionary(uniqueKeysWithValues: ScenarioDefinition.defaults.map {
+            ($0.id, scenarioFraction($0))
+        })
+    }
+    private var curriculumProgress: [CurriculumStepProgress] {
+        CurriculumPlanner.progress(
+            scenarios: ScenarioDefinition.defaults,
+            fractions: scenarioFractions
+        )
+    }
+    private var learningPatterns: [LearningPatternInsight] {
+        LearningInsightAnalyzer.patterns(from: activeReviews)
+    }
 
     private var capabilitySection: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
             sectionHeader("Was du sagen kannst")
             VStack(spacing: DS.space.md) {
+                if let recommendation = CurriculumPlanner.recommendation(from: curriculumProgress) {
+                    HStack(spacing: DS.space.sm) {
+                        Image(systemName: "location.fill")
+                            .foregroundStyle(.white)
+                            .frame(width: 34, height: 34)
+                            .background(DS.accent)
+                            .clipShape(Circle())
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Nächster sinnvoller Fokus")
+                                .font(.caption.weight(.bold))
+                                .foregroundStyle(DS.accent)
+                            Text(recommendation.scenario.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(DS.textPrimary)
+                        }
+                        Spacer()
+                        Text("\(Int((recommendation.fraction * 100).rounded()))%")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(DS.textSecondary)
+                    }
+                    .padding(DS.space.sm)
+                    .background(DS.accentSoft)
+                    .clipShape(RoundedRectangle(cornerRadius: DS.radius.sm))
+                }
                 ForEach(ScenarioDefinition.defaults) { scenario in
                     capabilityRow(scenario)
                 }
@@ -101,17 +143,7 @@ struct ProfileView: View {
     }
 
     private func capabilityRow(_ scenario: ScenarioDefinition) -> some View {
-        let matchingTopics = topics.filter {
-            $0.language?.code == activeLanguageCode
-                && scenario.topicTerms.contains(baseTopicName($0.name))
-        }
-        let phraseIDs = Set(matchingTopics.flatMap { $0.phrases ?? [] }.map {
-            String(describing: $0.persistentModelID)
-        })
-        let fraction = LearningMotivation.strongRecallFraction(
-            events: activeEvents,
-            phraseIDs: phraseIDs
-        )
+        let fraction = scenarioFraction(scenario)
         return HStack(spacing: DS.space.sm) {
             Image(systemName: scenario.systemImage)
                 .foregroundStyle(fraction >= 0.8 ? DS.gradePerfect : DS.accent)
@@ -136,6 +168,61 @@ struct ProfileView: View {
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    private func scenarioFraction(_ scenario: ScenarioDefinition) -> Double {
+        let matchingTopics = topics.filter {
+            $0.language?.code == activeLanguageCode
+                && scenario.topicTerms.contains(baseTopicName($0.name))
+        }
+        let phraseIDs = Set(matchingTopics.flatMap { $0.phrases ?? [] }.map {
+            String(describing: $0.persistentModelID)
+        })
+        return LearningMotivation.strongRecallFraction(
+            events: activeEvents,
+            phraseIDs: phraseIDs
+        )
+    }
+
+    private var learningPatternSection: some View {
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            sectionHeader("Woran du gerade arbeitest")
+            VStack(spacing: 0) {
+                ForEach(Array(learningPatterns.enumerated()), id: \.element.id) { index, insight in
+                    HStack(alignment: .top, spacing: DS.space.sm) {
+                        Image(systemName: insight.pattern.systemImage)
+                            .foregroundStyle(DS.accent)
+                            .frame(width: 34, height: 34)
+                            .background(DS.accentSoft)
+                            .clipShape(Circle())
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack {
+                                Text(insight.pattern.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(DS.textPrimary)
+                                Spacer()
+                                Text("\(insight.count)×")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(DS.textSecondary)
+                            }
+                            Text(insight.pattern.guidance)
+                                .font(.caption)
+                                .foregroundStyle(DS.textSecondary)
+                            if !insight.exampleSource.isEmpty {
+                                Text("Beispiel: \(insight.exampleSource)")
+                                    .font(.caption2)
+                                    .foregroundStyle(DS.textTertiary)
+                                    .lineLimit(1)
+                            }
+                        }
+                    }
+                    .padding(DS.space.md)
+                    if index < learningPatterns.count - 1 { Divider().padding(.leading, 58) }
+                }
+            }
+            .background(DS.surface1)
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        }
     }
 
     private func capabilityLabel(_ fraction: Double) -> String {

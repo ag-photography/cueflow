@@ -53,120 +53,6 @@
     "%@, inaktiv" : {
 
     },
-    "%arg" : {
-
-    },
-    "%arg  →  %arg" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$arg  →  %2$arg"
-          }
-        }
-      }
-    },
-    "%arg Ausdrücke · etwa %arg Min." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$arg Ausdrücke · etwa %2$arg Min."
-          }
-        }
-      }
-    },
-    "%arg Tage Serie!" : {
-
-    },
-    "%arg Wiederholungen · %arg neue Ausdrücke" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$arg Wiederholungen · %2$arg neue Ausdrücke"
-          }
-        }
-      }
-    },
-    "%arg deaktivieren" : {
-
-    },
-    "%arg fällig" : {
-
-    },
-    "%arg gesagt" : {
-
-    },
-    "%arg neue Karten, %arg" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$arg neue Karten, %2$arg"
-          }
-        }
-      }
-    },
-    "%arg nützliche Ausdrücke · produktiv üben" : {
-
-    },
-    "%arg s" : {
-
-    },
-    "%arg von %arg" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$arg von %2$arg"
-          }
-        }
-      }
-    },
-    "%arg von %arg Phrasen mindestens einmal geübt" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$arg von %2$arg Phrasen mindestens einmal geübt"
-          }
-        }
-      }
-    },
-    "%arg%%" : {
-
-    },
-    "%arg, %arg" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$arg, %2$arg"
-          }
-        }
-      }
-    },
-    "%arg, %arg Phrasen" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$arg, %2$arg Phrasen"
-          }
-        }
-      }
-    },
-    "%arg/%arg" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$arg/%2$arg"
-          }
-        }
-      }
-    },
     "%lld" : {
 
     },
@@ -235,22 +121,22 @@
         }
       }
     },
+    "%lld von %lld Antworten ohne Beispielhilfe formuliert" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld Antworten ohne Beispielhilfe formuliert"
+          }
+        }
+      }
+    },
     "%lld von %lld Phrasen mindestens einmal geübt" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld von %2$lld Phrasen mindestens einmal geübt"
-          }
-        }
-      }
-    },
-    "%lld von %lld produktiv eingeführt" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld von %2$lld produktiv eingeführt"
           }
         }
       }
@@ -267,6 +153,12 @@
           }
         }
       }
+    },
+    "%lld×" : {
+
+    },
+    "3 kurze Gesprächszüge" : {
+
     },
     "60 Sekunden. Sag die Übersetzung laut — so viele wie du schaffst. Es hört mit und springt von selbst weiter." : {
 
@@ -340,6 +232,9 @@
     "Alles geprüft" : {
 
     },
+    "Anderes Gespräch wählen" : {
+
+    },
     "Anhören" : {
 
     },
@@ -367,12 +262,6 @@
     "Antwort: %@" : {
 
     },
-    "Antwort: %arg" : {
-
-    },
-    "Antworten · %arg Wörter" : {
-
-    },
     "Antworten · %lld Wörter" : {
 
     },
@@ -397,13 +286,13 @@
     "Baue die Antwort" : {
 
     },
+    "Beispiel: %@" : {
+
+    },
     "Benachrichtigungen sind in den iOS-Einstellungen deaktiviert. Aktiviere sie dort, um die Erinnerung zu nutzen." : {
 
     },
     "Bereit, etwas spontan abzurufen?" : {
-
-    },
-    "Bestleistung: %arg" : {
 
     },
     "Bestleistung: %lld" : {
@@ -422,6 +311,12 @@
 
     },
     "CueFlow Problembericht" : {
+
+    },
+    "CueFlow-Einheit starten" : {
+
+    },
+    "CueFlow-Gespräch starten" : {
 
     },
     "DE" : {
@@ -449,6 +344,9 @@
 
     },
     "Dein bereits gespeicherter Fortschritt bleibt erhalten." : {
+
+    },
+    "Deine Aufgabe" : {
 
     },
     "Deine Lernreise wird vorbereitet …" : {
@@ -493,16 +391,6 @@
     "Drei kleine Ziele" : {
 
     },
-    "Du hast heute %arg neue Karten gelernt. Es warten noch %arg in deinen aktiven Themen." : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Du hast heute %1$arg neue Karten gelernt. Es warten noch %2$arg in deinen aktiven Themen."
-          }
-        }
-      }
-    },
     "Du hast heute %lld neue Karten gelernt. Es warten noch %lld in deinen aktiven Themen." : {
       "localizations" : {
         "de" : {
@@ -512,9 +400,6 @@
           }
         }
       }
-    },
-    "Eine sanfte tägliche Erinnerung zur gewählten Zeit. Keine Streak-Panik, keine FOMO. Jederzeit ausschaltbar." : {
-
     },
     "Einfügen" : {
 
@@ -567,13 +452,7 @@
     "Erste Einheit starten" : {
 
     },
-    "Etwa %arg Minuten" : {
-
-    },
     "Etwa %lld Minuten" : {
-
-    },
-    "Exportiert alle Phrasen, Themen, Reviews und Einstellungen als JSON. Speichere die Datei in iCloud Drive oder per AirDrop. TestFlight-Updates erhalten deine Daten automatisch – dies ist nur eine zusätzliche Absicherung." : {
 
     },
     "Fehlermeldung schließen" : {
@@ -588,13 +467,13 @@
     "Fortschritt" : {
 
     },
-    "Fortschritt & Streak: oben rechts auf der Übungsseite (Diagramm-Icon). TestFlight-Updates erhalten deinen Fortschritt automatisch." : {
-
-    },
     "Für die Offline-Optimierung der FSRS-Gewichte mit fsrs-optimizer (Python). Format: card_id, review_time, rating." : {
 
     },
     "GESPRÄCH" : {
+
+    },
+    "Geführte Rollenspiele funktionieren auf jedem Gerät. Du antwortest frei; Beispiele helfen nur, wenn du sie brauchst." : {
 
     },
     "Gehört: %@" : {
@@ -615,6 +494,9 @@
     "Gespräch gerade nicht verfügbar" : {
 
     },
+    "Gespräch geschafft" : {
+
+    },
     "HEUTE IM FLOW" : {
 
     },
@@ -625,6 +507,9 @@
 
     },
     "Heute schon %lld Antworten produziert." : {
+
+    },
+    "Hinweis der Spracherkennung, keine phonetische Aussprachebewertung." : {
 
     },
     "Hinzufügen" : {
@@ -714,6 +599,9 @@
     "Kurzes Rollenspiel mit deinen aktuellen Ausdrücken" : {
 
     },
+    "Langsam anhören" : {
+
+    },
     "Laut nachsprechen. Wird nicht bewertet – einfach sagen." : {
 
     },
@@ -759,12 +647,6 @@
     "Neue Karten pro Tag" : {
 
     },
-    "Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Abruf-Meilensteine würdigen echte Serien selbständig produzierter Antworten." : {
-
-    },
-    "Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Abruf-Meilensteine würdigen echte Serien selbständig produzierter Antworten. Klangeffekte respektieren den Stummmodus." : {
-
-    },
     "Neue Phrase" : {
 
     },
@@ -778,6 +660,9 @@
 
     },
     "Niveau" : {
+
+    },
+    "Noch einmal sagen" : {
 
     },
     "Noch keine Missionen" : {
@@ -802,6 +687,9 @@
 
     },
     "Notizen" : {
+
+    },
+    "Nächster sinnvoller Fokus" : {
 
     },
     "Nächstes Ziel" : {
@@ -855,9 +743,6 @@
     "Phrasen" : {
 
     },
-    "Phrasen (%arg)" : {
-
-    },
     "Phrasen (%lld)" : {
 
     },
@@ -894,6 +779,9 @@
     "Reviews als JSON exportieren" : {
 
     },
+    "Rollenspiele verändern deinen FSRS-Lernplan nicht." : {
+
+    },
     "Sag es im Satz" : {
 
     },
@@ -907,9 +795,6 @@
 
     },
     "Schnell · etwa 3 Min." : {
-
-    },
-    "Serie: %arg Tage" : {
 
     },
     "Serie: %lld Tage" : {
@@ -960,9 +845,6 @@
     "Sprechtempo %@" : {
 
     },
-    "Sprechtempo %arg" : {
-
-    },
     "Sprich den Satz" : {
 
     },
@@ -1003,6 +885,9 @@
 
     },
     "Starten" : {
+
+    },
+    "Startet das Rollenspiel" : {
 
     },
     "Startet eine Einheit nur mit kürzlich schwierigen Ausdrücken" : {
@@ -1059,9 +944,6 @@
     "Themen & Phrasen suchen" : {
 
     },
-    "Themen (%arg)" : {
-
-    },
     "Themen (%lld)" : {
 
     },
@@ -1083,9 +965,6 @@
     "Trennzeichen fehlt: %@" : {
 
     },
-    "Trennzeichen fehlt: %arg" : {
-
-    },
     "Täglich · etwa 7 Min." : {
 
     },
@@ -1100,16 +979,6 @@
     },
     "Vollständige Sicherung erstellen" : {
 
-    },
-    "Vorschau (%arg gültig / %arg)" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "Vorschau (%1$arg gültig / %2$arg)"
-          }
-        }
-      }
     },
     "Vorschau (%lld gültig / %lld)" : {
       "localizations" : {
@@ -1146,6 +1015,9 @@
 
     },
     "Wischen" : {
+
+    },
+    "Wo möchtest du sprechen?" : {
 
     },
     "Wähle eine Text-PDF von deinem Tutor. Die Vokabeln werden automatisch dem passenden Thema zugeordnet (Familie, Verben, Essen & Trinken, …) und die Themen aktiviert." : {
@@ -1187,16 +1059,6 @@
     "hört zu" : {
 
     },
-    "noch %arg %arg bis %arg" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "noch %1$arg %2$arg bis %3$arg"
-          }
-        }
-      }
-    },
     "noch %lld %@ bis %lld" : {
       "localizations" : {
         "de" : {
@@ -1219,7 +1081,13 @@
     "Öffnet den Fortschritt" : {
 
     },
+    "Öffnet die Auswahl der geführten Rollenspiele." : {
+
+    },
     "Öffnet diese Mission" : {
+
+    },
+    "Öffnet direkt die empfohlene sprechorientierte Einheit." : {
 
     },
     "Öffnet ein privates Rollenspiel auf dem Gerät" : {
@@ -1252,22 +1120,6 @@
           }
         }
       }
-    },
-    "„%arg\"" : {
-
-    },
-    "„%arg“ · %arg s" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "„%1$arg“ · %2$arg s"
-          }
-        }
-      }
-    },
-    "… und %arg weitere. Suche verfeinern." : {
-
     },
     "… und %lld weitere. Suche verfeinern." : {
 

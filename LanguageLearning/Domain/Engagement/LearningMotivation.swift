@@ -149,6 +149,7 @@ struct ScenarioDefinition: Identifiable, Equatable {
     let outcome: String
     let systemImage: String
     let topicTerms: Set<String>
+    let prerequisiteIDs: Set<String>
 
     static let defaults: [ScenarioDefinition] = [
         ScenarioDefinition(
@@ -156,28 +157,32 @@ struct ScenarioDefinition: Identifiable, Equatable {
             title: "Erste Gespräche",
             outcome: "Begrüßen, höflich reagieren und dich vorstellen",
             systemImage: "hand.wave.fill",
-            topicTerms: ["Begrüßung", "Höflichkeit", "Sich vorstellen", "Verständigung"]
+            topicTerms: ["Begrüßung", "Höflichkeit", "Sich vorstellen", "Verständigung"],
+            prerequisiteIDs: []
         ),
         ScenarioDefinition(
             id: "cafe-food",
             title: "Café & Essen",
             outcome: "Bestellen, nachfragen und Wünsche äußern",
             systemImage: "cup.and.saucer.fill",
-            topicTerms: ["Im Restaurant", "Essen & Trinken"]
+            topicTerms: ["Im Restaurant", "Essen & Trinken"],
+            prerequisiteIDs: ["first-conversations"]
         ),
         ScenarioDefinition(
             id: "getting-around",
             title: "Unterwegs",
             outcome: "Den Weg finden, fahren und einkaufen",
             systemImage: "map.fill",
-            topicTerms: ["Wegbeschreibung", "Verkehr", "Einkaufen"]
+            topicTerms: ["Wegbeschreibung", "Verkehr", "Einkaufen"],
+            prerequisiteIDs: ["first-conversations"]
         ),
         ScenarioDefinition(
             id: "daily-life",
             title: "Alltag",
             outcome: "Über Familie, Zuhause, Zeit und Wetter sprechen",
             systemImage: "house.fill",
-            topicTerms: ["Familie", "Zuhause", "Zeit", "Wetter"]
+            topicTerms: ["Familie", "Zuhause", "Zeit", "Wetter"],
+            prerequisiteIDs: ["first-conversations"]
         ),
     ]
 }
