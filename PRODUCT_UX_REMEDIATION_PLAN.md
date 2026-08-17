@@ -1,10 +1,27 @@
 # CueFlow Product, UI/UX, and Reliability Plan
 
-**Status:** Proposed
+**Status:** Core implementation complete; release validation in progress
 
 **Scope:** Russian, Arabic, and a language-pack foundation for future target languages
 
 **Product promise:** Help German-speaking adults retrieve and speak useful target-language expressions, rather than merely recognize translations.
+
+## Implementation status — 17 August 2026
+
+Implemented on `codex/shared-learning-progress`:
+
+- one shared FSRS schedule per phrase, with preserved historical reviews;
+- canonical Arabic script, RTL-aware presentation, and reusable language-pack configuration;
+- guarded practice interactions, stale-work cancellation, atomic review persistence, and recoverable errors;
+- native Heute, Bibliothek, and Fortschritt navigation with an adaptive focused session;
+- automatic speaking-first exercise selection, productive word-tile fallback, pause/exit, and silence completion;
+- four-beat onboarding with an in-context first spoken success;
+- learner-facing missions separated from advanced content management;
+- Sprint preparation/countdown, relevant learned-content pool, skipped-answer reveal, and honest recap;
+- productive-output progress, capability-based session recap, and event-based—not random—milestones;
+- immediate settings persistence, dark-mode design tokens, RTL handling, Dynamic Type support, VoiceOver labels, Reduce Motion handling, and iPad content-width adaptation.
+
+Automated validation currently passes 61 tests on an iPhone 17 / iOS 26.5 simulator. Before a public release, the remaining gates are physical-device interruption and microphone testing, accessibility testing across the full device matrix, native-speaker review of Russian and Arabic content, String Catalog extraction, and a measured external beta. These are release-validation tasks rather than unfinished core product architecture.
 
 ## Executive assessment
 

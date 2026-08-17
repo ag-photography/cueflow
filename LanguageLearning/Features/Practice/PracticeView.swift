@@ -101,6 +101,7 @@ struct PracticeView: View {
     @State private var gradingTask: Task<Void, Never>?
     @State private var choiceDelayTask: Task<Void, Never>?
     @State private var permissionTask: Task<Void, Never>?
+    @State private var silenceTask: Task<Void, Never>?
     @State private var praiseTask: Task<Void, Never>?
     @State private var savedBannerTask: Task<Void, Never>?
     @State private var persistenceErrorMessage: String?
@@ -243,6 +244,9 @@ struct PracticeView: View {
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active { invalidateInteraction() }
+        }
+        .onChange(of: speech.transcription) { _, newValue in
+            scheduleSilenceCompletion(after: newValue)
         }
         .onDisappear { invalidateInteraction() }
         .confirmationDialog(
@@ -1203,6 +1207,7 @@ struct PracticeView: View {
         speechErrorMessage = nil
         input = ""
         permissionTask?.cancel()
+        silenceTask?.cancel()
         permissionTask = Task { @MainActor in
             if speechAuthorized == nil {
                 speechAuthorized = await speech.requestAuthorization()
@@ -1856,11 +1861,44 @@ struct PracticeView: View {
         gradingTask = nil
         choiceDelayTask = nil
         permissionTask = nil
+        silenceTask = nil
         interactionGate.invalidate()
         choiceChosen = nil
         if speech.isRecording { speech.stop() }
         tts.stop()
         persistenceErrorMessage = nil
+    }
+
+    /// Once recognition has produced words and then remains unchanged, finish
+    /// naturally. The visible Stop button remains available as an immediate
+    /// fallback, and every scheduled completion is cancelled on navigation or
+    /// lifecycle changes by `invalidateInteraction()`.
+    private func scheduleSilenceCompletion(after transcription: String) {
+        silenceTask?.cancel()
+        guard speech.isRecording,
+              !transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else { return }
+        let snapshot = transcription
+        silenceTask = Task { @MainActor in
+            do { try await Task.sleep(for: .seconds(1.6)) } catch { return }
+            guard speech.isRecording, speech.transcription == snapshot else { return }
+            switch phase {
+            case .prompt(_):
+                speech.stop()
+                submit(revealed: false)
+            case .study(_):
+                speech.stop()
+                submit(revealed: true)
+            case .speakSentence(let card):
+                speech.stop()
+                if sentenceRecognizedEnough(card) {
+                    sentenceSpoken = true
+                    speechErrorMessage = nil
+                }
+            default:
+                break
+            }
+        }
     }
 
     private func phaseContains(_ card: StudyCard) -> Bool {
