@@ -316,7 +316,7 @@ enum CardDirection: String, Codable, CaseIterable {
     }
 }
 
-enum LearningState: String, Codable {
+enum LearningState: String, Codable, Sendable {
     case new
     case learning
     case review

@@ -1,13 +1,13 @@
 import Foundation
 
-enum LearningExercise: String {
+enum LearningExercise: String, Sendable {
     case speech = "speakDeToRu"
     case typing = "typeDeToRu"
     case choice = "chooseDeToRu"
     case flip = "flipDeToRu"
 }
 
-struct LearningEvent: Equatable {
+struct LearningEvent: Equatable, Sendable {
     let timestamp: Date
     let phraseID: String
     let sourceText: String
@@ -143,7 +143,7 @@ enum LearningMotivation {
     }
 }
 
-struct ScenarioDefinition: Identifiable, Equatable {
+struct ScenarioDefinition: Identifiable, Equatable, Sendable {
     let id: String
     let title: String
     let outcome: String

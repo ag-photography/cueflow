@@ -37,8 +37,10 @@ struct LibraryView: View {
     @State private var phrasePendingDeletion: Phrase?
     @State private var phraseSearchResults: [Phrase] = []
     @State private var cachedLearningEvents: [LearningEvent] = []
+    @State private var cachedLearningEventsRevision = -1
+    @State private var cachedLearningEventsLanguageCode = ""
     @State private var progressRefreshWorkItem: DispatchWorkItem?
-    @State private var contentReady = false
+    @State private var contentReady = true
 
     private enum ActiveFilter: Hashable { case all, active, inactive }
     private enum LibraryMode: Hashable { case learn, manage }
@@ -187,16 +189,6 @@ struct LibraryView: View {
             .task(id: "\(searchText)|\(languageFilter)") {
                 await refreshPhraseSearch()
             }
-            .task {
-                guard !contentReady else { return }
-                // The iOS 26 liquid-glass selection spring lasts longer than
-                // one frame. Let it finish before materialising SwiftData's
-                // relationship-heavy topic hierarchy, otherwise the spring
-                // visibly freezes in its enlarged pressed state.
-                try? await Task.sleep(for: .milliseconds(650))
-                guard !Task.isCancelled else { return }
-                contentReady = true
-            }
             .onAppear { scheduleLearningEventsRefresh() }
             .onChange(of: activeLanguageCode) { _, _ in scheduleLearningEventsRefresh() }
             .onDisappear { progressRefreshWorkItem?.cancel() }
@@ -319,7 +311,11 @@ struct LibraryView: View {
         progressRefreshWorkItem?.cancel()
         let code = activeLanguageCode
         if LearningDataCache.shared.isPrimed {
+            guard cachedLearningEventsRevision != LearningDataCache.shared.revision
+                    || cachedLearningEventsLanguageCode != code else { return }
             cachedLearningEvents = LearningDataCache.shared.events(languageCode: code)
+            cachedLearningEventsRevision = LearningDataCache.shared.revision
+            cachedLearningEventsLanguageCode = code
             return
         }
         let work = DispatchWorkItem {

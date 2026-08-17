@@ -12,10 +12,9 @@ struct ProfileView: View {
     @Query(sort: \Topic.name) private var topics: [Topic]
     @Query(sort: \Language.code) private var languages: [Language]
     @Query private var settings: [AppSettings]
-    @State private var cards: [StudyCard] = []
-    @State private var reviews: [Review] = []
-    @State private var snapshotLoaded = false
-    @State private var snapshotRefreshWorkItem: DispatchWorkItem?
+    @State private var dashboard: ProgressDashboardSnapshot?
+    @State private var loadedRevision = -1
+    @State private var loadedLanguageCode = ""
 
     // Speaking-volume scoreboard — shared with Sprint via UserDefaults.
     @AppStorage("sprintBest") private var sprintBest: Int = 0
@@ -32,7 +31,7 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if snapshotLoaded {
+                if dashboard != nil {
                     ScrollView {
                         VStack(spacing: DS.space.lg) {
                             speakingSection
@@ -71,8 +70,7 @@ struct ProfileView: View {
                     }
                 }
             }
-            .onAppear { scheduleSnapshotRefresh() }
-            .onDisappear { snapshotRefreshWorkItem?.cancel() }
+            .task(id: activeLanguageCode) { await loadDashboardIfNeeded() }
         }
     }
 
@@ -98,53 +96,27 @@ struct ProfileView: View {
         }
     }
 
-    private func scheduleSnapshotRefresh() {
-        // Heavy review/card histories are intentionally loaded after the tab
-        // selection commits, keeping the native navigation interaction instant.
-        snapshotRefreshWorkItem?.cancel()
+    @MainActor
+    private func loadDashboardIfNeeded() async {
         let cache = LearningDataCache.shared
-        if cache.isPrimed {
-            // Let the empty destination commit one frame before constructing
-            // the chart- and history-heavy dashboard.
-            let work = DispatchWorkItem {
-                cards = cache.cards
-                reviews = cache.reviews
-                snapshotLoaded = true
-            }
-            snapshotRefreshWorkItem = work
-            // Keep chart construction outside the liquid-glass tab spring.
-            // A one-frame defer still froze the native pressed indicator on
-            // physical iOS 26 devices while Swift Charts materialised.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.65, execute: work)
-            return
-        }
-        let work = DispatchWorkItem {
+        if !cache.isPrimed {
             let fetchedCards = (try? context.fetch(FetchDescriptor<StudyCard>())) ?? []
-            let fetchedReviews = (try? context.fetch(FetchDescriptor<Review>(
-                sortBy: [SortDescriptor(\Review.timestamp, order: .reverse)]
-            ))) ?? []
-            cards = fetchedCards
-            reviews = fetchedReviews
-            LearningDataCache.shared.update(cards: fetchedCards, reviews: fetchedReviews)
-            snapshotLoaded = true
+            let fetchedReviews = (try? context.fetch(FetchDescriptor<Review>())) ?? []
+            cache.update(cards: fetchedCards, reviews: fetchedReviews, topics: topics)
         }
-        snapshotRefreshWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
+        guard loadedRevision != cache.revision
+                || loadedLanguageCode != activeLanguageCode
+                || dashboard == nil else { return }
+        let result = await cache.dashboard(languageCode: activeLanguageCode)
+        guard !Task.isCancelled else { return }
+        dashboard = result.snapshot
+        loadedRevision = result.revision
+        loadedLanguageCode = activeLanguageCode
     }
 
     private var activeLanguageCode: String { settings.first?.activeLanguageCode ?? "ru" }
-    private var activeEvents: [LearningEvent] {
-        LearningMotivation.events(from: reviews.filter {
-            $0.card?.phrase?.language?.code == activeLanguageCode
-        })
-    }
-    private var activeReviews: [Review] {
-        reviews.filter { $0.card?.phrase?.language?.code == activeLanguageCode }
-    }
     private var scenarioFractions: [String: Double] {
-        Dictionary(uniqueKeysWithValues: ScenarioDefinition.defaults.map {
-            ($0.id, scenarioFraction($0))
-        })
+        dashboard?.scenarioFractions ?? [:]
     }
     private var curriculumProgress: [CurriculumStepProgress] {
         CurriculumPlanner.progress(
@@ -153,7 +125,7 @@ struct ProfileView: View {
         )
     }
     private var learningPatterns: [LearningPatternInsight] {
-        LearningInsightAnalyzer.patterns(from: activeReviews)
+        dashboard?.learningPatterns ?? []
     }
 
     private var capabilitySection: some View {
@@ -187,7 +159,7 @@ struct ProfileView: View {
                 ForEach(ScenarioDefinition.defaults) { scenario in
                     capabilityRow(scenario)
                 }
-                if let record = LearningMotivation.fastestStrongRecall(events: activeEvents) {
+                if let record = dashboard?.fastestRecall {
                     Divider().overlay(DS.surface2)
                     HStack(spacing: DS.space.sm) {
                         Image(systemName: "timer").foregroundStyle(DS.gradeHesitant)
@@ -238,17 +210,7 @@ struct ProfileView: View {
     }
 
     private func scenarioFraction(_ scenario: ScenarioDefinition) -> Double {
-        let matchingTopics = topics.filter {
-            $0.language?.code == activeLanguageCode
-                && scenario.topicTerms.contains(baseTopicName($0.name))
-        }
-        let phraseIDs = Set(matchingTopics.flatMap { $0.phrases ?? [] }.map {
-            String(describing: $0.persistentModelID)
-        })
-        return LearningMotivation.strongRecallFraction(
-            events: activeEvents,
-            phraseIDs: phraseIDs
-        )
+        scenarioFractions[scenario.id] ?? 0
     }
 
     private var learningPatternSection: some View {
@@ -299,14 +261,6 @@ struct ProfileView: View {
         case 0.01...: return "Erste sichere Abrufe"
         default: return "Noch nicht begonnen"
         }
-    }
-
-    private func baseTopicName(_ name: String) -> String {
-        name.replacingOccurrences(
-            of: #"\s*\([A-Z]{2}\)$"#,
-            with: "",
-            options: .regularExpression
-        )
     }
 
     // MARK: - Streak hero
@@ -375,13 +329,7 @@ struct ProfileView: View {
     /// Distinct prompts recalled productively with a strong grade. Recognition
     /// flips and multiple-choice introductions do not count as unaided output.
     private var phrasesProducedUnaided: Int {
-        Set(reviews.compactMap { review -> PersistentIdentifier? in
-            guard review.gradeTier >= 3,
-                  review.modeRaw == CardDirection.speakDeToRu.rawValue ||
-                    review.modeRaw == CardDirection.typeDeToRu.rawValue
-            else { return nil }
-            return review.card?.phrase?.persistentModelID
-        }).count
+        dashboard?.phrasesProducedUnaided ?? 0
     }
 
     private func miniStat(value: Int, label: String, icon: String, color: Color) -> some View {
@@ -481,7 +429,7 @@ struct ProfileView: View {
             sectionHeader("Pro Sprache")
             VStack(spacing: 8) {
                 ForEach(languages, id: \.code) { lang in
-                    let count = reviews.filter { $0.card?.phrase?.language?.code == lang.code }.count
+                    let count = dashboard?.reviewsByLanguage[lang.code] ?? 0
                     if count > 0 {
                         statRow(lang.germanLabel, "\(count)")
                     }
@@ -497,10 +445,10 @@ struct ProfileView: View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
             sectionHeader("Themen")
             VStack(spacing: DS.space.md) {
-                ForEach(topicsWithCards.prefix(8), id: \.id) { topic in
+                ForEach((dashboard?.topics ?? []).prefix(8)) { topic in
                     topicRow(topic: topic)
                 }
-                if topicsWithCards.isEmpty {
+                if dashboard?.topics.isEmpty != false {
                     Text("Noch keine Themen mit Karten.")
                         .font(.subheadline)
                         .foregroundStyle(DS.textSecondary)
@@ -513,16 +461,7 @@ struct ProfileView: View {
         }
     }
 
-    private var weeklyData: [DayStat] {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: .now)
-        return (0..<7).reversed().map { offset in
-            let date = cal.date(byAdding: .day, value: -offset, to: today) ?? today
-            let next = cal.date(byAdding: .day, value: 1, to: date) ?? date
-            let count = reviews.filter { $0.timestamp >= date && $0.timestamp < next }.count
-            return DayStat(date: date, count: count)
-        }
-    }
+    private var weeklyData: [ProgressDayStat] { dashboard?.weekly ?? [] }
 
     // MARK: - Pieces
 
@@ -544,9 +483,9 @@ struct ProfileView: View {
         .font(.subheadline)
     }
 
-    private func topicRow(topic: Topic) -> some View {
-        let total = topic.phrases?.count ?? 0
-        let practisedCount = cardsForTopic(topic).filter { $0.state.isIntroduced }.count
+    private func topicRow(topic: ProgressTopicStat) -> some View {
+        let total = topic.total
+        let practisedCount = topic.practised
         return VStack(alignment: .leading, spacing: 5) {
             HStack {
                 if topic.isActive {
@@ -647,83 +586,28 @@ struct ProfileView: View {
         spokenWordsDayIndex == todayIndex ? spokenWordsCountStored : 0
     }
 
-    /// Reviews where the user actually *spoke* — speak mode, and graded (tier ≥ 1).
-    /// Tier 0 is the multiple-choice recognition step shown for new cards in
-    /// "Üben", which isn't spoken output, so it's excluded.
-    private var spokenReviews: [Review] {
-        reviews.filter { $0.modeRaw == CardDirection.speakDeToRu.rawValue && $0.gradeTier >= 1 }
-    }
-    private func wordCount(_ s: String) -> Int {
-        s.split(whereSeparator: { $0 == " " || $0 == "\n" }).count
-    }
     private var spokenWordsTodayPractice: Int {
-        spokenReviews.filter { $0.timestamp >= startOfToday }.reduce(0) { $0 + wordCount($1.userAnswer) }
+        dashboard?.spokenWordsTodayPractice ?? 0
     }
     private var spokenWordsTodayTotal: Int { spokenWordsTodayPractice + sprintWordsToday }
 
-    private var spokenWeekly: [DayStat] {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: .now)
-        return (0..<7).reversed().map { offset in
-            let date = cal.date(byAdding: .day, value: -offset, to: today) ?? today
-            let next = cal.date(byAdding: .day, value: 1, to: date) ?? date
-            let w = spokenReviews
-                .filter { $0.timestamp >= date && $0.timestamp < next }
-                .reduce(0) { $0 + wordCount($1.userAnswer) }
-            return DayStat(date: date, count: w)
-        }
-    }
-
-    private func avgSec(_ rs: [Review]) -> Double? {
-        let timed = rs.filter { $0.responseTimeMs > 0 }
-        guard !timed.isEmpty else { return nil }
-        return Double(timed.reduce(0) { $0 + $1.responseTimeMs }) / Double(timed.count) / 1000.0
-    }
-    /// Average spoken response time this week, with a ↓/↑ arrow vs. last week so
-    /// the user can *feel* fluency improving — the intrinsic reward.
-    private var fluencyLabel: String? {
-        let cal = Calendar.current
-        let today = cal.startOfDay(for: .now)
-        let weekAgo = cal.date(byAdding: .day, value: -6, to: today) ?? today
-        let twoWeeksAgo = cal.date(byAdding: .day, value: -13, to: today) ?? today
-        guard let thisWeek = avgSec(spokenReviews.filter { $0.timestamp >= weekAgo }) else { return nil }
-        let lastWeek = avgSec(spokenReviews.filter { $0.timestamp >= twoWeeksAgo && $0.timestamp < weekAgo })
-        if let prev = lastWeek, abs(prev - thisWeek) >= 0.1 {
-            let arrow = thisWeek < prev ? "↓" : "↑"
-            return String(format: "%@ %.1f s", arrow, thisWeek)
-        }
-        return String(format: "%.1f s", thisWeek)
-    }
+    private var spokenWeekly: [ProgressDayStat] { dashboard?.spokenWeekly ?? [] }
+    private var fluencyLabel: String? { dashboard?.fluencyLabel }
 
     // MARK: - Derived data
 
-    private var newCount: Int { cards.filter { $0.state == .new }.count }
-    private var learningCount: Int { cards.filter { $0.state == .learning }.count }
-    private var reviewCount: Int { cards.filter { $0.state == .review }.count }
-    private var relearningCount: Int { cards.filter { $0.state == .relearning }.count }
-    private var dueNow: Int { cards.filter { $0.dueDate <= .now && $0.state != .new }.count }
-
-    private var startOfToday: Date { Calendar.current.startOfDay(for: .now) }
-    private var reviewsToday: [Review] { reviews.filter { $0.timestamp >= startOfToday } }
-    private var reviewedToday: Int { reviewsToday.count }
+    private var newCount: Int { dashboard?.newCount ?? 0 }
+    private var learningCount: Int { dashboard?.learningCount ?? 0 }
+    private var reviewCount: Int { dashboard?.reviewCount ?? 0 }
+    private var relearningCount: Int { dashboard?.relearningCount ?? 0 }
+    private var dueNow: Int { dashboard?.dueNow ?? 0 }
+    private var reviewedToday: Int { dashboard?.reviewedToday ?? 0 }
 
     private func nextMilestone(after streak: Int) -> Int? {
         [3, 7, 14, 30, 100, 365].first { $0 > streak }
     }
 
-    private var currentStreak: Int {
-        let cal = Calendar.current
-        var day = cal.startOfDay(for: .now)
-        var streak = 0
-        while true {
-            let next = cal.date(byAdding: .day, value: 1, to: day) ?? day
-            let hit = reviews.contains { $0.timestamp >= day && $0.timestamp < next }
-            if !hit { break }
-            streak += 1
-            day = cal.date(byAdding: .day, value: -1, to: day) ?? day
-        }
-        return streak
-    }
+    private var currentStreak: Int { dashboard?.currentStreak ?? 0 }
 
     private var streakLabel: String {
         switch currentStreak {
@@ -733,22 +617,6 @@ struct ProfileView: View {
         }
     }
 
-    private var topicsWithCards: [Topic] {
-        topics
-            .filter { !($0.phrases?.isEmpty ?? true) }
-            .sorted { lhs, rhs in
-                if lhs.isActive != rhs.isActive { return lhs.isActive && !rhs.isActive }
-                return lhs.name.localizedCompare(rhs.name) == .orderedAscending
-            }
-    }
-
-    private func cardsForTopic(_ topic: Topic) -> [StudyCard] {
-        let phraseIDs = Set((topic.phrases ?? []).map(\.persistentModelID))
-        return cards.filter {
-            guard let phrase = $0.phrase else { return false }
-            return phraseIDs.contains(phrase.persistentModelID)
-        }
-    }
 }
 
 // MARK: - Learning progress ring
@@ -820,10 +688,4 @@ private struct ProgressCapsule: View {
             }
         }
     }
-}
-
-private struct DayStat: Identifiable {
-    let id = UUID()
-    let date: Date
-    let count: Int
 }
