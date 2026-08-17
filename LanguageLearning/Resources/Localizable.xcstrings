@@ -578,6 +578,9 @@
     "Keine passenden Phrasen." : {
 
     },
+    "Klangeffekte" : {
+
+    },
     "Konnte ich nicht" : {
 
     },
@@ -621,6 +624,9 @@
 
     },
     "Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Abruf-Meilensteine würdigen echte Serien selbständig produzierter Antworten." : {
+
+    },
+    "Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Abruf-Meilensteine würdigen echte Serien selbständig produzierter Antworten. Klangeffekte respektieren den Stummmodus." : {
 
     },
     "Neue Phrase" : {

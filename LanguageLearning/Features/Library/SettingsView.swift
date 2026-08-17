@@ -24,6 +24,7 @@ struct SettingsView: View {
     @State private var devTapCount = 0
     @State private var didHydrate = false
     @State private var saveErrorMessage: String?
+    @AppStorage("soundEffectsEnabled") private var soundEffectsEnabled = true
 
     private static var defaultReminderTime: Date {
         var comps = DateComponents()
@@ -86,10 +87,11 @@ struct SettingsView: View {
                     }
                     Toggle("KI-Bewertungshilfe", isOn: $useAIGradingAssist)
                     Toggle("Abruf-Meilensteine", isOn: $surpriseRewardsEnabled)
+                    Toggle("Klangeffekte", isOn: $soundEffectsEnabled)
                 } header: {
                     Text("Üben")
                 } footer: {
-                    Text("Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Abruf-Meilensteine würdigen echte Serien selbständig produzierter Antworten.")
+                    Text("Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Abruf-Meilensteine würdigen echte Serien selbständig produzierter Antworten. Klangeffekte respektieren den Stummmodus.")
                 }
                 .listRowBackground(DS.surface1)
 

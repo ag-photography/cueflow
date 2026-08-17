@@ -143,7 +143,7 @@ struct OnboardingView: View {
             if SprintMatcher.matches(spokenTail: newValue, target: phrase.targetText) {
                 firstSpeechSucceeded = true
                 speech.stop()
-                UINotificationFeedbackGenerator().notificationOccurred(.success)
+                CompletionFeedbackService.shared.playCompletion()
             }
         }
         .onDisappear {

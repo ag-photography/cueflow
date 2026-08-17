@@ -1796,6 +1796,7 @@ struct PracticeView: View {
         }
         .padding()
         .presentationDetents([.large])
+        .onAppear { CompletionFeedbackService.shared.playCompletion() }
     }
 
     private func recapRow(icon: String, title: String, detail: String, color: Color) -> some View {

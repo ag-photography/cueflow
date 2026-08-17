@@ -581,6 +581,7 @@ struct SprintView: View {
         speech.stop()
         pulse = false
         if cleared > best { best = cleared }
+        CompletionFeedbackService.shared.playCompletion()
         withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.25)) { phase = .done }
     }
 
