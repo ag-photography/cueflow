@@ -416,7 +416,12 @@ struct PracticeView: View {
             return s
         }()
         row.lastCelebratedStreak = days
-        try? context.save()
+        do {
+            try context.save()
+        } catch {
+            context.rollback()
+            showPersistenceError(error)
+        }
     }
 
     private func milestoneBanner(days: Int) -> some View {
@@ -1730,6 +1735,9 @@ struct PracticeView: View {
 
     private var sessionSummarySheet: some View {
         VStack(spacing: DS.space.lg) {
+            if let persistenceErrorMessage {
+                persistenceErrorBanner(persistenceErrorMessage)
+            }
             if let milestone = unseenStreakMilestone {
                 milestoneBanner(days: milestone)
                     .onAppear { markStreakCelebrated(milestone) }

@@ -3,7 +3,7 @@ options:
   bundleIdPrefix: com.alex
   deploymentTarget:
     iOS: "18.0"
-  developmentLanguage: en
+  developmentLanguage: de
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
@@ -55,6 +55,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.alex.cueflow
         ENABLE_PREVIEWS: YES
         GENERATE_INFOPLIST_FILE: NO
+        SWIFT_EMIT_LOC_STRINGS: YES
     scheme:
       testTargets:
         - LanguageLearningTests

@@ -31,6 +31,9 @@ struct LibraryView: View {
     @State private var creatingPhrase = false
     @State private var creatingTopic = false
     @State private var libraryMode: LibraryMode = .learn
+    @State private var saveErrorMessage: String?
+    @State private var topicPendingDeletion: Topic?
+    @State private var phrasePendingDeletion: Phrase?
 
     private enum ActiveFilter: Hashable { case all, active, inactive }
     private enum LibraryMode: Hashable { case learn, manage }
@@ -117,6 +120,52 @@ struct LibraryView: View {
             .sheet(isPresented: $creatingPhrase) { PhraseEditorView(phrase: nil) }
             .sheet(item: $phraseInEditor) { phrase in PhraseEditorView(phrase: phrase) }
             .sheet(isPresented: $creatingTopic) { TopicEditorView(topic: nil) }
+            .alert("Änderung konnte nicht gespeichert werden", isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { saveErrorMessage = nil }
+            } message: {
+                Text(saveErrorMessage ?? "Bitte versuche es erneut.")
+            }
+            .confirmationDialog(
+                "Thema endgültig löschen?",
+                isPresented: Binding(
+                    get: { topicPendingDeletion != nil },
+                    set: { if !$0 { topicPendingDeletion = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Thema löschen", role: .destructive) {
+                    if let topicPendingDeletion {
+                        context.delete(topicPendingDeletion)
+                        _ = persistContext()
+                    }
+                    topicPendingDeletion = nil
+                }
+                Button("Abbrechen", role: .cancel) { topicPendingDeletion = nil }
+            } message: {
+                Text("Die Zuordnung zu dieser Mission wird entfernt. Die enthaltenen Phrasen bleiben erhalten.")
+            }
+            .confirmationDialog(
+                "Phrase endgültig löschen?",
+                isPresented: Binding(
+                    get: { phrasePendingDeletion != nil },
+                    set: { if !$0 { phrasePendingDeletion = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Phrase löschen", role: .destructive) {
+                    if let phrasePendingDeletion {
+                        context.delete(phrasePendingDeletion)
+                        _ = persistContext()
+                    }
+                    phrasePendingDeletion = nil
+                }
+                Button("Abbrechen", role: .cancel) { phrasePendingDeletion = nil }
+            } message: {
+                Text("Die Phrase und ihr gesamter Lernfortschritt werden gelöscht. Das lässt sich nicht rückgängig machen.")
+            }
         }
     }
 
@@ -179,7 +228,7 @@ struct LibraryView: View {
         return Button {
             if !topic.isActive {
                 topic.isActive = true
-                try? context.save()
+                guard persistContext() else { return }
             }
             selectedTopic = topic
         } label: {
@@ -227,7 +276,10 @@ struct LibraryView: View {
 
     private func activeChip(_ topic: Topic) -> some View {
         Button {
-            withAnimation { topic.isActive = false; try? context.save() }
+            withAnimation {
+                topic.isActive = false
+                _ = persistContext()
+            }
         } label: {
             HStack(spacing: 6) {
                 Text(topic.name)
@@ -281,8 +333,7 @@ struct LibraryView: View {
                     topicRow(topic)
                         .swipeActions(edge: .trailing) {
                             Button(role: .destructive) {
-                                context.delete(topic)
-                                try? context.save()
+                                topicPendingDeletion = topic
                             } label: {
                                 Label("Löschen", systemImage: "trash")
                             }
@@ -290,7 +341,7 @@ struct LibraryView: View {
                         .swipeActions(edge: .leading) {
                             Button {
                                 topic.isActive.toggle()
-                                try? context.save()
+                                _ = persistContext()
                             } label: {
                                 Label(topic.isActive ? "Deaktivieren" : "Aktivieren",
                                       systemImage: topic.isActive ? "circle" : "checkmark.circle")
@@ -312,7 +363,7 @@ struct LibraryView: View {
         HStack(spacing: DS.space.md) {
             Button {
                 topic.isActive.toggle()
-                try? context.save()
+                _ = persistContext()
             } label: {
                 Image(systemName: topic.isActive ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
@@ -373,7 +424,7 @@ struct LibraryView: View {
     private func setActive(_ active: Bool, on list: [Topic]) {
         withAnimation {
             for topic in list { topic.isActive = active }
-            try? context.save()
+            _ = persistContext()
         }
     }
 
@@ -394,8 +445,7 @@ struct LibraryView: View {
                     .buttonStyle(.plain)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
-                            context.delete(phrase)
-                            try? context.save()
+                            phrasePendingDeletion = phrase
                         } label: {
                             Label("Löschen", systemImage: "trash")
                         }
@@ -407,6 +457,19 @@ struct LibraryView: View {
                         .foregroundStyle(.secondary)
                 }
             }
+        }
+    }
+
+    @discardableResult
+    private func persistContext() -> Bool {
+        do {
+            try context.save()
+            saveErrorMessage = nil
+            return true
+        } catch {
+            context.rollback()
+            saveErrorMessage = error.localizedDescription
+            return false
         }
     }
 

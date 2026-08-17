@@ -19,6 +19,7 @@ struct TopicEditorView: View {
 
     @State private var name: String = ""
     @State private var isActive: Bool = false
+    @State private var saveErrorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -43,6 +44,14 @@ struct TopicEditorView: View {
                 }
             }
             .onAppear { hydrate() }
+            .alert("Thema konnte nicht gespeichert werden", isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { saveErrorMessage = nil }
+            } message: {
+                Text(saveErrorMessage ?? "Bitte versuche es erneut.")
+            }
         }
     }
 
@@ -60,7 +69,12 @@ struct TopicEditorView: View {
             let topic = Topic(name: name, language: activeLanguage, isActive: isActive)
             context.insert(topic)
         }
-        try? context.save()
-        dismiss()
+        do {
+            try context.save()
+            dismiss()
+        } catch {
+            context.rollback()
+            saveErrorMessage = error.localizedDescription
+        }
     }
 }

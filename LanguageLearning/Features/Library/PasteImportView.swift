@@ -14,6 +14,7 @@ struct PasteImportView: View {
     @State private var rawText: String
     @State private var separator: String = "="
     @State private var order: LineOrder
+    @State private var saveErrorMessage: String?
 
     /// Imported phrases are filed under the active target language.
     private var targetLanguage: Language? {
@@ -103,6 +104,14 @@ struct PasteImportView: View {
                         .disabled(validLines.isEmpty)
                 }
             }
+            .alert("Import konnte nicht gespeichert werden", isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { saveErrorMessage = nil }
+            } message: {
+                Text(saveErrorMessage ?? "Bitte versuche es erneut.")
+            }
         }
     }
 
@@ -169,8 +178,13 @@ struct PasteImportView: View {
             context.insert(StudyCard(phrase: phrase))
         }
 
-        try? context.save()
-        dismiss()
+        do {
+            try context.save()
+            dismiss()
+        } catch {
+            context.rollback()
+            saveErrorMessage = error.localizedDescription
+        }
     }
 }
 

@@ -28,6 +28,7 @@ struct PhraseEditorView: View {
     @State private var selectedTopicIDs: Set<PersistentIdentifier> = []
     @State private var alternatives: [String] = []
     @State private var newAlternative: String = ""
+    @State private var saveErrorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -113,6 +114,14 @@ struct PhraseEditorView: View {
                 }
             }
             .onAppear { hydrate() }
+            .alert("Phrase konnte nicht gespeichert werden", isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { saveErrorMessage = nil }
+            } message: {
+                Text(saveErrorMessage ?? "Bitte versuche es erneut.")
+            }
         }
     }
 
@@ -158,7 +167,12 @@ struct PhraseEditorView: View {
             context.insert(phrase)
             context.insert(StudyCard(phrase: phrase))
         }
-        try? context.save()
-        dismiss()
+        do {
+            try context.save()
+            dismiss()
+        } catch {
+            context.rollback()
+            saveErrorMessage = error.localizedDescription
+        }
     }
 }

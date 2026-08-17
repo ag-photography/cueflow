@@ -10,6 +10,7 @@ struct TopicDetailView: View {
 
     @State private var phraseInEditor: Phrase?
     @State private var showingEditor = false
+    @State private var saveErrorMessage: String?
 
     private var cards: [StudyCard] {
         topic.phrases.flatMap(\.cards)
@@ -57,6 +58,14 @@ struct TopicDetailView: View {
         }
         .sheet(item: $phraseInEditor) { PhraseEditorView(phrase: $0) }
         .sheet(isPresented: $showingEditor) { TopicEditorView(topic: topic) }
+        .alert("Thema konnte nicht aktualisiert werden", isPresented: Binding(
+            get: { saveErrorMessage != nil },
+            set: { if !$0 { saveErrorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { saveErrorMessage = nil }
+        } message: {
+            Text(saveErrorMessage ?? "Bitte versuche es erneut.")
+        }
     }
 
     // MARK: - Activation
@@ -65,7 +74,7 @@ struct TopicDetailView: View {
         VStack(spacing: DS.space.sm) {
             Toggle(isOn: Binding(
                 get: { topic.isActive },
-                set: { topic.isActive = $0; try? context.save() }
+                set: { setTopicActive($0) }
             )) {
                 HStack(spacing: DS.space.sm) {
                     Image(systemName: topic.isActive ? "checkmark.circle.fill" : "circle")
@@ -85,6 +94,17 @@ struct TopicDetailView: View {
         .padding(DS.space.md)
         .background(DS.surface1)
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+    }
+
+    private func setTopicActive(_ isActive: Bool) {
+        topic.isActive = isActive
+        do {
+            try context.save()
+            saveErrorMessage = nil
+        } catch {
+            context.rollback()
+            saveErrorMessage = error.localizedDescription
+        }
     }
 
     // MARK: - Learning progress

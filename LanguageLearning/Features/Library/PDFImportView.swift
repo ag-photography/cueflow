@@ -26,6 +26,7 @@ struct PDFImportView: View {
     @State private var fileName: String = ""
     @State private var pairs: [ClassifiedPair] = []
     @State private var parseError: String?
+    @State private var saveErrorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -53,6 +54,14 @@ struct PDFImportView: View {
                 allowsMultipleSelection: false
             ) { result in
                 handleFile(result)
+            }
+            .alert("PDF-Import konnte nicht gespeichert werden", isPresented: Binding(
+                get: { saveErrorMessage != nil },
+                set: { if !$0 { saveErrorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) { saveErrorMessage = nil }
+            } message: {
+                Text(saveErrorMessage ?? "Bitte versuche es erneut.")
             }
         }
     }
@@ -225,8 +234,13 @@ struct PDFImportView: View {
             topic.isActive = true
         }
 
-        try? context.save()
-        dismiss()
+        do {
+            try context.save()
+            dismiss()
+        } catch {
+            context.rollback()
+            saveErrorMessage = error.localizedDescription
+        }
     }
 }
 

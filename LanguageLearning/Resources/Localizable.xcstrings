@@ -1,0 +1,1040 @@
+{
+  "sourceLanguage" : "de",
+  "strings" : {
+    "" : {
+
+    },
+    "%@  →  %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@  →  %2$@"
+          }
+        }
+      }
+    },
+    "%@ deaktivieren" : {
+
+    },
+    "%@, %lld Phrasen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@, %2$lld Phrasen"
+          }
+        }
+      }
+    },
+    "%@, aktiv" : {
+
+    },
+    "%@, inaktiv" : {
+
+    },
+    "%arg" : {
+
+    },
+    "%arg  →  %arg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$arg  →  %2$arg"
+          }
+        }
+      }
+    },
+    "%arg Ausdrücke · etwa %arg Min." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$arg Ausdrücke · etwa %2$arg Min."
+          }
+        }
+      }
+    },
+    "%arg Tage Serie!" : {
+
+    },
+    "%arg Wiederholungen · %arg neue Ausdrücke" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$arg Wiederholungen · %2$arg neue Ausdrücke"
+          }
+        }
+      }
+    },
+    "%arg deaktivieren" : {
+
+    },
+    "%arg fällig" : {
+
+    },
+    "%arg gesagt" : {
+
+    },
+    "%arg neue Karten, %arg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$arg neue Karten, %2$arg"
+          }
+        }
+      }
+    },
+    "%arg nützliche Ausdrücke · produktiv üben" : {
+
+    },
+    "%arg s" : {
+
+    },
+    "%arg von %arg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$arg von %2$arg"
+          }
+        }
+      }
+    },
+    "%arg von %arg Phrasen mindestens einmal geübt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$arg von %2$arg Phrasen mindestens einmal geübt"
+          }
+        }
+      }
+    },
+    "%arg%%" : {
+
+    },
+    "%arg, %arg Phrasen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$arg, %2$arg Phrasen"
+          }
+        }
+      }
+    },
+    "%arg/%arg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$arg/%2$arg"
+          }
+        }
+      }
+    },
+    "%lld" : {
+
+    },
+    "%lld Ausdrücke · etwa %lld Min." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld Ausdrücke · etwa %2$lld Min."
+          }
+        }
+      }
+    },
+    "%lld Tage Serie!" : {
+
+    },
+    "%lld Wiederholungen · %lld neue Ausdrücke" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld Wiederholungen · %2$lld neue Ausdrücke"
+          }
+        }
+      }
+    },
+    "%lld fällig" : {
+
+    },
+    "%lld gesagt" : {
+
+    },
+    "%lld neue Karten, %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld neue Karten, %2$@"
+          }
+        }
+      }
+    },
+    "%lld nützliche Ausdrücke · produktiv üben" : {
+
+    },
+    "%lld s" : {
+
+    },
+    "%lld von %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld"
+          }
+        }
+      }
+    },
+    "%lld von %lld Phrasen mindestens einmal geübt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld Phrasen mindestens einmal geübt"
+          }
+        }
+      }
+    },
+    "%lld von %lld produktiv eingeführt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld produktiv eingeführt"
+          }
+        }
+      }
+    },
+    "%lld%%" : {
+
+    },
+    "%lld/%lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "60 Sekunden. Sag die Übersetzung laut — so viele wie du schaffst. Es hört mit und springt von selbst weiter." : {
+
+    },
+    "60-Sekunden-Sprechrunde" : {
+
+    },
+    "60-Sekunden-Sprint" : {
+
+    },
+    "=" : {
+
+    },
+    "AKTUELLE MISSION" : {
+
+    },
+    "Abbrechen" : {
+
+    },
+    "Abruf-Meilensteine" : {
+
+    },
+    "Aktiv" : {
+
+    },
+    "Aktive Sprache" : {
+
+    },
+    "Aktive Themen" : {
+
+    },
+    "Aktive Themen liefern neue Karten. Wiederholungen kommen aus allen Themen." : {
+
+    },
+    "Aktive Themen liefern neue Karten. Wiederholungen kommen weiter aus allen Themen." : {
+
+    },
+    "Aktivieren" : {
+
+    },
+    "Aktiviert und öffnet diese Mission" : {
+
+    },
+    "Akzeptierte Alternative" : {
+
+    },
+    "Akzeptierte Alternativen" : {
+
+    },
+    "Alle" : {
+
+    },
+    "Alle Sprachen" : {
+
+    },
+    "Alle aktivieren" : {
+
+    },
+    "Alle deaktivieren" : {
+
+    },
+    "Alles erledigt!" : {
+
+    },
+    "Anhören" : {
+
+    },
+    "Ansicht" : {
+
+    },
+    "Antwort" : {
+
+    },
+    "Antwort gemerkt: " : {
+
+    },
+    "Antwort vorlesen" : {
+
+    },
+    "Antwort: %@" : {
+
+    },
+    "Antwort: %arg" : {
+
+    },
+    "Antworten · %arg Wörter" : {
+
+    },
+    "Antworten · %lld Wörter" : {
+
+    },
+    "Antworten, die als richtig gewertet werden — nützlich bei Synonymen oder zulässigen Varianten." : {
+
+    },
+    "Antwortoption" : {
+
+    },
+    "Atme kurz durch. Deine aktuelle Stelle bleibt erhalten." : {
+
+    },
+    "Aufnahme starten" : {
+
+    },
+    "Aufnahme stoppen" : {
+
+    },
+    "Auto-Grade vs. Override" : {
+
+    },
+    "Baue die Antwort" : {
+
+    },
+    "Benachrichtigungen sind in den iOS-Einstellungen deaktiviert. Aktiviere sie dort, um die Erinnerung zu nutzen." : {
+
+    },
+    "Bereit, etwas spontan abzurufen?" : {
+
+    },
+    "Bestleistung: %arg" : {
+
+    },
+    "Bestleistung: %lld" : {
+
+    },
+    "Bibliothek" : {
+
+    },
+    "Bibliothek öffnen" : {
+
+    },
+    "C" : {
+
+    },
+    "DE" : {
+
+    },
+    "Das Tageslimit kannst du in den Einstellungen ändern (Üben → Neue Karten pro Tag)." : {
+
+    },
+    "Datei" : {
+
+    },
+    "Datei teilen" : {
+
+    },
+    "Daten" : {
+
+    },
+    "Deaktivieren" : {
+
+    },
+    "Dein bereits gespeicherter Fortschritt bleibt erhalten." : {
+
+    },
+    "Deine erste Übung wird vorbereitet." : {
+
+    },
+    "Details & Abgleich" : {
+
+    },
+    "Deutsch" : {
+
+    },
+    "Diagnose" : {
+
+    },
+    "Die Phrase und ihr gesamter Lernfortschritt werden gelöscht. Das lässt sich nicht rückgängig machen." : {
+
+    },
+    "Die Zeit startet erst, wenn alles bereit ist." : {
+
+    },
+    "Die Zuordnung zu dieser Mission wird entfernt. Die enthaltenen Phrasen bleiben erhalten." : {
+
+    },
+    "Du hast heute %arg neue Karten gelernt. Es warten noch %arg in deinen aktiven Themen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Du hast heute %1$arg neue Karten gelernt. Es warten noch %2$arg in deinen aktiven Themen."
+          }
+        }
+      }
+    },
+    "Du hast heute %lld neue Karten gelernt. Es warten noch %lld in deinen aktiven Themen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Du hast heute %1$lld neue Karten gelernt. Es warten noch %2$lld in deinen aktiven Themen."
+          }
+        }
+      }
+    },
+    "Eine sanfte tägliche Erinnerung zur gewählten Zeit. Keine Streak-Panik, keine FOMO. Jederzeit ausschaltbar." : {
+
+    },
+    "Einfügen" : {
+
+    },
+    "Einführung wiederholen" : {
+
+    },
+    "Einheit beenden" : {
+
+    },
+    "Einheit beenden?" : {
+
+    },
+    "Einheit fortsetzen" : {
+
+    },
+    "Einheit pausieren" : {
+
+    },
+    "Einheit pausiert" : {
+
+    },
+    "Einheit schließen" : {
+
+    },
+    "Einheit starten" : {
+
+    },
+    "Einstellungen" : {
+
+    },
+    "Einstellungen konnten nicht gespeichert werden" : {
+
+    },
+    "Einstellungen öffnen" : {
+
+    },
+    "Empfohlen" : {
+
+    },
+    "Entwickler" : {
+
+    },
+    "Entwicklermodus ausblenden" : {
+
+    },
+    "Erinnerungen" : {
+
+    },
+    "Erste Einheit starten" : {
+
+    },
+    "Etwa %arg Minuten" : {
+
+    },
+    "Etwa %lld Minuten" : {
+
+    },
+    "Exportiert alle Phrasen, Themen, Reviews und Einstellungen als JSON. Speichere die Datei in iCloud Drive oder per AirDrop. TestFlight-Updates erhalten deine Daten automatisch – dies ist nur eine zusätzliche Absicherung." : {
+
+    },
+    "Fehlermeldung schließen" : {
+
+    },
+    "Fertig" : {
+
+    },
+    "Format" : {
+
+    },
+    "Fortschritt" : {
+
+    },
+    "Fortschritt & Streak: oben rechts auf der Übungsseite (Diagramm-Icon). TestFlight-Updates erhalten deinen Fortschritt automatisch." : {
+
+    },
+    "Für die Offline-Optimierung der FSRS-Gewichte mit fsrs-optimizer (Python). Format: card_id, review_time, rating." : {
+
+    },
+    "Gehört: %@" : {
+
+    },
+    "Geschafft" : {
+
+    },
+    "Heute" : {
+
+    },
+    "Heute gesprochen" : {
+
+    },
+    "Heute schon %lld Antworten produziert." : {
+
+    },
+    "Hinzufügen" : {
+
+    },
+    "Hoher Tier-2-Anteil mit vielen Overrides → Schwellen lockern. Hoher Tier-3-Anteil ohne Override-Reduktion → KI-Hilfe abschalten." : {
+
+    },
+    "Hol die richtigen Wörter selbst hervor — und sprich sie aus. So wird aus Verstehen echte Gesprächsfähigkeit." : {
+
+    },
+    "Ich kann gerade nicht sprechen" : {
+
+    },
+    "Ich lag richtig" : {
+
+    },
+    "Ich weiß es nicht" : {
+
+    },
+    "Import konnte nicht gespeichert werden" : {
+
+    },
+    "Importieren" : {
+
+    },
+    "In Einstellungen erlauben" : {
+
+    },
+    "Inaktiv" : {
+
+    },
+    "Inhalte kannst du unter Verwalten hinzufügen." : {
+
+    },
+    "Inhalte werden vorbereitet …" : {
+
+    },
+    "Jetzt du – sprich den Satz" : {
+
+    },
+    "Jetzt selbst sagen" : {
+
+    },
+    "KI-Bewertungshilfe" : {
+
+    },
+    "Karten" : {
+
+    },
+    "Kein Muss — du kannst das auch später machen. Zum Erkennen und Sprechen brauchst du keine Tastatur." : {
+
+    },
+    "Keine Themen — füge eines hinzu." : {
+
+    },
+    "Keine fälligen Karten und keine neuen in deinen aktiven Themen. Aktiviere ein Thema oder importiere neue Vokabeln in der Bibliothek." : {
+
+    },
+    "Keine passenden Phrasen." : {
+
+    },
+    "Konnte ich nicht" : {
+
+    },
+    "Laut nachsprechen. Wird nicht bewertet – einfach sagen." : {
+
+    },
+    "Lernen" : {
+
+    },
+    "Letzte 7 Tage" : {
+
+    },
+    "Los" : {
+
+    },
+    "Löschen" : {
+
+    },
+    "Mach dich bereit" : {
+
+    },
+    "Mein Ziel" : {
+
+    },
+    "Mikrofon hört zu" : {
+
+    },
+    "Mikrofon wird vorbereitet …" : {
+
+    },
+    "Missionen" : {
+
+    },
+    "Name" : {
+
+    },
+    "Neue Bestleistung!" : {
+
+    },
+    "Neue Karten pro Tag" : {
+
+    },
+    "Neue Karten pro Tag begrenzt die Einführung; Wiederholungen sind unbegrenzt. KI-Bewertungshilfe nutzt Apples On-Device-Modell (iOS 26+). Abruf-Meilensteine würdigen echte Serien selbständig produzierter Antworten." : {
+
+    },
+    "Neue Phrase" : {
+
+    },
+    "Neues Thema" : {
+
+    },
+    "Noch keine Missionen" : {
+
+    },
+    "Noch keine Overrides aufgezeichnet." : {
+
+    },
+    "Noch keine Phrasen in diesem Thema." : {
+
+    },
+    "Noch keine Themen mit Karten." : {
+
+    },
+    "Noch nicht begonnen" : {
+
+    },
+    "Nochmal ansehen" : {
+
+    },
+    "Nochmal sprechen" : {
+
+    },
+    "Notizen" : {
+
+    },
+    "Nächstes Ziel" : {
+
+    },
+    "OK" : {
+
+    },
+    "Optional" : {
+
+    },
+    "PDF Import" : {
+
+    },
+    "PDF auswählen" : {
+
+    },
+    "PDF importieren" : {
+
+    },
+    "PDF-Import konnte nicht gespeichert werden" : {
+
+    },
+    "Pause" : {
+
+    },
+    "Phrase bearbeiten" : {
+
+    },
+    "Phrase endgültig löschen?" : {
+
+    },
+    "Phrase hinzufügen" : {
+
+    },
+    "Phrase konnte nicht gespeichert werden" : {
+
+    },
+    "Phrase löschen" : {
+
+    },
+    "Phrasen" : {
+
+    },
+    "Phrasen (%arg)" : {
+
+    },
+    "Phrasen (%lld)" : {
+
+    },
+    "Phrasen anderer Sprachen werden ausgeblendet, bis du sie hier auswählst. Russisch & Arabisch werden unterstützt. Transliteration zeigt die Lautschrift unter der Antwort." : {
+
+    },
+    "Pre → Post (Anzahl). „wrong → good\" sind Kandidaten für die Liste akzeptierter Alternativen." : {
+
+    },
+    "Priorität" : {
+
+    },
+    "Prüfen" : {
+
+    },
+    "Quelltext" : {
+
+    },
+    "Reihenfolge" : {
+
+    },
+    "Reviews als JSON exportieren" : {
+
+    },
+    "Sag es im Satz" : {
+
+    },
+    "Satz vorlesen" : {
+
+    },
+    "Schnell sprechen, ohne SRS-Druck" : {
+
+    },
+    "Serie: %arg Tage" : {
+
+    },
+    "Serie: %lld Tage" : {
+
+    },
+    "Sicherung" : {
+
+    },
+    "Sicherung & Export" : {
+
+    },
+    "Speichern" : {
+
+    },
+    "Sprache" : {
+
+    },
+    "Sprache & Inhalte" : {
+
+    },
+    "Sprechen ist gerade nicht verfügbar. Du kannst trotzdem fortfahren und später erneut probieren." : {
+
+    },
+    "Sprechen pausiert" : {
+
+    },
+    "Sprechen pausiert. Tippen, um wieder zu sprechen." : {
+
+    },
+    "Sprechtempo %@" : {
+
+    },
+    "Sprechtempo %arg" : {
+
+    },
+    "Sprich den Satz" : {
+
+    },
+    "Sprich jetzt den Satz." : {
+
+    },
+    "Sprint" : {
+
+    },
+    "Sprint braucht das Mikrofon und die Spracherkennung." : {
+
+    },
+    "Sprint schließen" : {
+
+    },
+    "Sprint-Best: %lld" : {
+
+    },
+    "Sprint: noch keiner" : {
+
+    },
+    "Später" : {
+
+    },
+    "Stand" : {
+
+    },
+    "Stapel-Import" : {
+
+    },
+    "Stapelaktionen" : {
+
+    },
+    "Start in %lld" : {
+
+    },
+    "Starten" : {
+
+    },
+    "Startthemen" : {
+
+    },
+    "Status" : {
+
+    },
+    "Stoppen" : {
+
+    },
+    "Stoppen & Prüfen" : {
+
+    },
+    "Tab" : {
+
+    },
+    "Tag" : {
+
+    },
+    "Tagesziel erreicht" : {
+
+    },
+    "Thema bearbeiten" : {
+
+    },
+    "Thema endgültig löschen?" : {
+
+    },
+    "Thema hinzufügen" : {
+
+    },
+    "Thema konnte nicht aktualisiert werden" : {
+
+    },
+    "Thema konnte nicht gespeichert werden" : {
+
+    },
+    "Thema löschen" : {
+
+    },
+    "Themen" : {
+
+    },
+    "Themen & Phrasen suchen" : {
+
+    },
+    "Themen (%arg)" : {
+
+    },
+    "Themen (%lld)" : {
+
+    },
+    "Tier-Verteilung" : {
+
+    },
+    "Tippen zum Aufdecken" : {
+
+    },
+    "Transliteration" : {
+
+    },
+    "Trennzeichen" : {
+
+    },
+    "Trennzeichen fehlt: %@" : {
+
+    },
+    "Trennzeichen fehlt: %arg" : {
+
+    },
+    "Tägliche Erinnerung" : {
+
+    },
+    "Täglicher Rhythmus" : {
+
+    },
+    "Verwalten" : {
+
+    },
+    "Vollständige Sicherung erstellen" : {
+
+    },
+    "Vorschau (%arg gültig / %arg)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Vorschau (%1$arg gültig / %2$arg)"
+          }
+        }
+      }
+    },
+    "Vorschau (%lld gültig / %lld)" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Vorschau (%1$lld gültig / %2$lld)"
+          }
+        }
+      }
+    },
+    "War schwerer – früher zeigen" : {
+
+    },
+    "Was willst du als Nächstes können?" : {
+
+    },
+    "Weiter" : {
+
+    },
+    "Weiter mit neuen Karten" : {
+
+    },
+    "Weiter üben" : {
+
+    },
+    "Weiterlernen" : {
+
+    },
+    "Wieder sprechen" : {
+
+    },
+    "Willkommen bei\nCueFlow" : {
+
+    },
+    "Wischen" : {
+
+    },
+    "Wähle eine Text-PDF von deinem Tutor. Die Vokabeln werden automatisch dem passenden Thema zugeordnet (Familie, Verben, Essen & Trinken, …) und die Themen aktiviert." : {
+
+    },
+    "Wähle eine praktische Mission. CueFlow stellt die passenden Ausdrücke automatisch in deine Einheiten." : {
+
+    },
+    "Wörter" : {
+
+    },
+    "Zeigt die Erstkonfiguration erneut — Tagesziel, Starter-Themen und Tastatur-Anleitung." : {
+
+    },
+    "Zeit" : {
+
+    },
+    "Zieltext" : {
+
+    },
+    "Zurück" : {
+
+    },
+    "Zurücksetzen" : {
+
+    },
+    "Zählt nicht in deinen Lernplan — reine Sprechübung." : {
+
+    },
+    "gesagt" : {
+
+    },
+    "heute laut gesprochen" : {
+
+    },
+    "hört zu" : {
+
+    },
+    "noch %arg %arg bis %arg" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "noch %1$arg %2$arg bis %3$arg"
+          }
+        }
+      }
+    },
+    "noch %lld %@ bis %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "noch %1$lld %2$@ bis %3$lld"
+          }
+        }
+      }
+    },
+    "schon geübt" : {
+
+    },
+    "z.B. Genitiv mit Verneinung" : {
+
+    },
+    "Änderung konnte nicht gespeichert werden" : {
+
+    },
+    "Öffnet den Fortschritt" : {
+
+    },
+    "Öffnet diese Mission" : {
+
+    },
+    "Übe heute eine Runde, um die Serie zu starten." : {
+
+    },
+    "Üben" : {
+
+    },
+    "Übersicht" : {
+
+    },
+    "Überspringen" : {
+
+    },
+    "Überspringt diese Karte ohne Punkt" : {
+
+    },
+    "„%@\"" : {
+
+    },
+    "„%arg\"" : {
+
+    },
+    "… und %arg weitere. Suche verfeinern." : {
+
+    },
+    "… und %lld weitere. Suche verfeinern." : {
+
+    },
+    "→" : {
+
+    }
+  },
+  "version" : "1.0"
+}
