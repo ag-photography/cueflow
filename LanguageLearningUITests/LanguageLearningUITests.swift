@@ -79,13 +79,33 @@ final class LanguageLearningUITests: XCTestCase {
         let practice = app.buttons["tutor-focus-practice"]
         XCTAssertTrue(practice.waitForExistence(timeout: 4))
         practice.tap()
-        XCTAssertTrue(app.buttons["practice-close"].waitForExistence(timeout: 5))
+        let close = app.buttons["practice-close"]
+        XCTAssertTrue(close.waitForExistence(timeout: 5))
+        close.tap()
+
+        XCTAssertTrue(addFocus.waitForExistence(timeout: 4))
+        addFocus.tap()
+        let editDate = app.buttons["Termin bearbeiten"].firstMatch
+        XCTAssertTrue(editDate.waitForExistence(timeout: 3))
+        editDate.tap()
+        XCTAssertTrue(app.buttons["tutor-focus-date-save"].waitForExistence(timeout: 3))
     }
 
     func testAccessibilityTextSizeKeepsPrimaryActionReachable() {
         let app = launch(contentSize: "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge")
         XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["today-settings"].exists)
+    }
+
+    func testProgressRecommendationStartsPractice() {
+        let app = launch()
+        XCTAssertTrue(app.tabBars.buttons["Fortschritt"].waitForExistence(timeout: 8))
+        app.tabBars.buttons["Fortschritt"].tap()
+
+        let recommendation = app.buttons["progress-recommended-practice"]
+        XCTAssertTrue(recommendation.waitForExistence(timeout: 5))
+        recommendation.tap()
+        XCTAssertTrue(app.buttons["practice-close"].waitForExistence(timeout: 5))
     }
 
     func testArabicConfigurationLoadsWithoutBreakingNavigation() {

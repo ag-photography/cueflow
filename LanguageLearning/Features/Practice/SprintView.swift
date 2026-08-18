@@ -284,7 +284,7 @@ struct SprintView: View {
         let base: CGFloat = text.count > 40 ? 24 : (text.count > 20 ? 32 : 42)
         return VStack(spacing: DS.space.md) {
             Text(text)
-                .font(.system(size: base, weight: .bold, design: .serif))
+                .font(LearningTypography.display(size: base, weight: .bold))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(DS.textPrimary)
                 .lineLimit(nil)
@@ -292,7 +292,10 @@ struct SprintView: View {
             if let revealedAnswer {
                 Divider()
                 Text(revealedAnswer)
-                    .font(.title2.weight(.semibold))
+                    .font(LearningTypography.display(
+                        .title2, weight: .semibold,
+                        languageCode: currentPhrase?.language?.code
+                    ))
                     .multilineTextAlignment(.center)
                     .foregroundStyle(DS.accent)
                     .transition(.opacity)

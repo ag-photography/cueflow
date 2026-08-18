@@ -263,9 +263,10 @@ struct LibraryView: View {
 
                 scenarioCollections
 
-                Text("Deine Themen")
-                    .font(.title3.weight(.bold))
-                    .foregroundStyle(DS.textPrimary)
+                DSSectionHeader(
+                    title: "Deine Themen",
+                    subtitle: "Aktive Themen liefern neue Ausdrücke für deine täglichen Einheiten."
+                )
 
                 LazyVStack(spacing: DS.space.sm) {
                     ForEach(learningTopics.prefix(16)) { topic in
@@ -454,9 +455,7 @@ struct LibraryView: View {
 
     private var scenarioCollections: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            Text("Situationen")
-                .font(.headline)
-                .foregroundStyle(DS.textPrimary)
+            DSSectionHeader(title: "Situationen")
             NavigationLink {
                 SkillPathView()
             } label: {

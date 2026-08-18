@@ -116,7 +116,6 @@ private struct TodayView: View {
     @Query private var settings: [AppSettings]
     @Query(sort: \Topic.name) private var topics: [Topic]
 
-    @AppStorage("sprintBest") private var sprintBest = 0
     @AppStorage("lastQuestCelebrationDay") private var lastQuestCelebrationDay = -1
     @AppStorage("preferredSessionTarget") private var sessionTarget = 10
     @AppStorage("weeklyRecapEnabled") private var weeklyRecapEnabled = false
@@ -193,10 +192,7 @@ private struct TodayView: View {
                     recommendedSession
                     if !difficultCards.isEmpty { difficultPracticeCard }
                     dailyQuestCard
-                    skillPathCard
-                    sprintCard
-                    listeningCard
-                    conversationCard
+                    exploreCard
                     if fastestRecall != nil || recentImprovement != nil { achievementCard }
                     missionCard
                 }
@@ -277,106 +273,64 @@ private struct TodayView: View {
         }
     }
 
-    private var conversationCard: some View {
-        Button { showingConversation = true } label: {
-            HStack(spacing: DS.space.md) {
-                Image(systemName: "person.2.wave.2.fill")
-                    .font(.title2)
-                    .foregroundStyle(DS.accent)
-                    .frame(width: 54, height: 54)
-                    .background(DS.accentSoft)
-                    .clipShape(Circle())
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("GESPRÄCH")
-                        .font(.caption2.weight(.bold))
-                        .tracking(0.7)
-                        .foregroundStyle(DS.accent)
-                    Text("Im echten Kontext sprechen")
-                        .font(.headline)
-                        .foregroundStyle(DS.textPrimary)
-                    Text("Kurzes Rollenspiel mit deinen aktuellen Ausdrücken")
-                        .font(.caption)
-                        .foregroundStyle(DS.textSecondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(DS.textTertiary)
+    private var exploreCard: some View {
+        VStack(alignment: .leading, spacing: DS.space.md) {
+            DSSectionHeader(
+                title: "Mehr entdecken",
+                subtitle: "Vier kurze Wege, dieselben Ausdrücke aktiv anzuwenden."
+            )
+            LazyVGrid(
+                columns: [GridItem(.flexible(), spacing: DS.space.sm), GridItem(.flexible())],
+                spacing: DS.space.sm
+            ) {
+                activityTile(
+                    title: "Lernweg", icon: "point.bottomleft.forward.to.point.topright.scurvepath.fill",
+                    identifier: "skill-path-start"
+                ) { showingSkillPath = true }
+                activityTile(
+                    title: "Sprint", icon: "bolt.fill",
+                    identifier: "sprint-start"
+                ) { showingSprint = true }
+                activityTile(
+                    title: "Hörstudio", icon: "ear.and.waveform",
+                    identifier: "listening-lab-start"
+                ) { showingListeningLab = true }
+                activityTile(
+                    title: "Gespräch", icon: "person.2.wave.2.fill",
+                    identifier: "conversation-start"
+                ) { showingConversation = true }
             }
-            .padding(DS.space.md)
-            .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
-            .modifier(DS.Elevation(level: 1))
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("conversation-start")
-        .accessibilityHint("Öffnet ein privates Rollenspiel auf dem Gerät")
+        .dsCard(elevation: 1, padding: DS.space.md)
     }
 
-    private var skillPathCard: some View {
-        Button { showingSkillPath = true } label: {
-            HStack(spacing: DS.space.md) {
-                Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white)
-                    .frame(width: 54, height: 54)
-                    .background(DS.accent)
-                    .clipShape(Circle())
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("DEIN LERNWEG")
-                        .font(.caption2.weight(.bold))
-                        .tracking(0.7)
-                        .foregroundStyle(DS.accent)
-                    Text("Sieh, was du schon anwenden kannst")
-                        .font(.headline)
-                        .foregroundStyle(DS.textPrimary)
-                    Text("Fähigkeiten, nächste Stufe und Wochenmissionen")
-                        .font(.caption)
-                        .foregroundStyle(DS.textSecondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").foregroundStyle(DS.textTertiary)
-            }
-            .padding(DS.space.md)
-            .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
-            .modifier(DS.Elevation(level: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("skill-path-start")
-    }
-
-    private var listeningCard: some View {
-        Button { showingListeningLab = true } label: {
-            HStack(spacing: DS.space.md) {
-                Image(systemName: "ear.and.waveform")
-                    .font(.title2)
+    private func activityTile(
+        title: String,
+        icon: String,
+        identifier: String,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: DS.space.sm) {
+                Image(systemName: icon)
+                    .font(.headline)
                     .foregroundStyle(DS.accent)
-                    .frame(width: 54, height: 54)
+                    .frame(width: 36, height: 36)
                     .background(DS.accentSoft)
                     .clipShape(Circle())
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("HÖRSTUDIO")
-                        .font(.caption2.weight(.bold))
-                        .tracking(0.7)
-                        .foregroundStyle(DS.accent)
-                    Text("Erst verstehen, dann nachsprechen")
-                        .font(.headline)
-                        .foregroundStyle(DS.textPrimary)
-                    Text("Kurze Hörimpulse mit langsamem Modell")
-                        .font(.caption)
-                        .foregroundStyle(DS.textSecondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right").foregroundStyle(DS.textTertiary)
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DS.textPrimary)
+                    .lineLimit(2)
+                Spacer(minLength: 0)
             }
-            .padding(DS.space.md)
-            .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
-            .modifier(DS.Elevation(level: 1))
+            .padding(DS.space.sm)
+            .frame(maxWidth: .infinity, minHeight: 58, alignment: .leading)
+            .background(DS.surface0.opacity(0.72))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md, style: .continuous))
         }
         .buttonStyle(.plain)
-        .accessibilityIdentifier("listening-lab-start")
-        .accessibilityHint("Startet fünf unbewertete Hör- und Nachsprechübungen")
+        .accessibilityIdentifier(identifier)
     }
 
     private var dailyQuestCard: some View {
@@ -610,35 +564,6 @@ private struct TodayView: View {
         .buttonStyle(.plain)
         .accessibilityIdentifier("difficult-practice-start")
         .accessibilityHint("Startet eine Einheit nur mit kürzlich schwierigen Ausdrücken")
-    }
-
-    private var sprintCard: some View {
-        Button { showingSprint = true } label: {
-            HStack(spacing: DS.space.md) {
-                Image(systemName: "bolt.fill")
-                    .font(.title2)
-                    .foregroundStyle(DS.accent)
-                    .frame(width: 48, height: 48)
-                    .background(DS.accentSoft)
-                    .clipShape(Circle())
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("60-Sekunden-Sprint")
-                        .font(.headline)
-                        .foregroundStyle(DS.textPrimary)
-                    Text(sprintBest > 0 ? "Bestleistung: \(sprintBest)" : "Schnell sprechen, ohne SRS-Druck")
-                        .font(.caption)
-                        .foregroundStyle(DS.textSecondary)
-                }
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .foregroundStyle(DS.textTertiary)
-            }
-            .padding(DS.space.md)
-            .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
-        }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier("sprint-start")
     }
 
     @ViewBuilder

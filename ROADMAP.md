@@ -2,7 +2,7 @@
 
 **Updated:** 18 August 2026
 
-**Current train:** 1.0, build 48
+**Current train:** 1.0, build 49
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.
 
 ## Product promise
@@ -42,6 +42,8 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 ### Native platform quality
 
 - SwiftUI/SwiftData app with native three-tab navigation, one shared page canvas, toolbar placement, adaptive content width, spacing rhythm, and continuous card geometry;
+- shared main-screen section hierarchy, a compact secondary-activity launcher, actionable progress recommendations, and exact rescheduling for ongoing tutor lessons;
+- language-aware learning-card typography with modern rounded Cyrillic and native Arabic shaping, while reserving serif display type for editorial headings;
 - immediate tab selection with revisioned, background-precomputed progress dashboards, retained chart state, and on-demand phrase search;
 - a first-class Tutor Focus with multiple concurrent lessons, next-lesson dates, automatic daily preparation pacing, explicit completion, migration of existing tutor imports, and immediate topic-scoped practice;
 - account-aware asynchronous SwiftData startup, private CloudKit sync when available, local fallback, and an in-memory recovery session if persistent storage cannot open;

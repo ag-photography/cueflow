@@ -62,7 +62,8 @@ struct FlipCardView: View {
             face(
                 text: card.phrase?.sourceText ?? "",
                 subtitle: nil,
-                showTapHint: !flipped
+                showTapHint: !flipped,
+                languageCode: nil
             )
             .opacity(flipped ? 0 : 1)
             .rotation3DEffect(
@@ -74,7 +75,8 @@ struct FlipCardView: View {
             face(
                 text: card.phrase?.targetText ?? "",
                 subtitle: showTransliteration ? card.phrase?.transliteration : nil,
-                showTapHint: false
+                showTapHint: false,
+                languageCode: card.phrase?.language?.code
             )
             .opacity(flipped ? 1 : 0)
             .rotation3DEffect(
@@ -85,7 +87,12 @@ struct FlipCardView: View {
         }
     }
 
-    private func face(text: String, subtitle: String?, showTapHint: Bool) -> some View {
+    private func face(
+        text: String,
+        subtitle: String?,
+        showTapHint: Bool,
+        languageCode: String?
+    ) -> some View {
         // Length-aware font scaling so longer phrases wrap gracefully; the
         // capped ScaledMetric lets it grow with Dynamic Type too.
         let base: CGFloat = text.count > 40 ? 22 : (text.count > 30 ? 28 : (text.count > 15 ? 34 : 42))
@@ -93,7 +100,9 @@ struct FlipCardView: View {
         return VStack(spacing: DS.space.md) {
             Spacer()
             Text(text)
-                .font(.system(size: size, weight: .bold, design: .serif))
+                .font(LearningTypography.display(
+                    size: size, weight: .bold, languageCode: languageCode
+                ))
                 .multilineTextAlignment(.center)
                 .foregroundStyle(DS.textPrimary)
                 .lineLimit(nil)

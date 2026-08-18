@@ -166,3 +166,56 @@ extension View {
             .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
     }
 }
+
+/// Shared hierarchy marker for top-level content groups on the three main
+/// destinations. Editorial hero copy remains free-form; repeated dashboard
+/// sections use this component so casing, tracking and spacing stay coherent.
+struct DSSectionHeader: View {
+    let title: String
+    var subtitle: String? = nil
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(DS.textSecondary)
+                .textCase(.uppercase)
+                .tracking(0.7)
+            if let subtitle {
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(DS.textTertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, DS.space.xs)
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// Typography for language content, kept separate from editorial serif
+/// headlines. Russian uses the modern rounded San Francisco Cyrillic face;
+/// Arabic stays on Apple's native Arabic system face to preserve shaping and
+/// diacritics without falling back to a Latin-oriented display serif.
+enum LearningTypography {
+    static func display(
+        size: CGFloat,
+        weight: Font.Weight = .semibold,
+        languageCode: String? = nil
+    ) -> Font {
+        .system(size: size, weight: weight, design: design(for: languageCode))
+    }
+
+    static func display(
+        _ style: Font.TextStyle,
+        weight: Font.Weight = .semibold,
+        languageCode: String? = nil
+    ) -> Font {
+        .system(style, design: design(for: languageCode), weight: weight)
+    }
+
+    private static func design(for languageCode: String?) -> Font.Design {
+        languageCode == "ar" ? .default : .rounded
+    }
+}

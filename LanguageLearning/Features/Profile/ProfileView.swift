@@ -16,6 +16,7 @@ struct ProfileView: View {
     @State private var loadedRevision = -1
     @State private var loadedLanguageCode = ""
     @State private var showingSettings = false
+    @State private var showingRecommendedPractice = false
 
     // Speaking-volume scoreboard — shared with Sprint via UserDefaults.
     @AppStorage("sprintBest") private var sprintBest: Int = 0
@@ -76,6 +77,9 @@ struct ProfileView: View {
                 }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
+            .fullScreenCover(isPresented: $showingRecommendedPractice) {
+                PracticeView(sessionTarget: 10, isFocusedSession: true, scope: .recommended)
+            }
             .task(id: activeLanguageCode) { await loadDashboardIfNeeded() }
         }
     }
@@ -136,31 +140,38 @@ struct ProfileView: View {
 
     private var capabilitySection: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Was du sagen kannst")
+            DSSectionHeader(title: "Was du sagen kannst")
             VStack(spacing: DS.space.md) {
                 if let recommendation = CurriculumPlanner.recommendation(from: curriculumProgress) {
-                    HStack(spacing: DS.space.sm) {
-                        Image(systemName: "location.fill")
-                            .foregroundStyle(.white)
-                            .frame(width: 34, height: 34)
-                            .background(DS.accent)
-                            .clipShape(Circle())
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Nächster sinnvoller Fokus")
-                                .font(.caption.weight(.bold))
-                                .foregroundStyle(DS.accent)
-                            Text(recommendation.scenario.title)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(DS.textPrimary)
+                    Button { showingRecommendedPractice = true } label: {
+                        HStack(spacing: DS.space.sm) {
+                            Image(systemName: "location.fill")
+                                .foregroundStyle(.white)
+                                .frame(width: 34, height: 34)
+                                .background(DS.accent)
+                                .clipShape(Circle())
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Nächster sinnvoller Fokus")
+                                    .font(.caption.weight(.bold))
+                                    .foregroundStyle(DS.accent)
+                                Text(recommendation.scenario.title)
+                                    .font(.subheadline.weight(.semibold))
+                                    .foregroundStyle(DS.textPrimary)
+                            }
+                            Spacer()
+                            Text("\(Int((recommendation.fraction * 100).rounded()))%")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(DS.textSecondary)
+                            Image(systemName: "chevron.right")
+                                .font(.caption.weight(.semibold))
+                                .foregroundStyle(DS.textTertiary)
                         }
-                        Spacer()
-                        Text("\(Int((recommendation.fraction * 100).rounded()))%")
-                            .font(.caption.monospacedDigit())
-                            .foregroundStyle(DS.textSecondary)
+                        .padding(DS.space.sm)
+                        .background(DS.accentSoft)
+                        .clipShape(RoundedRectangle(cornerRadius: DS.radius.sm))
                     }
-                    .padding(DS.space.sm)
-                    .background(DS.accentSoft)
-                    .clipShape(RoundedRectangle(cornerRadius: DS.radius.sm))
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("progress-recommended-practice")
                 }
                 ForEach(ScenarioDefinition.defaults) { scenario in
                     capabilityRow(scenario)
@@ -221,7 +232,7 @@ struct ProfileView: View {
 
     private var learningPatternSection: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Woran du gerade arbeitest")
+            DSSectionHeader(title: "Woran du gerade arbeitest")
             VStack(spacing: 0) {
                 ForEach(Array(learningPatterns.enumerated()), id: \.element.id) { index, insight in
                     HStack(alignment: .top, spacing: DS.space.sm) {
@@ -359,7 +370,7 @@ struct ProfileView: View {
 
     private var learningProgressSection: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Lernstand")
+            DSSectionHeader(title: "Lernstand")
             HStack(spacing: DS.space.lg) {
                 LearningProgressRing(
                     reviewing: reviewCount, learning: learningCount,
@@ -397,7 +408,7 @@ struct ProfileView: View {
 
     private var weeklyChart: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Letzte 7 Tage")
+            DSSectionHeader(title: "Letzte 7 Tage")
             Chart(weeklyData) { day in
                 BarMark(
                     x: .value("Tag", day.date, unit: .day),
@@ -432,7 +443,7 @@ struct ProfileView: View {
 
     private var perLanguage: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Pro Sprache")
+            DSSectionHeader(title: "Pro Sprache")
             VStack(spacing: 8) {
                 ForEach(languages, id: \.code) { lang in
                     let count = dashboard?.reviewsByLanguage[lang.code] ?? 0
@@ -449,7 +460,7 @@ struct ProfileView: View {
 
     private var topicProgress: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Themen")
+            DSSectionHeader(title: "Themen")
             VStack(spacing: DS.space.md) {
                 ForEach((dashboard?.topics ?? []).prefix(8)) { topic in
                     topicRow(topic: topic)
@@ -470,15 +481,6 @@ struct ProfileView: View {
     private var weeklyData: [ProgressDayStat] { dashboard?.weekly ?? [] }
 
     // MARK: - Pieces
-
-    private func sectionHeader(_ text: String) -> some View {
-        Text(text)
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(DS.textSecondary)
-            .textCase(.uppercase)
-            .tracking(0.5)
-            .padding(.horizontal, 4)
-    }
 
     private func statRow(_ label: String, _ value: String) -> some View {
         HStack {
@@ -515,7 +517,7 @@ struct ProfileView: View {
 
     private var speakingSection: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            sectionHeader("Sprechen")
+            DSSectionHeader(title: "Sprechen")
             VStack(alignment: .leading, spacing: DS.space.md) {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(alignment: .firstTextBaseline, spacing: DS.space.sm) {

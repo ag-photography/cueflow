@@ -18,6 +18,9 @@ struct TutorFocusView: View {
     @State private var order: LineOrder = .deRu
     @State private var nextLessonDate = Calendar.current.date(byAdding: .day, value: 7, to: .now) ?? .now
     @State private var saveErrorMessage: String?
+    @State private var topicEditingDate: Topic?
+    @State private var draftUsesLessonDate = true
+    @State private var draftNextLessonDate = Calendar.current.date(byAdding: .day, value: 7, to: .now) ?? .now
 
     private var targetLanguage: Language? {
         let code = settings.first?.activeLanguageCode ?? "ru"
@@ -137,6 +140,9 @@ struct TutorFocusView: View {
             } message: {
                 Text(saveErrorMessage ?? "Bitte versuche es erneut.")
             }
+            .sheet(item: $topicEditingDate) { topic in
+                lessonDateEditor(topic)
+            }
         }
     }
 
@@ -180,10 +186,10 @@ struct TutorFocusView: View {
             ProgressView(value: topicCards.isEmpty ? 0 : Double(introduced) / Double(topicCards.count))
                 .tint(DS.accent)
             HStack {
-                Menu("Termin") {
-                    Button("In 7 Tagen") { update(topic, daysUntilLesson: 7) }
-                    Button("In 14 Tagen") { update(topic, daysUntilLesson: 14) }
-                    Button("Ohne Termin weiterführen") { update(topic, nextLessonAt: nil) }
+                Button {
+                    beginEditingDate(topic)
+                } label: {
+                    Label("Termin bearbeiten", systemImage: "calendar")
                 }
                 .buttonStyle(.bordered)
                 Spacer()
@@ -195,9 +201,47 @@ struct TutorFocusView: View {
         .padding(.vertical, 4)
     }
 
-    private func update(_ topic: Topic, daysUntilLesson: Int) {
-        let date = Calendar.current.date(byAdding: .day, value: daysUntilLesson, to: .now)
-        update(topic, nextLessonAt: date)
+    private func beginEditingDate(_ topic: Topic) {
+        draftUsesLessonDate = topic.tutorNextLessonAt != nil
+        draftNextLessonDate = max(
+            topic.tutorNextLessonAt ?? Calendar.current.date(byAdding: .day, value: 7, to: .now) ?? .now,
+            Calendar.current.startOfDay(for: .now)
+        )
+        topicEditingDate = topic
+    }
+
+    private func lessonDateEditor(_ topic: Topic) -> some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Toggle("Nächste Stunde festlegen", isOn: $draftUsesLessonDate)
+                    if draftUsesLessonDate {
+                        DatePicker(
+                            "Datum",
+                            selection: $draftNextLessonDate,
+                            in: Calendar.current.startOfDay(for: .now)...,
+                            displayedComponents: .date
+                        )
+                    }
+                } footer: {
+                    Text("CueFlow berechnet das tägliche Pensum neu. Ohne Termin bleibt die Einheit aktiv und wird in einem sanften Sieben-Tage-Rhythmus vorbereitet.")
+                }
+            }
+            .navigationTitle(topic.name)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") { topicEditingDate = nil }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Sichern") {
+                        update(topic, nextLessonAt: draftUsesLessonDate ? draftNextLessonDate : nil)
+                        topicEditingDate = nil
+                    }
+                    .accessibilityIdentifier("tutor-focus-date-save")
+                }
+            }
+        }
     }
 
     private func update(_ topic: Topic, nextLessonAt: Date?) {

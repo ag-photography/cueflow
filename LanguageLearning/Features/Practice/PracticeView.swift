@@ -1049,16 +1049,14 @@ struct PracticeView: View {
     }
 
     private func heroPrompt(card: StudyCard) -> some View {
-        // Serif typography (Apple "New York" via design: .serif) for a
-        // premium reading-app feel — borrowed from Babbel's headline style.
-        // Same size scaling as FlipCardView's faces, and the same surface /
-        // radius / shadow, so the prompt reads identically across all three
-        // modes — one unified "card" metaphor (build 24).
+        // Learning content uses a modern rounded sans face. Editorial serif is
+        // reserved for page greetings; mixing it into flashcards made Cyrillic
+        // look like a legacy book typeface and broke the app-wide hierarchy.
         let text = card.phrase?.sourceText ?? "—"
         let base: CGFloat = text.count > 40 ? 22 : (text.count > 30 ? 28 : (text.count > 15 ? 34 : 42))
         let size = base * min(heroTypeScale, 1.5)
         return Text(text)
-            .font(.system(size: size, weight: .bold, design: .serif))
+            .font(LearningTypography.display(size: size, weight: .bold))
             .multilineTextAlignment(.center)
             .foregroundStyle(DS.textPrimary)
             .lineLimit(nil)
@@ -1089,7 +1087,10 @@ struct PracticeView: View {
                 .accessibilityLabel("Antwort vorlesen")
             }
             Text(card.phrase?.targetText ?? "")
-                .font(.system(.title2, design: .rounded, weight: .medium))
+                .font(LearningTypography.display(
+                    .title2, weight: .medium,
+                    languageCode: card.phrase?.language?.code
+                ))
                 .foregroundStyle(DS.textPrimary)
                 .multilineTextAlignment(.center)
                 .lineLimit(nil)
@@ -1383,7 +1384,7 @@ struct PracticeView: View {
                 .clipShape(Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(result.autoGrade.label)
-                    .font(.system(size: 26, weight: .bold, design: .serif))
+                    .font(LearningTypography.display(size: 26, weight: .bold))
                     .foregroundStyle(DS.textPrimary)
                 Text(revealSubtitle(for: result.autoGrade))
                     .font(.caption)
@@ -1423,7 +1424,10 @@ struct PracticeView: View {
     /// Details disclosure below (build 24 — slimmer reveal).
     private func revealAnswerCard(card: StudyCard, result: GradeResult) -> some View {
         Text(card.phrase?.targetText ?? "")
-            .font(.system(.title2, design: .serif, weight: .semibold))
+            .font(LearningTypography.display(
+                .title2, weight: .semibold,
+                languageCode: card.phrase?.language?.code
+            ))
             .foregroundStyle(DS.textPrimary)
             .multilineTextAlignment(.center)
             .lineLimit(nil)
@@ -1486,7 +1490,10 @@ struct PracticeView: View {
             .foregroundStyle(DS.accent)
 
             Text(sentence)
-                .font(.system(.title3, design: .serif, weight: .semibold))
+                .font(LearningTypography.display(
+                    .title3, weight: .semibold,
+                    languageCode: phrase?.language?.code
+                ))
                 .foregroundStyle(DS.textPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
@@ -1530,7 +1537,7 @@ struct PracticeView: View {
                     .background(DS.accentSoft)
                     .clipShape(Circle())
                 Text("Jetzt du – sprich den Satz")
-                    .font(.system(.title3, design: .serif, weight: .bold))
+                    .font(LearningTypography.display(.title3, weight: .bold))
                     .foregroundStyle(DS.textPrimary)
                 Text("Laut nachsprechen. Wird nicht bewertet – einfach sagen.")
                     .font(.caption)
