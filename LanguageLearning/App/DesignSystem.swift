@@ -16,6 +16,10 @@ extension Color {
 /// coherent and a future palette swap is one file.
 enum DS {
 
+    /// Shared reading width for the three primary destinations. Keeping this
+    /// identical avoids a subtle horizontal jump when switching tabs.
+    static let mainContentWidth: CGFloat = 720
+
     // MARK: - Colour
 
     /// Brand accent — deep teal, slightly more saturated than the previous
@@ -43,6 +47,13 @@ enum DS {
     static let surface2 = Color(
         light: Color(red: 0.93, green: 0.90, blue: 0.83),   // slightly deeper cream
         dark: Color(red: 0.22, green: 0.22, blue: 0.23)
+    )
+
+    /// One calm canvas for every primary destination.
+    static let pageBackground = LinearGradient(
+        colors: [surface0, surface2.opacity(0.30)],
+        startPoint: .top,
+        endPoint: .bottom
     )
 
     static let textPrimary = Color(.label)
@@ -115,7 +126,7 @@ extension View {
             .padding(padding)
             .frame(maxWidth: .infinity)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
             .modifier(DS.Elevation(level: elevation))
     }
 

@@ -200,11 +200,13 @@ private struct TodayView: View {
                     if fastestRecall != nil || recentImprovement != nil { achievementCard }
                     missionCard
                 }
-                .padding(DS.space.md)
-                .frame(maxWidth: 720)
+                .padding(.horizontal, DS.space.md)
+                .padding(.top, DS.space.sm)
+                .padding(.bottom, DS.space.xxl)
+                .frame(maxWidth: DS.mainContentWidth)
                 .frame(maxWidth: .infinity)
             }
-            .background(DS.surface0.ignoresSafeArea())
+            .background(DS.pageBackground.ignoresSafeArea())
             .navigationTitle("Heute")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -460,7 +462,7 @@ private struct TodayView: View {
         }
         .padding(DS.space.md)
         .background(DS.surface1)
-        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
     }
 
     private func achievementRow(icon: String, title: String, detail: String, color: Color) -> some View {
@@ -603,7 +605,7 @@ private struct TodayView: View {
             }
             .padding(DS.space.md)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("difficult-practice-start")
@@ -633,7 +635,7 @@ private struct TodayView: View {
             }
             .padding(DS.space.md)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("sprint-start")
@@ -657,7 +659,7 @@ private struct TodayView: View {
             .padding(DS.space.md)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
     }
 

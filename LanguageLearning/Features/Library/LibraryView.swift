@@ -98,6 +98,8 @@ struct LibraryView: View {
                     .pickerStyle(.segmented)
                     .padding(.horizontal, DS.space.md)
                     .padding(.vertical, DS.space.sm)
+                    .frame(maxWidth: DS.mainContentWidth)
+                    .frame(maxWidth: .infinity)
 
                     if libraryMode == .learn {
                         learningJourneys
@@ -108,17 +110,19 @@ struct LibraryView: View {
                     libraryPlaceholder
                 }
             }
+            .background(DS.pageBackground.ignoresSafeArea())
             .accessibilityIdentifier("library-root")
             .navigationTitle("Bibliothek")
+            .navigationBarTitleDisplayMode(.inline)
             .navigationDestination(item: $selectedTopic) { topic in
                 TopicDetailView(topic: topic)
             }
             .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
+                ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showingSettings = true
                     } label: {
-                        Image(systemName: "gear")
+                        Image(systemName: "person.crop.circle")
                     }
                     .accessibilityLabel("Einstellungen")
                 }
@@ -225,19 +229,19 @@ struct LibraryView: View {
                         RoundedRectangle(cornerRadius: 4)
                             .fill(DS.surface2)
                             .frame(width: index == 0 ? 150 : 210, height: 18)
-                        RoundedRectangle(cornerRadius: DS.radius.md)
+                        RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous)
                             .fill(DS.surface1)
                             .frame(height: index == 0 ? 150 : 104)
                     }
                 }
             }
             .padding(DS.space.md)
-            .frame(maxWidth: 760)
+            .frame(maxWidth: DS.mainContentWidth)
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Bibliothek wird geladen")
         }
-        .background(DS.surface0)
+        .background(DS.pageBackground)
     }
 
     private var learningJourneys: some View {
@@ -278,11 +282,11 @@ struct LibraryView: View {
             }
             .padding(.horizontal, DS.space.md)
             .padding(.top, DS.space.sm)
-            .padding(.bottom, 120)
-            .frame(maxWidth: 760)
+            .padding(.bottom, DS.space.xxl)
+            .frame(maxWidth: DS.mainContentWidth)
             .frame(maxWidth: .infinity)
         }
-        .background(DS.surface0)
+        .background(DS.pageBackground)
     }
 
     private var activeLearningEvents: [LearningEvent] {
@@ -596,7 +600,7 @@ struct LibraryView: View {
             }
             .dsCard(elevation: 0, padding: DS.space.md)
             .overlay(
-                RoundedRectangle(cornerRadius: DS.radius.md)
+                RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous)
                     .stroke(topic.isActive ? DS.accent.opacity(0.22) : Color.clear, lineWidth: 1)
             )
         }

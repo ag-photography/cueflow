@@ -15,6 +15,7 @@ struct ProfileView: View {
     @State private var dashboard: ProgressDashboardSnapshot?
     @State private var loadedRevision = -1
     @State private var loadedLanguageCode = ""
+    @State private var showingSettings = false
 
     // Speaking-volume scoreboard — shared with Sprint via UserDefaults.
     @AppStorage("sprintBest") private var sprintBest: Int = 0
@@ -48,19 +49,15 @@ struct ProfileView: View {
                         }
                         .padding(.horizontal, DS.space.md)
                         .padding(.top, DS.space.sm)
-                        .padding(.bottom, DS.space.xl)
-                        .frame(maxWidth: 760)
+                        .padding(.bottom, DS.space.xxl)
+                        .frame(maxWidth: DS.mainContentWidth)
                         .frame(maxWidth: .infinity)
                     }
                 } else {
                     progressPlaceholder
                 }
             }
-            .background(
-                LinearGradient(colors: [DS.surface0, DS.surface2.opacity(0.5)],
-                               startPoint: .top, endPoint: .bottom)
-                    .ignoresSafeArea()
-            )
+            .background(DS.pageBackground.ignoresSafeArea())
             .navigationTitle("Fortschritt")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -68,8 +65,17 @@ struct ProfileView: View {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Fertig") { dismiss() }
                     }
+                } else {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button { showingSettings = true } label: {
+                            Image(systemName: "person.crop.circle")
+                        }
+                        .accessibilityLabel("Einstellungen")
+                        .accessibilityIdentifier("progress-settings")
+                    }
                 }
             }
+            .sheet(isPresented: $showingSettings) { SettingsView() }
             .task(id: activeLanguageCode) { await loadDashboardIfNeeded() }
         }
     }
@@ -82,14 +88,14 @@ struct ProfileView: View {
                         RoundedRectangle(cornerRadius: 4)
                             .fill(DS.surface2)
                             .frame(width: index == 0 ? 180 : 130, height: 18)
-                        RoundedRectangle(cornerRadius: DS.radius.md)
+                        RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous)
                             .fill(DS.surface1)
                             .frame(height: index == 0 ? 180 : 130)
                     }
                 }
             }
             .padding(DS.space.md)
-            .frame(maxWidth: 760)
+            .frame(maxWidth: DS.mainContentWidth)
             .frame(maxWidth: .infinity)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Fortschritt wird geladen")
@@ -177,7 +183,7 @@ struct ProfileView: View {
             }
             .padding(DS.space.md)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
     }
 
@@ -250,7 +256,7 @@ struct ProfileView: View {
                 }
             }
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
     }
 
@@ -346,7 +352,7 @@ struct ProfileView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DS.space.md)
         .background(DS.surface1)
-        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
     }
 
     // MARK: - Learning progress
@@ -372,7 +378,7 @@ struct ProfileView: View {
             .padding(DS.space.md)
             .frame(maxWidth: .infinity)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
     }
 
@@ -420,7 +426,7 @@ struct ProfileView: View {
             }
             .padding(DS.space.md)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
     }
 
@@ -437,7 +443,7 @@ struct ProfileView: View {
             }
             .padding(DS.space.md)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
     }
 
@@ -457,7 +463,7 @@ struct ProfileView: View {
             }
             .padding(DS.space.md)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
     }
 
@@ -530,31 +536,42 @@ struct ProfileView: View {
                         .font(.caption)
                         .foregroundStyle(DS.textSecondary)
                 }
-                Chart(spokenWeekly) { day in
-                    BarMark(
-                        x: .value("Tag", day.date, unit: .day),
-                        y: .value("Wörter", day.count),
-                        width: .fixed(20)
-                    )
-                    .clipShape(RoundedRectangle(cornerRadius: 5))
-                    .foregroundStyle(
-                        day.count > 0
-                        ? LinearGradient(colors: [DS.gradePerfect, DS.gradePerfect.opacity(0.55)],
-                                         startPoint: .top, endPoint: .bottom)
-                        : LinearGradient(colors: [DS.surface2, DS.surface2], startPoint: .top, endPoint: .bottom)
-                    )
-                }
-                .frame(height: 110)
-                .chartXAxis {
-                    AxisMarks(values: .stride(by: .day)) { _ in
-                        AxisValueLabel(format: .dateTime.weekday(.narrow)).font(.caption2)
+                if spokenWeekly.contains(where: { $0.count > 0 }) {
+                    Chart(spokenWeekly) { day in
+                        BarMark(
+                            x: .value("Tag", day.date, unit: .day),
+                            y: .value("Wörter", day.count),
+                            width: .fixed(20)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 5))
+                        .foregroundStyle(
+                            day.count > 0
+                            ? LinearGradient(colors: [DS.gradePerfect, DS.gradePerfect.opacity(0.55)],
+                                             startPoint: .top, endPoint: .bottom)
+                            : LinearGradient(colors: [DS.surface2, DS.surface2], startPoint: .top, endPoint: .bottom)
+                        )
                     }
-                }
-                .chartYAxis {
-                    AxisMarks { _ in
-                        AxisGridLine().foregroundStyle(DS.textTertiary.opacity(0.2))
-                        AxisValueLabel().font(.caption2)
+                    .frame(height: 110)
+                    .chartXAxis {
+                        AxisMarks(values: .stride(by: .day)) { _ in
+                            AxisValueLabel(format: .dateTime.weekday(.narrow)).font(.caption2)
+                        }
                     }
+                    .chartYAxis {
+                        AxisMarks { _ in
+                            AxisGridLine().foregroundStyle(DS.textTertiary.opacity(0.2))
+                            AxisValueLabel().font(.caption2)
+                        }
+                    }
+                } else {
+                    Label("Sprich heute deine erste Runde laut – dann wächst hier dein Wochenrhythmus.",
+                          systemImage: "waveform.badge.plus")
+                        .font(.subheadline)
+                        .foregroundStyle(DS.textSecondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(DS.space.md)
+                        .background(DS.accentSoft)
+                        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md, style: .continuous))
                 }
                 Divider().overlay(DS.surface2)
                 HStack(spacing: DS.space.md) {
@@ -573,7 +590,7 @@ struct ProfileView: View {
             }
             .padding(DS.space.md)
             .background(DS.surface1)
-            .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous))
         }
     }
 
