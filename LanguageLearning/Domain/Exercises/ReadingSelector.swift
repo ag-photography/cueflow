@@ -106,6 +106,11 @@ enum ReadingSelector {
                 guard !key.isEmpty else { continue }
                 knownStems.insert(key)
                 byPrefix[bucket(key), default: []].append(key)
+                // Knowing быть means recognising была, which shares too little
+                // with it for the stem rule to connect.
+                for form in IrregularForms.forms(ofHeadword: key) {
+                    knownStems.insert(form)
+                }
             }
         }
         guard !knownStems.isEmpty else { return [] }
@@ -157,10 +162,9 @@ enum ReadingSelector {
     /// Catches case and verb endings on an otherwise known stem, so `вечером`
     /// counts as known once `вечер` is stable and `читаю` once `читать` is.
     ///
-    /// Known limitation: irregular past-tense stems (быть → была, дать → дала)
-    /// share too few characters to connect, so they read as unfamiliar. The
-    /// sentence still qualifies — it just gets labelled with a verb form rather
-    /// than a genuinely new word.
+    /// Suppletive forms that no suffix rule reaches (быть → была, ходить → хожу)
+    /// are enumerated in `IrregularForms` and folded into the known set, so they
+    /// resolve rather than reading as new vocabulary.
     private static func isKnownForm(_ key: String, byPrefix: [String: [String]]) -> Bool {
         byPrefix[bucket(key), default: []].contains { ClozeBuilder.isInflection(of: $0, key) }
     }

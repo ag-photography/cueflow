@@ -112,17 +112,28 @@ final class ReadingSelectorTests: XCTestCase {
         }
     }
 
-    func testIrregularVerbStemsAreStillCountedAsUnfamiliar() throws {
-        // A documented limitation rather than a bug: быть → была shares only two
-        // characters, so the prefix matcher cannot connect them. The sentence
-        // still qualifies (one unknown is the target), it is just labelled with
-        // a verb form rather than a genuinely new word.
+    func testSuppletiveFormsInTheTableResolve() throws {
+        // быть → была shares only two characters, so no suffix rule can connect
+        // them. `IrregularForms` enumerates it instead.
         let result = ReadingSelector.passages(
             sentences: [sentence("Это была моя книга", id: "a")],
             known: [known("быть"), known("книга")]
         )
         let passage = try XCTUnwrap(result.first)
-        XCTAssertEqual(passage.unknownWords, ["была"])
+        XCTAssertEqual(passage.unknownWords, [])
+    }
+
+    func testFormsOutsideTheTableAreStillUnfamiliar() throws {
+        // The boundary of the approach: the table covers the shipped corpus, not
+        // Russian in general. `дать → дала` is not in it, so the word reads as
+        // new. The sentence still qualifies — one unknown is the target — it is
+        // just labelled with a verb form rather than genuinely new vocabulary.
+        let result = ReadingSelector.passages(
+            sentences: [sentence("Она дала моя книга", id: "a")],
+            known: [known("дать"), known("книга")]
+        )
+        let passage = try XCTUnwrap(result.first)
+        XCTAssertEqual(passage.unknownWords, ["дала"])
     }
 
     func testRespectsTheLimit() {
@@ -142,5 +153,70 @@ final class ReadingSelectorTests: XCTestCase {
         XCTAssertEqual(passage.totalWordCount, 3)
         XCTAssertEqual(passage.knownWordCount, 2)      // я (function) + читаю
         XCTAssertEqual(passage.knownFraction, 2.0 / 3.0, accuracy: 0.001)
+    }
+}
+
+final class IrregularFormsTests: XCTestCase {
+    func testTableIsConsistentInBothDirections() {
+        for form in ["была", "хожу", "углу", "едем", "могу", "живу", "пью"] {
+            let headword = IrregularForms.headword(forForm: form)
+            XCTAssertNotNil(headword, "\(form) should map to a headword")
+            if let headword {
+                XCTAssertTrue(
+                    IrregularForms.forms(ofHeadword: headword).contains(form),
+                    "\(headword) should list \(form)"
+                )
+            }
+        }
+    }
+
+    func testEveryEntryIsFoldedAndLowercase() {
+        // A key with a stress mark or capital would never be looked up, since
+        // callers always pass compareKey output.
+        for form in ["была", "начнём", "ведёт", "щёку", "придётся"] {
+            guard let headword = IrregularForms.headword(forForm: ClozeBuilder.compareKey(form)) else {
+                continue
+            }
+            XCTAssertEqual(headword, ClozeBuilder.compareKey(headword))
+        }
+        XCTAssertNotNil(
+            IrregularForms.headword(forForm: ClozeBuilder.compareKey("НАЧНЁМ")),
+            "Lookups must survive folding"
+        )
+    }
+
+    func testEatingIsNotConflatedWithBeing() {
+        // есть means both "to eat" and "there is"; mapping it to быть would make
+        // "Я ем суп" resolve through the wrong lemma.
+        XCTAssertNil(IrregularForms.headword(forForm: "есть"))
+        XCTAssertEqual(IrregularForms.headword(forForm: "ем"), "есть")
+    }
+
+    func testSuppletiveVerbNowResolvesInReading() throws {
+        // Previously documented as a limitation: быть → была was reported as new
+        // vocabulary. The table closes it.
+        let result = ReadingSelector.passages(
+            sentences: [ReadingSelector.SentenceSource(
+                id: ContentID("a"), sentence: "Это была моя книга", translation: nil, transliteration: nil
+            )],
+            known: [
+                ReadingSelector.KnownPhrase(target: "быть", stability: 30, isIntroduced: true),
+                ReadingSelector.KnownPhrase(target: "книга", stability: 30, isIntroduced: true),
+            ]
+        )
+        let passage = try XCTUnwrap(result.first)
+        XCTAssertEqual(passage.unknownWords, [], "была is a form of the known быть")
+    }
+
+    func testClozeNowLocatesASuppletiveForm() throws {
+        let cloze = try XCTUnwrap(ClozeBuilder.item(
+            sentence: "Я хожу в школу пешком.",
+            translation: "Ich gehe zu Fuß zur Schule.",
+            transliteration: nil,
+            target: "ходить",
+            languageCode: "ru"
+        ))
+        XCTAssertEqual(cloze.answer, "хожу")
+        XCTAssertTrue(cloze.teachesInflection)
     }
 }

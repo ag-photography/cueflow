@@ -169,6 +169,10 @@ enum ClozeBuilder {
             return stripped == strippedTarget ? 90 : nil
         }
 
+        // Suppletive and stem-changing forms cannot be reached by any suffix
+        // rule; they are enumerated for the shipped corpus instead.
+        if IrregularForms.forms(ofHeadword: targetWord).contains(sentenceWord) { return 95 }
+
         guard isInflection(of: targetWord, sentenceWord) else { return nil }
         return commonPrefixLength(targetWord, sentenceWord)
     }

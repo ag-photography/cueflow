@@ -2,7 +2,7 @@
 
 **Updated:** 19 August 2026
 
-**Current train:** 1.0, build 51
+**Current train:** 1.0, build 52
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.
 
 ## Product promise
@@ -25,6 +25,7 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 - dictation in the listening studio alongside meaning-recognition, still unscored;
 - new bundled cards are introduced by CEFR band and corpus frequency instead of insertion order, while learner-added and tutor content keeps its newest-first priority;
 - chronic leeches (five or more lifetime lapses) join difficult-practice even when they were quiet this week, and are surfaced for rewording rather than suspended;
+- suppletive and stem-changing forms enumerated for the shipped corpus (`IrregularForms`), which takes gap-fill coverage of the Russian sentences to 99.9 % and lets a stabilised headword resolve its irregular forms while reading;
 - a "Lücken" gap-fill mode derived from the bundled example sentences: the learner supplies the surface form the sentence requires, the headword is shown only when it differs from the answer, and the item is refused outright when the form cannot be located confidently (stem changes, vowel alternations, Arabic non-concatenative morphology) rather than guessed;
 - Russian and Arabic language packs with canonical Arabic script, RTL presentation, locale-specific TTS/ASR, and optional transliteration;
 - 60-second spoken Sprint, difficult-this-week practice, 3/7/15-minute session defaults, and universal guided Russian/Arabic role-play that does not require Apple Intelligence;
@@ -78,7 +79,8 @@ The detailed device matrix, store copy, privacy draft, and screenshot plan are i
 
 Only prioritize these after beta evidence:
 
-- morphology (case and aspect) as a first-class content type, and a lemmatiser strong enough for irregular stems (быть → была) that the current prefix matcher cannot connect;
+- morphology (case and aspect) as a first-class content type;
+- general-purpose Russian lemmatisation, if content ever stops being a closed corpus. `NLTagger` returns no lemmas for Russian or Arabic and a Snowball-style stemmer resolved only 7 of 16 stem-changing pairs, so anything beyond the shipped vocabulary would need a real inflection dictionary;
 - learner-authored conversation scenarios and true phoneme-level pronunciation feedback;
 - English UI and additional language packs;
 - Apple Watch;
