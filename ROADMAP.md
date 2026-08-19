@@ -2,7 +2,7 @@
 
 **Updated:** 19 August 2026
 
-**Current train:** 1.0, build 52
+**Current train:** 1.0, build 53
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.
 
 ## Product promise
@@ -59,7 +59,7 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 - Home Screen and Lock Screen widgets with due count and `cueflow://practice` deep link, plus Siri/App Shortcuts for practice and conversations;
 - MetricKit diagnostics with a privacy-filtered in-app problem report;
 - String Catalog, dark mode, Dynamic Type, RTL, VoiceOver labels, Reduce Motion behavior, scene restoration, iPad sidebar adaptation, multitasking, and all supported orientations;
-- deterministic launch overrides and an XCTest UI smoke suite.
+- deterministic launch overrides and an XCTest UI smoke suite that waits for the primary screen before scrolling it, so a slow store open no longer reads as a failure.
 - executable quality-gate and non-overwriting archive scripts, with a 14% app-target coverage regression floor.
 
 ## Release gates

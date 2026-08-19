@@ -16,6 +16,32 @@ final class LanguageLearningUITests: XCTestCase {
         return app
     }
 
+    /// Scrolls Heute until one of its activity tiles is reachable.
+    ///
+    /// The readiness wait is the whole point. The store opens asynchronously, so
+    /// touching `app.scrollViews` before Heute is on screen fails hard — "no
+    /// matches for ScrollView" — rather than retrying. Two tests scrolled first
+    /// and only waited afterwards, which is why they failed whenever the store
+    /// took a moment to open.
+    @discardableResult
+    private func activityTile(
+        _ identifier: String,
+        in app: XCUIApplication,
+        maxScrolls: Int = 8
+    ) -> XCUIElement {
+        XCTAssertTrue(
+            app.buttons["recommended-session-start"].waitForExistence(timeout: 15),
+            "Heute never finished loading, so there is nothing to scroll"
+        )
+        let tile = app.buttons[identifier]
+        var scrolls = 0
+        while !tile.isHittable, scrolls < maxScrolls {
+            app.scrollViews.firstMatch.swipeUp()
+            scrolls += 1
+        }
+        return tile
+    }
+
     func testPrimaryJourneyStartsAndClosesCleanly() {
         let app = launch()
         let start = app.buttons["recommended-session-start"]
@@ -118,11 +144,7 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testConversationEntryOpensAndCloses() {
         let app = launch()
-        XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 8))
-        let entry = app.buttons["conversation-start"]
-        for _ in 0..<3 where !entry.isHittable {
-            app.scrollViews.firstMatch.swipeUp()
-        }
+        let entry = activityTile("conversation-start", in: app)
         XCTAssertTrue(entry.waitForExistence(timeout: 3))
         entry.tap()
         XCTAssertTrue(app.navigationBars["Gespräch"].waitForExistence(timeout: 4))
@@ -145,10 +167,7 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testSkillPathIsDiscoverableFromToday() {
         let app = launch()
-        let entry = app.buttons["skill-path-start"]
-        for _ in 0..<3 where !entry.isHittable {
-            app.scrollViews.firstMatch.swipeUp()
-        }
+        let entry = activityTile("skill-path-start", in: app)
         XCTAssertTrue(entry.waitForExistence(timeout: 4))
         entry.tap()
         XCTAssertTrue(app.otherElements["skill-path"].waitForExistence(timeout: 4)
@@ -158,13 +177,29 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testListeningLabOpensWithoutSpeechPermission() {
         let app = launch()
-        let entry = app.buttons["listening-lab-start"]
-        for _ in 0..<5 where !entry.isHittable {
-            app.scrollViews.firstMatch.swipeUp()
-        }
+        let entry = activityTile("listening-lab-start", in: app)
         XCTAssertTrue(entry.waitForExistence(timeout: 4))
         entry.tap()
         XCTAssertTrue(app.navigationBars["Hörstudio"].waitForExistence(timeout: 4))
         XCTAssertTrue(app.buttons["Schließen"].exists)
+        // Both exercise types must be offered, not just meaning-recognition.
+        XCTAssertTrue(app.buttons["Diktat"].exists || app.staticTexts["Diktat"].exists)
+    }
+
+    /// The reading pass is new in build 51 and had no coverage. On the tests'
+    /// empty in-memory store nothing is stabilised, so the deterministic result
+    /// is the empty state — which is exactly the branch worth pinning.
+    func testReadingPassOpensAndExplainsItselfWhenNothingIsStabilised() {
+        let app = launch()
+        let entry = activityTile("reading-start", in: app)
+        XCTAssertTrue(entry.waitForExistence(timeout: 4))
+        entry.tap()
+        XCTAssertTrue(app.navigationBars["Lesen"].waitForExistence(timeout: 4))
+        XCTAssertTrue(
+            app.staticTexts["Noch nicht genug gefestigt"].waitForExistence(timeout: 4),
+            "An empty reading pass must say why it is empty"
+        )
+        app.buttons["Schließen"].tap()
+        XCTAssertTrue(app.tabBars.buttons["Heute"].waitForExistence(timeout: 4))
     }
 }
