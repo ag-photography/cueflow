@@ -351,6 +351,8 @@ enum BackupService {
 
         do {
             try context.save()
+            // A restore replaces the content graph wholesale.
+            LearningDataCache.shared.invalidate()
             return summary
         } catch {
             context.rollback()

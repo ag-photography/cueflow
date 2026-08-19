@@ -5,6 +5,7 @@ CueFlow is a privacy-first native iOS language coach for German speakers learnin
 ## Highlights
 
 - adaptive FSRS-6 sessions that progress from recognition to tiles, unaided production, and speech;
+- a gap-fill ("Lücken") mode built from the bundled example sentences, which asks for the inflected form a sentence actually needs rather than the dictionary form the flashcard taught;
 - on-device Russian and Arabic speech recognition, speech synthesis, grading, and optional Apple Intelligence assistance;
 - focused 3/7/15-minute sessions, difficult-this-week practice, a 60-second spoken Sprint, and guided Russian/Arabic role-plays on every supported device;
 - honest speech-recognition evidence, slow reference playback, immediate retry, adaptive scaffolding, curriculum recommendations, and recurring learning-pattern insights;

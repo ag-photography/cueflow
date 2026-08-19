@@ -1,6 +1,6 @@
 import Foundation
 
-struct TutorFocusPacing: Equatable {
+struct TutorFocusPacing: Equatable, Sendable {
     let focusedTopicCount: Int
     let totalPhraseCount: Int
     let introducedPhraseCount: Int
@@ -15,6 +15,28 @@ struct TutorFocusPacing: Equatable {
 }
 
 enum TutorFocusPlanner {
+    /// A focused topic reduced to the values pacing actually needs. Lets the
+    /// dashboard snapshots be built off the main actor, away from `@Model`.
+    struct TopicInput: Sendable {
+        let phraseIDs: Set<ContentID>
+        let nextLessonAt: Date?
+
+        init(phraseIDs: Set<ContentID>, nextLessonAt: Date?) {
+            self.phraseIDs = phraseIDs
+            self.nextLessonAt = nextLessonAt
+        }
+    }
+
+    struct CardInput: Sendable {
+        let phraseID: ContentID
+        let state: LearningState
+
+        init(phraseID: ContentID, state: LearningState) {
+            self.phraseID = phraseID
+            self.state = state
+        }
+    }
+
     static func pacing(
         topics: [Topic],
         cards: [StudyCard],
@@ -24,15 +46,56 @@ enum TutorFocusPlanner {
         let focused = topics.filter { $0.isTutorFocusActive(at: now) }
         guard !focused.isEmpty else { return nil }
 
+        // Identity by object reference, not `persistentModelID`: this path also
+        // runs against models that were never inserted into a store (tests).
         let phraseIDs = Set(focused.flatMap { $0.phrases ?? [] }.map(ObjectIdentifier.init))
         guard !phraseIDs.isEmpty else { return nil }
         let focusedCards = cards.filter {
             guard let phrase = $0.phrase else { return false }
             return phraseIDs.contains(ObjectIdentifier(phrase))
         }
-        let introduced = focusedCards.count { $0.state.isIntroduced }
-        let remaining = focusedCards.count { $0.state == .new }
-        let nextLesson = focused.compactMap(\.tutorNextLessonAt).min()
+        return pacing(
+            focusedTopicCount: focused.count,
+            totalPhraseCount: phraseIDs.count,
+            introducedPhraseCount: focusedCards.count { $0.state.isIntroduced },
+            remainingNewCount: focusedCards.count { $0.state == .new },
+            nextLesson: focused.compactMap(\.tutorNextLessonAt).min(),
+            now: now,
+            calendar: calendar
+        )
+    }
+
+    /// Value-typed entry point used when building snapshots off the main actor.
+    static func pacing(
+        focusedTopics: [TopicInput],
+        cards: [CardInput],
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> TutorFocusPacing? {
+        guard !focusedTopics.isEmpty else { return nil }
+        let phraseIDs = Set(focusedTopics.flatMap(\.phraseIDs))
+        guard !phraseIDs.isEmpty else { return nil }
+        let focusedCards = cards.filter { phraseIDs.contains($0.phraseID) }
+        return pacing(
+            focusedTopicCount: focusedTopics.count,
+            totalPhraseCount: phraseIDs.count,
+            introducedPhraseCount: focusedCards.count { $0.state.isIntroduced },
+            remainingNewCount: focusedCards.count { $0.state == .new },
+            nextLesson: focusedTopics.compactMap(\.nextLessonAt).min(),
+            now: now,
+            calendar: calendar
+        )
+    }
+
+    private static func pacing(
+        focusedTopicCount: Int,
+        totalPhraseCount: Int,
+        introducedPhraseCount: Int,
+        remainingNewCount: Int,
+        nextLesson: Date?,
+        now: Date,
+        calendar: Calendar
+    ) -> TutorFocusPacing {
         let days: Int
         if let nextLesson {
             let start = calendar.startOfDay(for: now)
@@ -43,14 +106,13 @@ enum TutorFocusPlanner {
             // preparation horizon until the learner sets their next lesson.
             days = 7
         }
-        let dailyTarget = remaining == 0 ? 0 : Int(ceil(Double(remaining) / Double(days)))
         return TutorFocusPacing(
-            focusedTopicCount: focused.count,
-            totalPhraseCount: phraseIDs.count,
-            introducedPhraseCount: introduced,
-            remainingNewCount: remaining,
+            focusedTopicCount: focusedTopicCount,
+            totalPhraseCount: totalPhraseCount,
+            introducedPhraseCount: introducedPhraseCount,
+            remainingNewCount: remainingNewCount,
             daysUntilLesson: days,
-            dailyNewTarget: dailyTarget
+            dailyNewTarget: remainingNewCount == 0 ? 0 : Int(ceil(Double(remainingNewCount) / Double(days)))
         )
     }
 }

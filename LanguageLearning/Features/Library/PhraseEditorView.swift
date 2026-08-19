@@ -192,6 +192,7 @@ struct PhraseEditorView: View {
         }
         do {
             try context.save()
+            LearningDataCache.shared.invalidate()
             dismiss()
         } catch {
             context.rollback()

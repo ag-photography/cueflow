@@ -3,16 +3,21 @@ import SwiftUI
 
 struct ContentReviewView: View {
     @Environment(\.modelContext) private var context
-    @Query private var phrases: [Phrase]
+    /// Only the queue this screen exists to show — the store holds ~2000
+    /// phrases and all but a handful are already reviewed.
+    @Query(
+        filter: #Predicate<Phrase> { $0.qualityStatusRaw == "unreviewed" },
+        sort: \Phrase.createdAt,
+        order: .reverse
+    )
+    private var phrases: [Phrase]
     @Query private var settings: [AppSettings]
     @State private var selectedPhrase: Phrase?
     @State private var saveError: String?
 
     private var queue: [Phrase] {
         let code = settings.first?.activeLanguageCode ?? "ru"
-        return phrases
-            .filter { $0.language?.code == code && $0.qualityStatus == .unreviewed }
-            .sorted { $0.createdAt > $1.createdAt }
+        return phrases.filter { $0.language?.code == code }
     }
 
     var body: some View {
@@ -74,7 +79,10 @@ struct ContentReviewView: View {
 
     private func mark(_ phrase: Phrase, as status: PhraseQualityStatus) {
         phrase.qualityStatus = status
-        do { try context.save() }
+        do {
+            try context.save()
+            LearningDataCache.shared.invalidate()
+        }
         catch {
             context.rollback()
             saveError = error.localizedDescription

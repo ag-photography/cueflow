@@ -21,18 +21,28 @@ struct SchedulerService {
     /// the bundled starter pack, which was all created at first launch. Without
     /// this, just-activated topics sat at the back of an oldest-first queue and
     /// could take weeks to reach behind the seeded content.
+    /// - Parameter tutorPriorityPhraseIDs: the phrases that currently count as
+    ///   tutor-priority, resolved once by `TutorPriority`. Pass it whenever this
+    ///   runs in a loop — deriving the answer per card re-scans the whole topic
+    ///   graph each time. `nil` falls back to asking each phrase, which is
+    ///   correct but only appropriate for one-off calls and for models that were
+    ///   never inserted into a store.
     func nextCard(
         from cards: [StudyCard],
         reviews: [Review] = [],
         dailyNewLimit: Int = .max,
-        tutorDailyNewTarget: Int = 0
+        tutorDailyNewTarget: Int = 0,
+        tutorPriorityPhraseIDs: Set<ContentID>? = nil
     ) -> StudyCard? {
         let now = Date.now
+        let isTutorPriority: (Phrase) -> Bool = tutorPriorityPhraseIDs.map { ids in
+            { phrase in ids.contains(phrase.contentID) }
+        } ?? { $0.isTutorPriorityActive }
 
         // 1. Priority due cards first (homework boost from PDF imports).
         //    Within priority, older-due cards still come first.
         let priorityDue = cards
-            .filter { $0.dueDate <= now && $0.state != .new && ($0.phrase?.isTutorPriorityActive ?? false) }
+            .filter { $0.dueDate <= now && $0.state != .new && ($0.phrase.map(isTutorPriority) ?? false) }
             .sorted { $0.dueDate < $1.dueDate }
         if let next = priorityDue.first { return next }
 
@@ -49,14 +59,14 @@ struct SchedulerService {
         let remaining = dailyNewLimit - newReviewsToday
         let tutorNewReviewsToday = reviews.filter {
             $0.wasNew && calendar.isDateInToday($0.timestamp)
-                && ($0.card?.phrase?.isTutorPriorityActive ?? false)
+                && ($0.card?.phrase.map(isTutorPriority) ?? false)
         }.count
 
         // 3. Priority new cards before regular new cards. Priority cards
         //    ignore the active-topic filter — homework should show up even
         //    if the user hasn't manually activated the topic. Newest first.
         let priorityNew = cards
-            .filter { $0.state == .new && ($0.phrase?.isTutorPriorityActive ?? false) }
+            .filter { $0.state == .new && ($0.phrase.map(isTutorPriority) ?? false) }
             .sorted { ($0.phrase?.createdAt ?? .distantPast) > ($1.phrase?.createdAt ?? .distantPast) }
         if let next = priorityNew.first,
            remaining > 0 || tutorNewReviewsToday < tutorDailyNewTarget {

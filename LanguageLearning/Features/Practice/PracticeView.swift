@@ -112,7 +112,10 @@ struct PracticeView: View {
     @State private var persistenceErrorMessage: String?
     @State private var isSessionPaused = false
     @State private var showingExitConfirmation = false
-    @State private var reviewedCardIDs: Set<String> = []
+    @State private var reviewedCardIDs: Set<ContentID> = []
+    /// Resolved once per card rather than per card *per card* — see
+    /// `TutorPriority`. Refreshed whenever the queue advances.
+    @State private var tutorPriorityPhraseIDs: Set<ContentID> = []
     @StateObject private var speech = SpeechRecognitionService()
     @FocusState private var inputFocused: Bool
     @Namespace private var tileNamespace
@@ -174,6 +177,20 @@ struct PracticeView: View {
     private var cardsForActiveLanguage: [StudyCard] {
         guard let code = activeLanguage?.code else { return cards }
         return cards.filter { $0.phrase?.language?.code == code }
+    }
+
+    /// The cloze item for a card, when the bundled sentence lets us build one.
+    /// Cards without a usable item never enter the "Lücken" pool.
+    private func clozeItem(for card: StudyCard) -> ClozeItem? {
+        guard let phrase = card.phrase else { return nil }
+        return ClozeBuilder.item(for: phrase)
+    }
+
+    /// What the learner must produce. In "Lücken" that is the inflected surface
+    /// form the sentence needs, not the phrase's headword.
+    private func expectedAnswer(for card: StudyCard) -> String {
+        if mode == .clozeDeToRu, let cloze = clozeItem(for: card) { return cloze.answer }
+        return card.phrase?.targetText ?? ""
     }
 
     private var difficultCards: [StudyCard] {
@@ -262,6 +279,9 @@ struct PracticeView: View {
             if let locale = activeLanguage?.speechLocale {
                 speech.setLocale(locale)
             }
+            // `availableNewCount` reads this, and the daily-limit screen can be
+            // reached before the queue has advanced once.
+            refreshTutorPriority()
         }
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase != .active { invalidateInteraction() }
@@ -755,7 +775,7 @@ struct PracticeView: View {
         }
 
         promptStart = nil
-        reviewedCardIDs.insert(String(describing: card.persistentModelID))
+        reviewedCardIDs.insert(card.contentID)
         sessionCount += 1
         if rating >= 3 { sessionCorrect += 1 }
 
@@ -940,7 +960,7 @@ struct PracticeView: View {
 
         choiceChosen = nil
         promptStart = nil
-        reviewedCardIDs.insert(String(describing: card.persistentModelID))
+        reviewedCardIDs.insert(card.contentID)
         sessionCount += 1
         if correct {
             sessionCorrect += 1
@@ -1011,7 +1031,7 @@ struct PracticeView: View {
             // Typing mode keeps this in the keyboard accessory bar (see
             // typingInputSection) so it can't hide behind the keyboard; other
             // modes show it inline here.
-            if !revealed && mode != .typeDeToRu {
+            if !revealed && mode != .typeDeToRu && mode != .clozeDeToRu {
                 Button {
                     showStudyMode()
                 } label: {
@@ -1027,7 +1047,7 @@ struct PracticeView: View {
         .padding(.vertical, DS.space.md)
         .onAppear {
             if promptStart == nil { promptStart = .now }
-            if mode == .typeDeToRu { inputFocused = true }
+            if mode == .typeDeToRu || mode == .clozeDeToRu { inputFocused = true }
         }
     }
 
@@ -1048,7 +1068,57 @@ struct PracticeView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
+    @ViewBuilder
     private func heroPrompt(card: StudyCard) -> some View {
+        if mode == .clozeDeToRu, let cloze = clozeItem(for: card) {
+            clozeHero(cloze, card: card)
+        } else {
+            germanHero(card: card)
+        }
+    }
+
+    /// The gapped sentence, with the German translation underneath as the
+    /// comprehension anchor — the learner reasons from meaning, not from a
+    /// bare grammar puzzle.
+    private func clozeHero(_ cloze: ClozeItem, card: StudyCard) -> some View {
+        VStack(spacing: DS.space.md) {
+            Text(cloze.prompt)
+                .font(LearningTypography.display(
+                    size: (cloze.prompt.count > 40 ? 24 : 30) * min(heroTypeScale, 1.5),
+                    weight: .bold
+                ))
+                .multilineTextAlignment(.center)
+                .foregroundStyle(DS.textPrimary)
+                .lineLimit(nil)
+                .fixedSize(horizontal: false, vertical: true)
+            if let translation = cloze.translation {
+                Text(translation)
+                    .font(.subheadline)
+                    .foregroundStyle(DS.textSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            // The headword is only a hint when the sentence needs a *different*
+            // form. Showing it when the answer is the headword would hand the
+            // answer over.
+            if cloze.teachesInflection {
+                Text(cloze.headword)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(DS.accent)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(DS.accentSoft)
+                    .clipShape(Capsule())
+                    .accessibilityLabel("Grundform \(cloze.headword)")
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, DS.space.lg)
+        .padding(.vertical, DS.space.xl)
+        .dsFlashcardSurface()
+    }
+
+    private func germanHero(card: StudyCard) -> some View {
         // Learning content uses a modern rounded sans face. Editorial serif is
         // reserved for page greetings; mixing it into flashcards made Cyrillic
         // look like a legacy book typeface and broke the app-wide hierarchy.
@@ -1067,7 +1137,67 @@ struct PracticeView: View {
             .dsFlashcardSurface()
     }
 
+    @ViewBuilder
     private func answerCard(card: StudyCard) -> some View {
+        if mode == .clozeDeToRu, let cloze = clozeItem(for: card) {
+            clozeAnswerCard(cloze, card: card)
+        } else {
+            headwordAnswerCard(card: card)
+        }
+    }
+
+    /// On reveal the whole sentence comes back, so the ending is seen in the
+    /// context that required it rather than as an isolated word.
+    private func clozeAnswerCard(_ cloze: ClozeItem, card: StudyCard) -> some View {
+        VStack(spacing: 6) {
+            HStack {
+                Text("Antwort")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(DS.gradePerfect)
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                Spacer()
+                Button {
+                    tts.speak(
+                        cloze.sentence,
+                        language: card.phrase?.language?.ttsLocale ?? "ru-RU",
+                        times: 1
+                    )
+                } label: {
+                    Image(systemName: "speaker.wave.2.fill")
+                        .font(.callout)
+                        .foregroundStyle(DS.gradePerfect)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Satz vorlesen")
+            }
+            Text(cloze.answer)
+                .font(LearningTypography.display(
+                    .title2, weight: .bold,
+                    languageCode: card.phrase?.language?.code
+                ))
+                .foregroundStyle(DS.textPrimary)
+            Text(cloze.sentence)
+                .font(.subheadline)
+                .foregroundStyle(DS.textSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            if cloze.teachesInflection {
+                Text("Grundform: \(cloze.headword)")
+                    .font(.caption)
+                    .foregroundStyle(DS.textTertiary)
+            }
+        }
+        .padding(DS.space.md)
+        .frame(maxWidth: .infinity)
+        .background(DS.gradePerfect.opacity(0.10))
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+        .onAppear {
+            tts.speak(cloze.sentence, language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1)
+        }
+    }
+
+    private func headwordAnswerCard(card: StudyCard) -> some View {
         VStack(spacing: 6) {
             HStack {
                 Text("Antwort")
@@ -1115,6 +1245,8 @@ struct PracticeView: View {
             typingInputSection(revealed: revealed)
         case .speakDeToRu:
             speakInputSection(revealed: revealed)
+        case .clozeDeToRu:
+            typingInputSection(revealed: revealed)
         case .flipDeToRu, .chooseDeToRu:
             // These modes render their own full screen (FlipCardView /
             // chooseCardScreen), so there's no shared input area.
@@ -1330,7 +1462,7 @@ struct PracticeView: View {
 
     private func spokenRecallCard(card: StudyCard, userAnswer: String) -> some View {
         let signal = SpokenRecallAnalyzer.analyze(
-            expected: card.phrase?.targetText ?? "",
+            expected: expectedAnswer(for: card),
             actual: userAnswer,
             segments: speech.segments,
             startDelaySec: speech.hesitancy.startDelaySec,
@@ -1642,7 +1774,7 @@ struct PracticeView: View {
     private func detailsDisclosure(card: StudyCard, result: GradeResult) -> some View {
         DisclosureGroup(isExpanded: $showingGradeDetails) {
             VStack(alignment: .leading, spacing: DS.space.sm) {
-                DiffView(expected: card.phrase?.targetText ?? "", actual: result.normalizedActual)
+                DiffView(expected: expectedAnswer(for: card), actual: result.normalizedActual)
                 VStack(alignment: .leading, spacing: 6) {
                     detailRow("Erwartet", result.normalizedExpected)
                     detailRow("Eingabe", result.normalizedActual)
@@ -2120,8 +2252,10 @@ struct PracticeView: View {
             return
         }
         let elapsedMs = Int((promptStart.map { Date.now.timeIntervalSince($0) } ?? 0) * 1000)
-        let expected = card.phrase?.targetText ?? ""
-        let alternatives = card.phrase?.acceptedAlternatives ?? []
+        let expected = expectedAnswer(for: card)
+        // The phrase's accepted alternatives are alternatives for the *headword*
+        // and say nothing about the inflected form the sentence needs.
+        let alternatives = mode == .clozeDeToRu ? [] : (card.phrase?.acceptedAlternatives ?? [])
         let userAnswer = answerOverride ?? ((mode == .speakDeToRu) ? speech.transcription : input)
         lastSubmissionWasSpeech = answerOverride == nil
             && mode == .speakDeToRu
@@ -2274,7 +2408,7 @@ struct PracticeView: View {
         input = ""
         speech.clearTranscription()
         promptStart = nil
-        reviewedCardIDs.insert(String(describing: card.persistentModelID))
+        reviewedCardIDs.insert(card.contentID)
         sessionCount += 1
         if rating >= 3 {
             sessionCorrect += 1
@@ -2329,9 +2463,9 @@ struct PracticeView: View {
             sessionNewRecord = (phrase.sourceText, responseTimeMs)
         }
 
-        let phraseID = String(describing: phrase.persistentModelID)
+        let phraseID = phrase.contentID
         for topic in phrase.topics ?? [] {
-            let topicPhraseIDs = Set((topic.phrases ?? []).map { String(describing: $0.persistentModelID) })
+            let topicPhraseIDs = Set((topic.phrases ?? []).map(\.contentID))
             let priorFraction = LearningMotivation.strongRecallFraction(
                 events: priorEvents,
                 phraseIDs: topicPhraseIDs
@@ -2439,13 +2573,14 @@ struct PracticeView: View {
         // Cancel any in-flight TTS so a half-finished reveal doesn't keep
         // speaking after the next prompt has already appeared.
         invalidateInteraction()
+        refreshTutorPriority()
         showingGradeDetails = false
         choiceChosen = nil
         selectedTileIDs = []
         reviewModeOverride = nil
         lastSubmissionWasSpeech = false
         retryWasNeeded = false
-        let pool: [StudyCard]
+        var pool: [StudyCard]
         switch scope {
         case .difficultThisWeek:
             pool = difficultCards
@@ -2454,15 +2589,21 @@ struct PracticeView: View {
         case .topic:
             pool = cardsForActiveLanguage.filter(scope.includes)
         }
+        if mode == .clozeDeToRu {
+            // Not every phrase ships a sentence we can gap, so this mode draws
+            // from a narrower pool. The scheduler still owns the ordering.
+            pool = pool.filter { clozeItem(for: $0) != nil }
+        }
         let next: StudyCard?
         if scope == .difficultThisWeek {
-            next = pool.first { !reviewedCardIDs.contains(String(describing: $0.persistentModelID)) }
+            next = pool.first { !reviewedCardIDs.contains($0.contentID) }
         } else {
             next = scheduler.nextCard(
                 from: pool,
                 reviews: reviews,
                 dailyNewLimit: effectiveDailyLimit,
-                tutorDailyNewTarget: tutorPacing?.dailyNewTarget ?? 0
+                tutorDailyNewTarget: tutorPacing?.dailyNewTarget ?? 0,
+                tutorPriorityPhraseIDs: tutorPriorityPhraseIDs
             )
         }
         if let next {
@@ -2526,11 +2667,15 @@ struct PracticeView: View {
     /// New cards still available to introduce in the current mode (active
     /// topics or priority/homework), regardless of the daily cap.
     private var availableNewCount: Int {
-        cardsForActiveLanguage.filter(scope.includes).filter {
-            $0.state == .new
-            && (($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false)
-                || ($0.phrase?.isTutorPriorityActive ?? false))
+        cardsForActiveLanguage.filter(scope.includes).filter { card in
+            guard card.state == .new, let phrase = card.phrase else { return false }
+            return (phrase.topics?.contains(where: \.isActive) ?? false)
+                || tutorPriorityPhraseIDs.contains(phrase.contentID)
         }.count
+    }
+
+    private func refreshTutorPriority() {
+        tutorPriorityPhraseIDs = TutorPriority.phraseIDs(topics: topics, cards: cards)
     }
 
     /// New cards already introduced today in the current mode.

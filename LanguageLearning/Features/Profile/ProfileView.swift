@@ -112,14 +112,18 @@ struct ProfileView: View {
         if !cache.isPrimed {
             let fetchedCards = (try? context.fetch(FetchDescriptor<StudyCard>())) ?? []
             let fetchedReviews = (try? context.fetch(FetchDescriptor<Review>())) ?? []
-            cache.update(cards: fetchedCards, reviews: fetchedReviews, topics: topics)
+            let phraseCount = (try? context.fetchCount(FetchDescriptor<Phrase>())) ?? 0
+            cache.update(
+                cards: fetchedCards, reviews: fetchedReviews,
+                topics: topics, languages: languages, phraseCount: phraseCount
+            )
         }
         guard loadedRevision != cache.revision
                 || loadedLanguageCode != activeLanguageCode
                 || dashboard == nil else { return }
-        let result = await cache.dashboard(languageCode: activeLanguageCode)
+        let result = await cache.snapshots(languageCode: activeLanguageCode)
         guard !Task.isCancelled else { return }
-        dashboard = result.snapshot
+        dashboard = result.snapshots.dashboard
         loadedRevision = result.revision
         loadedLanguageCode = activeLanguageCode
     }

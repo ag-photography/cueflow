@@ -120,6 +120,7 @@ struct TopicDetailView: View {
         topic.isActive = isActive
         do {
             try context.save()
+            LearningDataCache.shared.invalidate()
             saveErrorMessage = nil
         } catch {
             context.rollback()

@@ -27,29 +27,31 @@ struct DifficultPractice {
         calendar: Calendar = .current
     ) -> [StudyCard] {
         guard let start = calendar.date(byAdding: .day, value: -7, to: now) else { return [] }
-        let eligibleIDs = Set(cards.compactMap { card -> String? in
+        let eligibleIDs = Set(cards.compactMap { card -> ContentID? in
             guard card.phrase?.language?.code == languageCode else { return nil }
-            return String(describing: card.persistentModelID)
+            return card.contentID
         })
 
-        var evidence: [String: (errors: Int, latest: Date)] = [:]
+        var evidence: [ContentID: (errors: Int, latest: Date)] = [:]
         for review in reviews where review.timestamp >= start && review.timestamp <= now {
             guard review.rating <= 2 || review.autoGradeRating <= 2,
                   let card = review.card
             else { continue }
-            let id = String(describing: card.persistentModelID)
+            let id = card.contentID
             guard eligibleIDs.contains(id) else { continue }
             let old = evidence[id]
             evidence[id] = ((old?.errors ?? 0) + 1, max(old?.latest ?? .distantPast, review.timestamp))
         }
+        guard !evidence.isEmpty else { return [] }
 
+        // Decorate before sorting: looking the evidence up inside the comparator
+        // would repeat the lookup O(n log n) times for no benefit.
         return cards
-            .filter { evidence[String(describing: $0.persistentModelID)] != nil }
+            .compactMap { card in evidence[card.contentID].map { (card: card, weight: $0) } }
             .sorted { lhs, rhs in
-                let left = evidence[String(describing: lhs.persistentModelID)]!
-                let right = evidence[String(describing: rhs.persistentModelID)]!
-                if left.errors != right.errors { return left.errors > right.errors }
-                return left.latest > right.latest
+                if lhs.weight.errors != rhs.weight.errors { return lhs.weight.errors > rhs.weight.errors }
+                return lhs.weight.latest > rhs.weight.latest
             }
+            .map(\.card)
     }
 }

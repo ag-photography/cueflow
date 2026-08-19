@@ -7,9 +7,6 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.dismiss) private var dismiss
     @Query private var settings: [AppSettings]
-    @Query private var topics: [Topic]
-    @Query private var phrases: [Phrase]
-    @Query private var reviews: [Review]
 
     @Query(sort: \Language.code) private var languages: [Language]
 
@@ -296,6 +293,9 @@ struct SettingsView: View {
                 return
             }
             reminderPermissionDenied = false
+            // Fetched here rather than held in a `@Query`: the recap is the
+            // only thing on this screen that needs reviews, and it runs once.
+            let reviews = (try? context.fetch(FetchDescriptor<Review>())) ?? []
             let summary = WeeklyRecap.summary(
                 reviews: reviews,
                 languageCode: activeLanguageCode

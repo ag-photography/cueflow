@@ -4,22 +4,21 @@ import UniformTypeIdentifiers
 
 struct BackupView: View {
     @Environment(\.modelContext) private var context
-    @Query private var languages: [Language]
-    @Query private var phrases: [Phrase]
-    @Query private var topics: [Topic]
-    @Query private var reviews: [Review]
     @Query private var settings: [AppSettings]
 
     @State private var exportURL: URL?
     @State private var message: String?
     @State private var showingImporter = false
+    // Counts come from `fetchCount` (a SELECT COUNT) — this screen used to
+    // materialise the entire store just to print three numbers.
+    @State private var counts: (phrases: Int, topics: Int, reviews: Int) = (0, 0, 0)
 
     var body: some View {
         Form {
             Section("Stand") {
-                row("Phrasen", "\(phrases.count)")
-                row("Themen", "\(topics.count)")
-                row("Reviews", "\(reviews.count)")
+                row("Phrasen", "\(counts.phrases)")
+                row("Themen", "\(counts.topics)")
+                row("Reviews", "\(counts.reviews)")
             }
 
             Section {
@@ -48,6 +47,7 @@ struct BackupView: View {
             }
         }
         .navigationTitle("Sicherung")
+        .task { refreshCounts() }
         .fileImporter(
             isPresented: $showingImporter,
             allowedContentTypes: [.json],
@@ -64,11 +64,23 @@ struct BackupView: View {
         }
     }
 
+    private func refreshCounts() {
+        counts = (
+            (try? context.fetchCount(FetchDescriptor<Phrase>())) ?? 0,
+            (try? context.fetchCount(FetchDescriptor<Topic>())) ?? 0,
+            (try? context.fetchCount(FetchDescriptor<Review>())) ?? 0
+        )
+    }
+
     private func exportAll() {
         do {
             let info = Bundle.main.infoDictionary
             let version = info?["CFBundleShortVersionString"] as? String ?? "?"
             let build = info?["CFBundleVersion"] as? String ?? "?"
+            // The whole graph is only needed at this moment.
+            let languages = (try? context.fetch(FetchDescriptor<Language>())) ?? []
+            let topics = (try? context.fetch(FetchDescriptor<Topic>())) ?? []
+            let phrases = (try? context.fetch(FetchDescriptor<Phrase>())) ?? []
             let backup = BackupService.makeBackup(
                 languages: languages,
                 topics: topics,
@@ -98,6 +110,7 @@ struct BackupView: View {
                 legacyLanguageCode: settings.first?.activeLanguageCode ?? "ru"
             )
             let summary = try BackupService.restore(backup, into: context)
+            refreshCounts()
             message = "Wiederhergestellt: \(summary.phrasesAdded) neue Phrasen, \(summary.phrasesMerged) zusammengeführt, \(summary.reviewsAdded) Reviews."
         } catch {
             message = "Fehler: \(error.localizedDescription)"

@@ -19,7 +19,11 @@ struct LibraryView: View {
     @Query private var settings: [AppSettings]
 
     @State private var searchText = ""
+    /// Seeded from the active language on first appearance, and reset whenever
+    /// the learner switches language. Managing Russian while studying Russian
+    /// is the common case; "Alle Sprachen" stays one tap away.
     @State private var languageFilter = ""          // "" = all languages
+    @State private var hasSeededLanguageFilter = false
     @State private var activeFilter: ActiveFilter = .all
     @State private var selectedTopic: Topic?
     @State private var practiceTopic: Topic?
@@ -36,10 +40,11 @@ struct LibraryView: View {
     @State private var topicPendingDeletion: Topic?
     @State private var phrasePendingDeletion: Phrase?
     @State private var phraseSearchResults: [Phrase] = []
-    @State private var cachedLearningEvents: [LearningEvent] = []
-    @State private var cachedLearningEventsRevision = -1
-    @State private var cachedLearningEventsLanguageCode = ""
-    @State private var progressRefreshWorkItem: DispatchWorkItem?
+    /// The "Lernen" tab's derived model, rebuilt when the store or the active
+    /// language moves. Deriving it inline meant each of the four scenario cards
+    /// recomputed every scenario's fraction — and the topic list behind them.
+    @State private var journeys = LibraryJourneys()
+    @State private var journeysKey = ""
     @State private var contentReady = true
 
     private enum ActiveFilter: Hashable { case all, active, inactive }
@@ -56,7 +61,10 @@ struct LibraryView: View {
     }
 
     private var activeTopics: [Topic] {
-        topics.filter(\.isActive)
+        topics.filter { topic in
+            topic.isActive
+                && (languageFilter.isEmpty || topic.language?.code == languageFilter)
+        }
     }
 
     private var filteredTopics: [Topic] {
@@ -193,9 +201,13 @@ struct LibraryView: View {
             .task(id: "\(searchText)|\(languageFilter)") {
                 await refreshPhraseSearch()
             }
-            .onAppear { scheduleLearningEventsRefresh() }
-            .onChange(of: activeLanguageCode) { _, _ in scheduleLearningEventsRefresh() }
-            .onDisappear { progressRefreshWorkItem?.cancel() }
+            .task(id: journeyRefreshKey) { await refreshJourneys() }
+            .onAppear {
+                guard !hasSeededLanguageFilter else { return }
+                hasSeededLanguageFilter = true
+                languageFilter = activeLanguageCode
+            }
+            .onChange(of: activeLanguageCode) { _, code in languageFilter = code }
         }
     }
 
@@ -269,10 +281,10 @@ struct LibraryView: View {
                 )
 
                 LazyVStack(spacing: DS.space.sm) {
-                    ForEach(learningTopics.prefix(16)) { topic in
-                        missionRow(topic)
+                    ForEach(journeys.missionRows.prefix(16)) { row in
+                        missionRow(row)
                     }
-                    if learningTopics.isEmpty {
+                    if journeys.missionRows.isEmpty {
                         ContentUnavailableView(
                             "Noch keine Missionen",
                             systemImage: "books.vertical",
@@ -288,10 +300,6 @@ struct LibraryView: View {
             .frame(maxWidth: .infinity)
         }
         .background(DS.pageBackground)
-    }
-
-    private var activeLearningEvents: [LearningEvent] {
-        cachedLearningEvents
     }
 
     private var activeLanguageCode: String {
@@ -312,57 +320,42 @@ struct LibraryView: View {
         phraseSearchResults = (try? context.fetch(descriptor)) ?? []
     }
 
-    private func scheduleLearningEventsRefresh() {
-        progressRefreshWorkItem?.cancel()
+    /// Moves when anything the journeys view depends on changes. The precise
+    /// check lives in `LearningDataCache`; this is just the cheap trigger.
+    private var journeyRefreshKey: String {
+        // Stored properties only — no relationship access. Activating a mission
+        // changes no count, so the flags are part of the key.
+        let active = topics.count(where: \.isActive)
+        let focused = topics.count(where: \.isTutorFocus)
+        return "\(activeLanguageCode)|\(topics.count)|\(active)|\(focused)|\(LearningDataCache.shared.revision)"
+    }
+
+    @MainActor
+    private func refreshJourneys() async {
+        // `.task(id:)` also re-fires whenever the tab reappears, so re-check the
+        // key rather than rebuilding on every visit.
+        let key = journeyRefreshKey
+        guard journeysKey != key else { return }
         let code = activeLanguageCode
-        if LearningDataCache.shared.isPrimed {
-            guard cachedLearningEventsRevision != LearningDataCache.shared.revision
-                    || cachedLearningEventsLanguageCode != code else { return }
-            cachedLearningEvents = LearningDataCache.shared.events(languageCode: code)
-            cachedLearningEventsRevision = LearningDataCache.shared.revision
-            cachedLearningEventsLanguageCode = code
-            return
-        }
-        let work = DispatchWorkItem {
+        let cache = LearningDataCache.shared
+
+        var events = cache.events(languageCode: code)
+        if !cache.isPrimed {
+            // Heute hasn't primed the cache yet. Read once, after the tab
+            // transition has settled, rather than blocking it.
+            try? await Task.sleep(for: .milliseconds(120))
+            guard !Task.isCancelled else { return }
             let fetched = (try? context.fetch(FetchDescriptor<Review>())) ?? []
-            cachedLearningEvents = LearningMotivation.events(from: fetched.filter {
+            events = LearningMotivation.events(from: fetched.filter {
                 $0.card?.phrase?.language?.code == code
             })
         }
-        progressRefreshWorkItem = work
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7, execute: work)
-    }
-    private var curriculumProgress: [CurriculumStepProgress] {
-        let fractions = Dictionary(uniqueKeysWithValues: ScenarioDefinition.defaults.map {
-            ($0.id, scenarioFraction($0))
-        })
-        return CurriculumPlanner.progress(
-            scenarios: ScenarioDefinition.defaults,
-            fractions: fractions
-        )
-    }
-    private var recommendedScenarioID: String? {
-        CurriculumPlanner.recommendation(from: curriculumProgress)?.id
+        guard !Task.isCancelled else { return }
+        journeys = LibraryJourneys(topics: topics, languageCode: code, events: events)
+        journeysKey = key
     }
 
-    private var tutorFocusTopics: [Topic] {
-        learningTopics.filter(\.isTutorFocusActive).sorted {
-            ($0.tutorNextLessonAt ?? .distantFuture) < ($1.tutorNextLessonAt ?? .distantFuture)
-        }
-    }
-    private var tutorFocusTopic: Topic? { tutorFocusTopics.first }
-    private var tutorFocusProgress: (introduced: Int, total: Int) {
-        let phrases = Dictionary(
-            tutorFocusTopics.flatMap { $0.phrases ?? [] }.map {
-                (String(describing: $0.persistentModelID), $0)
-            },
-            uniquingKeysWith: { first, _ in first }
-        ).values
-        return (
-            phrases.count { phrase in (phrase.cards ?? []).contains { $0.state.isIntroduced } },
-            phrases.count
-        )
-    }
+    private var tutorFocusTopic: Topic? { journeys.tutorTopics.first }
 
     private var tutorFocusCard: some View {
         VStack(alignment: .leading, spacing: DS.space.md) {
@@ -380,13 +373,13 @@ struct LibraryView: View {
                         .tracking(1.1)
                         .foregroundStyle(DS.accent)
                     if let tutorFocusTopic {
-                        Text(tutorFocusTopics.count == 1
+                        Text(journeys.tutorTopics.count == 1
                              ? tutorFocusTopic.name
-                             : "\(tutorFocusTopics.count) laufende Einheiten")
+                             : "\(journeys.tutorTopics.count) laufende Einheiten")
                             .font(.title3.weight(.bold))
                             .foregroundStyle(DS.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("\(tutorFocusProgress.introduced) von \(tutorFocusProgress.total) Ausdrücken vorbereitet" + tutorDeadlineText)
+                        Text("\(journeys.tutorIntroduced) von \(journeys.tutorTotal) Ausdrücken vorbereitet" + tutorDeadlineText)
                             .font(.subheadline)
                             .foregroundStyle(DS.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -447,7 +440,7 @@ struct LibraryView: View {
     }
 
     private var tutorDeadlineText: String {
-        guard let date = tutorFocusTopics.compactMap(\.tutorNextLessonAt).min() else {
+        guard let date = journeys.tutorNextLesson else {
             return " · Termin noch nicht gesetzt."
         }
         return " · nächste Stunde \(date.formatted(date: .abbreviated, time: .omitted))."
@@ -464,8 +457,8 @@ struct LibraryView: View {
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.space.sm) {
-                    ForEach(ScenarioDefinition.defaults) { scenario in
-                        scenarioCard(scenario)
+                    ForEach(journeys.scenarioCards) { card in
+                        scenarioCard(card)
                     }
                 }
                 .padding(.vertical, DS.space.xs)
@@ -473,50 +466,40 @@ struct LibraryView: View {
         }
     }
 
-    private func scenarioCard(_ scenario: ScenarioDefinition) -> some View {
-        let matchedTopics = learningTopics.filter {
-            scenario.topicTerms.contains(baseTopicName($0.name))
-        }
-        let phraseIDs = Set(matchedTopics.flatMap { $0.phrases ?? [] }.map {
-            String(describing: $0.persistentModelID)
-        })
-        let fraction = LearningMotivation.strongRecallFraction(
-            events: activeLearningEvents,
-            phraseIDs: phraseIDs
-        )
-        return Button {
-            for topic in matchedTopics { topic.isActive = true }
+    private func scenarioCard(_ card: LibraryJourneys.ScenarioCard) -> some View {
+        Button {
+            for topic in card.matchedTopics { topic.isActive = true }
             guard persistContext() else { return }
-            selectedTopic = matchedTopics.first
+            selectedTopic = card.matchedTopics.first
         } label: {
             VStack(alignment: .leading, spacing: DS.space.sm) {
                 HStack {
-                    Image(systemName: scenario.systemImage)
+                    Image(systemName: card.scenario.systemImage)
                         .font(.headline)
                         .foregroundStyle(.white)
                         .frame(width: 38, height: 38)
                         .background(DS.accent)
                         .clipShape(Circle())
                     Spacer()
-                    if recommendedScenarioID == scenario.id {
+                    if card.isRecommended {
                         Label("Empfohlen", systemImage: "sparkles")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(DS.accent)
-                    } else if fraction >= 0.8 {
+                    } else if card.fraction >= 0.8 {
                         Image(systemName: "checkmark.seal.fill")
                             .foregroundStyle(DS.gradePerfect)
                     }
                 }
-                Text(scenario.title)
+                Text(card.scenario.title)
                     .font(.headline)
                     .foregroundStyle(DS.textPrimary)
-                Text(scenario.outcome)
+                Text(card.scenario.outcome)
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
                     .lineLimit(3)
-                ProgressView(value: fraction)
-                    .tint(fraction >= 0.8 ? DS.gradePerfect : DS.accent)
-                Text(phraseIDs.isEmpty ? "Noch keine passenden Inhalte" : capabilityLabel(fraction))
+                ProgressView(value: card.fraction)
+                    .tint(card.fraction >= 0.8 ? DS.gradePerfect : DS.accent)
+                Text(card.hasContent ? capabilityLabel(card.fraction) : "Noch keine passenden Inhalte")
                     .font(.caption2.weight(.medium))
                     .foregroundStyle(DS.textTertiary)
             }
@@ -530,81 +513,48 @@ struct LibraryView: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(matchedTopics.isEmpty)
-        .accessibilityLabel("\(scenario.title), \(capabilityLabel(fraction))")
+        .disabled(card.matchedTopics.isEmpty)
+        .accessibilityLabel("\(card.scenario.title), \(capabilityLabel(card.fraction))")
         .accessibilityHint("Aktiviert die passenden Missionen")
     }
 
-    private func scenarioFraction(_ scenario: ScenarioDefinition) -> Double {
-        let matchedTopics = learningTopics.filter {
-            scenario.topicTerms.contains(baseTopicName($0.name))
-        }
-        let phraseIDs = Set(matchedTopics.flatMap { $0.phrases ?? [] }.map {
-            String(describing: $0.persistentModelID)
-        })
-        return LearningMotivation.strongRecallFraction(
-            events: activeLearningEvents,
-            phraseIDs: phraseIDs
-        )
-    }
-
-    private var learningTopics: [Topic] {
-        let code = settings.first?.activeLanguageCode ?? "ru"
-        return topics
-            .filter { $0.language?.code == code && $0.parent == nil && !($0.phrases?.isEmpty ?? true) }
-            .sorted {
-                if $0.isActive != $1.isActive { return $0.isActive && !$1.isActive }
-                return $0.name.localizedCompare($1.name) == .orderedAscending
-            }
-    }
-
-    private func missionRow(_ topic: Topic) -> some View {
-        let topicPhrases = topic.phrases ?? []
-        let introduced = topicPhrases.filter { phrase in
-            phrase.cards?.first?.state.isIntroduced == true
-        }.count
-        let total = topicPhrases.count
-        let phraseIDs = Set(topicPhrases.map { String(describing: $0.persistentModelID) })
-        let fraction = LearningMotivation.strongRecallFraction(
-            events: activeLearningEvents,
-            phraseIDs: phraseIDs
-        )
-        return Button {
-            if !topic.isActive {
-                topic.isActive = true
+    private func missionRow(_ row: LibraryJourneys.MissionRow) -> some View {
+        Button {
+            if !row.topic.isActive {
+                row.topic.isActive = true
                 guard persistContext() else { return }
             }
-            selectedTopic = topic
+            selectedTopic = row.topic
         } label: {
             VStack(alignment: .leading, spacing: DS.space.sm) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(topic.name)
+                    Text(row.name)
                         .font(.headline)
                         .foregroundStyle(DS.textPrimary)
                     Spacer()
-                    Text(topic.isActive ? "Aktiv" : "Starten")
+                    Text(row.isActive ? "Aktiv" : "Starten")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(DS.accent)
                 }
-                Text("\(total) Ausdrücke · etwa \(max(3, Int(ceil(Double(total) * 0.45)))) Min.")
+                Text("\(row.total) Ausdrücke · etwa \(max(3, Int(ceil(Double(row.total) * 0.45)))) Min.")
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
-                ProgressView(value: fraction)
+                ProgressView(value: row.fraction)
                     .tint(DS.accent)
-                Text(introduced == 0
+                Text(row.introduced == 0
                     ? "Noch nicht begonnen"
-                    : "\(capabilityLabel(fraction)) · \(introduced) von \(total) kennengelernt")
+                    : "\(capabilityLabel(row.fraction)) · \(row.introduced) von \(row.total) kennengelernt")
                     .font(.caption2)
                     .foregroundStyle(DS.textTertiary)
             }
             .dsCard(elevation: 0, padding: DS.space.md)
             .overlay(
                 RoundedRectangle(cornerRadius: DS.radius.lg, style: .continuous)
-                    .stroke(topic.isActive ? DS.accent.opacity(0.22) : Color.clear, lineWidth: 1)
+                    .stroke(row.isActive ? DS.accent.opacity(0.22) : Color.clear, lineWidth: 1)
             )
         }
         .buttonStyle(.plain)
-        .accessibilityHint(topic.isActive ? "Öffnet diese Mission" : "Aktiviert und öffnet diese Mission")
+        .accessibilityHint(row.isActive ? "Öffnet diese Mission" : "Aktiviert und öffnet diese Mission")
     }
 
     private func capabilityLabel(_ fraction: Double) -> String {
@@ -616,13 +566,6 @@ struct LibraryView: View {
         }
     }
 
-    private func baseTopicName(_ name: String) -> String {
-        name.replacingOccurrences(
-            of: #"\s*\([A-Z]{2}\)$"#,
-            with: "",
-            options: .regularExpression
-        )
-    }
 
     // MARK: - Active chip strip
 
@@ -831,6 +774,9 @@ struct LibraryView: View {
     private func persistContext() -> Bool {
         do {
             try context.save()
+            // Covers topic deletion, which removes phrases from the graph
+            // without moving any count this view can see.
+            LearningDataCache.shared.invalidate()
             saveErrorMessage = nil
             return true
         } catch {

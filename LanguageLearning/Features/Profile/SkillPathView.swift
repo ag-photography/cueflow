@@ -2,43 +2,42 @@ import SwiftData
 import SwiftUI
 
 struct SkillPathView: View {
+    @Environment(\.modelContext) private var context
     @Query private var topics: [Topic]
     @Query private var reviews: [Review]
     @Query private var settings: [AppSettings]
 
+    /// Precomputed once per refresh. Every value here used to be a computed
+    /// property: `events` rebuilt the whole learning-event list from every
+    /// review, `capabilities` was read again inside its own `ForEach`, and
+    /// `milestones` pulled all three — so one render pass rebuilt the event list
+    /// half a dozen times over.
+    @State private var model = SkillPathModel()
+    @State private var modelKey = ""
+
     private var languageCode: String { settings.first?.activeLanguageCode ?? "ru" }
-    private var events: [LearningEvent] {
-        LearningMotivation.events(from: reviews.filter {
-            $0.card?.phrase?.language?.code == languageCode
-        })
+    private var capabilities: [CapabilityProgress] { model.capabilities }
+    private var weeklyMissions: [WeeklyMissionProgress] { model.weeklyMissions }
+    private var milestones: [LearningMilestone] { model.milestones }
+
+    private var refreshKey: String {
+        "\(languageCode)|\(topics.count)|\(reviews.count)|\(LearningDataCache.shared.revision)"
     }
-    private var phraseIDsByScenario: [String: Set<String>] {
-        Dictionary(uniqueKeysWithValues: ScenarioDefinition.defaults.map { scenario in
-            let matching = topics.filter {
-                $0.language?.code == languageCode
-                    && scenario.topicTerms.contains(baseTopicName($0.name))
-            }
-            return (scenario.id, Set(matching.flatMap { $0.phrases ?? [] }.map {
-                String(describing: $0.persistentModelID)
-            }))
-        })
-    }
-    private var capabilities: [CapabilityProgress] {
-        ProgressionSystem.capabilities(
-            scenarios: ScenarioDefinition.defaults,
-            phraseIDsByScenario: phraseIDsByScenario,
-            events: events
-        )
-    }
-    private var weeklyMissions: [WeeklyMissionProgress] {
-        ProgressionSystem.weeklyMissions(events: events)
-    }
-    private var milestones: [LearningMilestone] {
-        ProgressionSystem.milestones(
-            capabilities: capabilities,
-            weeklyMissions: weeklyMissions,
-            events: events
-        )
+
+    @MainActor
+    private func refresh() async {
+        let key = refreshKey
+        guard modelKey != key else { return }
+        let cache = LearningDataCache.shared
+        var events = cache.events(languageCode: languageCode)
+        if !cache.isPrimed {
+            events = LearningMotivation.events(from: reviews.filter {
+                $0.card?.phrase?.language?.code == languageCode
+            })
+        }
+        guard !Task.isCancelled else { return }
+        model = SkillPathModel(topics: topics, languageCode: languageCode, events: events)
+        modelKey = key
     }
 
     var body: some View {
@@ -69,6 +68,7 @@ struct SkillPathView: View {
         .navigationTitle("Lernweg")
         .navigationBarTitleDisplayMode(.inline)
         .accessibilityIdentifier("skill-path")
+        .task(id: refreshKey) { await refresh() }
     }
 
     private func capabilityNode(_ capability: CapabilityProgress, index: Int) -> some View {
@@ -196,9 +196,5 @@ struct SkillPathView: View {
                 }
             }
         }
-    }
-
-    private func baseTopicName(_ name: String) -> String {
-        name.replacingOccurrences(of: #"\s*\([A-Z]{2}\)$"#, with: "", options: .regularExpression)
     }
 }

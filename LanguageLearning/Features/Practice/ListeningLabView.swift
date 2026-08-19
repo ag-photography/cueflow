@@ -187,7 +187,7 @@ struct ListeningLabView: View {
             text: challenge.spokenText,
             locale: challenge.locale,
             audioFileName: eligible.first(where: {
-                String(describing: $0.persistentModelID) == challenge.phraseID
+                $0.contentID == challenge.phraseID
             })?.audioFileName,
             slow: slow
         )
@@ -243,7 +243,7 @@ struct ListeningLabView: View {
             .filter { $0.offset != index }
             .map { $0.element.sourceText }
         challenge = ListeningPracticeBuilder.challenge(
-            phraseID: String(describing: phrase.persistentModelID),
+            phraseID: phrase.contentID,
             spokenText: phrase.targetText,
             meaning: phrase.sourceText,
             languageCode: languageCode,

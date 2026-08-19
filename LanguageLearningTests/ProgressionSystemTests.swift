@@ -6,15 +6,15 @@ final class ProgressionSystemTests: XCTestCase {
 
     private func event(
         dayOffset: Int = 0,
-        phrase: String,
-        topics: Set<String> = ["one"],
+        phrase: ContentID,
+        topics: Set<ContentID> = ["one"],
         rating: Int = 4,
         tier: Int = 3
     ) -> LearningEvent {
         LearningEvent(
             timestamp: Calendar.current.date(byAdding: .day, value: dayOffset, to: now)!,
             phraseID: phrase,
-            sourceText: phrase,
+            sourceText: phrase.description,
             topicIDs: topics,
             exercise: .speech,
             rating: rating,
@@ -31,7 +31,7 @@ final class ProgressionSystemTests: XCTestCase {
         )
         let progress = ProgressionSystem.capabilities(
             scenarios: [scenario],
-            phraseIDsByScenario: ["foundation": ["a", "b", "c", "d", "e"]],
+            phraseIDsByScenario: ["foundation": ["a", "b", "c", "d", "e"] as Set<ContentID>],
             events: [event(phrase: "a"), event(phrase: "b")]
         )
 
@@ -49,7 +49,7 @@ final class ProgressionSystemTests: XCTestCase {
             id: "second", title: "Second", outcome: "", systemImage: "2.circle",
             topicTerms: [], prerequisiteIDs: ["first"]
         )
-        let ids: [String: Set<String>] = ["first": ["a", "b"], "second": ["c"]]
+        let ids: [String: Set<ContentID>] = ["first": ["a", "b"], "second": ["c"]]
 
         let locked = ProgressionSystem.capabilities(
             scenarios: [first, second], phraseIDsByScenario: ids, events: []
@@ -79,7 +79,10 @@ final class ProgressionSystemTests: XCTestCase {
 
     func testProgressionAnalysisRemainsFastForLargeHistory() {
         let events = (0..<20_000).map { index in
-            event(phrase: "phrase-\(index % 2_000)", topics: ["topic-\(index % 20)"])
+            event(
+                phrase: ContentID("phrase-\(index % 2_000)"),
+                topics: [ContentID("topic-\(index % 20)")]
+            )
         }
         measure {
             _ = ProgressionSystem.weeklyMissions(events: events, now: now)

@@ -85,7 +85,7 @@ enum ProgressionSystem {
 
     static func capabilities(
         scenarios: [ScenarioDefinition],
-        phraseIDsByScenario: [String: Set<String>],
+        phraseIDsByScenario: [String: Set<ContentID>],
         events: [LearningEvent]
     ) -> [CapabilityProgress] {
         let strongIDs = Set(events.lazy.filter(\.isStrongProductiveRecall).map(\.phraseID))

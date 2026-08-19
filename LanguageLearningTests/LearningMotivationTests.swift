@@ -6,9 +6,9 @@ final class LearningMotivationTests: XCTestCase {
 
     private func event(
         minutesAgo: Double = 0,
-        phrase: String = UUID().uuidString,
+        phrase: ContentID = ContentID(UUID().uuidString),
         source: String = "Kaffee, bitte",
-        topics: Set<String> = ["cafe"],
+        topics: Set<ContentID> = ["cafe"],
         exercise: LearningExercise = .speech,
         rating: Int = 4,
         tier: Int = 3,

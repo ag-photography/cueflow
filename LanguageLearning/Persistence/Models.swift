@@ -155,7 +155,11 @@ final class Topic {
     func isTutorFocusActive(at date: Date) -> Bool {
         guard isTutorFocus || containsTutorMaterial else { return false }
         guard let tutorFocusUntil else { return true }
-        return tutorFocusUntil >= date
+        // Strictly greater: `finishTutorFocus` stamps `tutorFocusUntil = .now`,
+        // so an inclusive comparison left the topic focused for whatever
+        // remained of that instant — a race the tests could land on either side
+        // of. "Focus ended at T" means not focused at T.
+        return tutorFocusUntil > date
     }
 
     var isTutorFocusActive: Bool {
@@ -343,6 +347,8 @@ enum CardDirection: String, Codable, CaseIterable {
     case chooseDeToRu     // "Wählen": recognition, pick the answer from 4
     case typeDeToRu       // "Tippen": written production (keyboard drill)
     case flipDeToRu       // "Karten": recognition, tap to reveal, swipe to rate
+    case clozeDeToRu      // "Lücken": produce the word the sentence actually
+                          // needs — the inflected form, not the headword
 
     var displayName: String {
         switch self {
@@ -350,6 +356,7 @@ enum CardDirection: String, Codable, CaseIterable {
         case .chooseDeToRu: return "Wählen"
         case .typeDeToRu: return "Tippen"
         case .flipDeToRu: return "Karten"
+        case .clozeDeToRu: return "Lücken"
         }
     }
 
@@ -359,6 +366,7 @@ enum CardDirection: String, Codable, CaseIterable {
         case .chooseDeToRu: return "checklist"
         case .typeDeToRu: return "keyboard"
         case .flipDeToRu: return "rectangle.on.rectangle"
+        case .clozeDeToRu: return "text.word.spacing"
         }
     }
 }

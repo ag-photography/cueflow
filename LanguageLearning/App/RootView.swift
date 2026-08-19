@@ -111,10 +111,12 @@ private struct MainTabView: View {
 private struct TodayView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.verticalSizeClass) private var verticalSizeClass
+    @Environment(\.modelContext) private var context
     @Query private var cards: [StudyCard]
     @Query private var reviews: [Review]
     @Query private var settings: [AppSettings]
     @Query(sort: \Topic.name) private var topics: [Topic]
+    @Query(sort: \Language.code) private var languages: [Language]
 
     @AppStorage("lastQuestCelebrationDay") private var lastQuestCelebrationDay = -1
     @AppStorage("preferredSessionTarget") private var sessionTarget = 10
@@ -127,61 +129,26 @@ private struct TodayView: View {
     @State private var showingSettings = false
     @State private var practiceScope: PracticeScope = .recommended
 
+    /// Everything below the fold is read from here. Deriving it in `body`
+    /// meant recomputing it on every tab switch, for every tab.
+    @State private var today: TodaySnapshot?
+    @State private var loadedRevision = -1
+    @State private var loadedLanguageCode = ""
+
     private var activeLanguageCode: String { settings.first?.activeLanguageCode ?? "ru" }
-    private var activeCards: [StudyCard] {
-        cards.filter { $0.phrase?.language?.code == activeLanguageCode }
-    }
-    private var dueCount: Int {
-        activeCards.filter { $0.state != .new && $0.dueDate <= .now }.count
-    }
-    private var availableNewCount: Int {
-        activeCards.filter {
-            $0.state == .new && (($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false)
-                || ($0.phrase?.isTutorPriorityActive ?? false))
-        }.count
-    }
+    private var snapshot: TodaySnapshot { today ?? .empty }
+    private var dueCount: Int { snapshot.dueCount }
     private var plannedNewCount: Int {
-        min(availableNewCount, max(settings.first?.dailyNewLimit ?? 10, tutorPacing?.dailyNewTarget ?? 0))
-    }
-    private var tutorPacing: TutorFocusPacing? {
-        TutorFocusPlanner.pacing(
-            topics: topics.filter { $0.language?.code == activeLanguageCode },
-            cards: activeCards
+        min(
+            snapshot.availableNewCount,
+            max(settings.first?.dailyNewLimit ?? 10, snapshot.pacing?.dailyNewTarget ?? 0)
         )
     }
     private var estimatedMinutes: Int {
         max(2, Int(ceil(Double(max(1, min(sessionTarget, dueCount + plannedNewCount))) * 0.55)))
     }
-    private var reviewsToday: Int {
-        reviews.filter { Calendar.current.isDateInToday($0.timestamp) }.count
-    }
-    private var currentMission: Topic? {
-        topics.first { $0.isActive && $0.language?.code == activeLanguageCode }
-    }
-    private var learningEvents: [LearningEvent] {
-        LearningMotivation.events(from: reviews.filter {
-            $0.card?.phrase?.language?.code == activeLanguageCode
-        })
-    }
-    private var dailyQuests: [DailyQuestProgress] {
-        LearningMotivation.dailyQuests(events: learningEvents)
-    }
-    private var allQuestsComplete: Bool { dailyQuests.allSatisfy(\.isComplete) }
-    private var fastestRecall: LearningEvent? {
-        LearningMotivation.fastestStrongRecall(events: learningEvents)
-    }
-    private var recentImprovement: ImprovingExpression? {
-        LearningMotivation.mostRecentImprovement(events: learningEvents)
-    }
     private var todayIndex: Int {
         Int(Calendar.current.startOfDay(for: .now).timeIntervalSinceReferenceDate / 86_400)
-    }
-    private var difficultCards: [StudyCard] {
-        DifficultPractice.candidates(
-            cards: cards,
-            reviews: reviews,
-            languageCode: activeLanguageCode
-        )
     }
 
     var body: some View {
@@ -190,10 +157,12 @@ private struct TodayView: View {
                 VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? DS.space.sm : DS.space.lg) {
                     greeting
                     recommendedSession
-                    if !difficultCards.isEmpty { difficultPracticeCard }
+                    if snapshot.difficultCount > 0 { difficultPracticeCard }
                     dailyQuestCard
                     exploreCard
-                    if fastestRecall != nil || recentImprovement != nil { achievementCard }
+                    if snapshot.fastestRecall != nil || snapshot.recentImprovement != nil {
+                        achievementCard
+                    }
                     missionCard
                 }
                 .padding(.horizontal, DS.space.md)
@@ -226,24 +195,9 @@ private struct TodayView: View {
             .fullScreenCover(isPresented: $showingListeningLab) { ListeningLabView() }
             .fullScreenCover(isPresented: $showingConversation) { ConversationView() }
             .navigationDestination(isPresented: $showingSkillPath) { SkillPathView() }
-            .onAppear {
-                LearningDataCache.shared.update(cards: cards, reviews: reviews, topics: topics)
-                celebrateCompletedQuestsIfNeeded()
-                WidgetSnapshotService.refresh(cards: cards, settings: settings)
-                consumePendingAction()
-            }
+            .onAppear { consumePendingAction() }
+            .task(id: refreshKey) { await reloadSnapshot() }
             .task { await refreshWeeklyRecap() }
-            .onChange(of: reviews.count) { _, _ in
-                LearningDataCache.shared.update(cards: cards, reviews: reviews, topics: topics)
-                WidgetSnapshotService.refresh(cards: cards, settings: settings)
-            }
-            .onChange(of: cards.count) { _, _ in
-                LearningDataCache.shared.update(cards: cards, reviews: reviews, topics: topics)
-            }
-            .onChange(of: activeLanguageCode) { _, _ in
-                LearningDataCache.shared.update(cards: cards, reviews: reviews, topics: topics)
-                WidgetSnapshotService.refresh(cards: cards, settings: settings)
-            }
             .onOpenURL { url in
                 guard url.scheme == "cueflow" else { return }
                 switch url.host {
@@ -341,17 +295,17 @@ private struct TodayView: View {
                         .font(.caption2.weight(.bold))
                         .tracking(0.7)
                         .foregroundStyle(DS.accent)
-                    Text(allQuestsComplete ? "Tagesziele geschafft" : "Drei kleine Ziele")
+                    Text(snapshot.allQuestsComplete ? "Tagesziele geschafft" : "Drei kleine Ziele")
                         .font(.headline)
                         .foregroundStyle(DS.textPrimary)
                 }
                 Spacer()
-                Image(systemName: allQuestsComplete ? "checkmark.seal.fill" : "flag.checkered")
+                Image(systemName: snapshot.allQuestsComplete ? "checkmark.seal.fill" : "flag.checkered")
                     .font(.title2)
-                    .foregroundStyle(allQuestsComplete ? DS.gradePerfect : DS.accent)
-                    .symbolEffect(.bounce, value: allQuestsComplete && !reduceMotion)
+                    .foregroundStyle(snapshot.allQuestsComplete ? DS.gradePerfect : DS.accent)
+                    .symbolEffect(.bounce, value: snapshot.allQuestsComplete && !reduceMotion)
             }
-            ForEach(dailyQuests) { quest in
+            ForEach(snapshot.dailyQuests) { quest in
                 questRow(quest)
             }
         }
@@ -397,7 +351,7 @@ private struct TodayView: View {
                 .font(.caption2.weight(.bold))
                 .tracking(0.7)
                 .foregroundStyle(DS.textTertiary)
-            if let fastestRecall {
+            if let fastestRecall = snapshot.fastestRecall {
                 achievementRow(
                     icon: "timer",
                     title: "Schnellster sicherer Abruf",
@@ -405,7 +359,7 @@ private struct TodayView: View {
                     color: DS.gradeHesitant
                 )
             }
-            if let recentImprovement {
+            if let recentImprovement = snapshot.recentImprovement {
                 achievementRow(
                     icon: "arrow.up.right",
                     title: "Comeback",
@@ -435,7 +389,7 @@ private struct TodayView: View {
     }
 
     private func celebrateCompletedQuestsIfNeeded() {
-        guard allQuestsComplete, lastQuestCelebrationDay != todayIndex else { return }
+        guard snapshot.allQuestsComplete, lastQuestCelebrationDay != todayIndex else { return }
         lastQuestCelebrationDay = todayIndex
         CompletionFeedbackService.shared.playCompletion()
     }
@@ -449,13 +403,57 @@ private struct TodayView: View {
         await NotificationService.shared.scheduleWeeklyRecap(summary)
     }
 
+    /// Changes whenever the store or the active language moves. Counts are the
+    /// cheap part of the fingerprint; the cache does the precise check.
+    /// True while a session is covering Heute. Its numbers can't be seen, and
+    /// they'd be recomputed after every answer.
+    private var isCovered: Bool {
+        showingPractice || showingSprint || showingListeningLab || showingConversation
+    }
+
+    private var refreshKey: String {
+        // Stored properties only — no relationship access. Activating a topic
+        // changes no count, so the flags are part of the key.
+        let active = topics.count(where: \.isActive)
+        let focused = topics.count(where: \.isTutorFocus)
+        return "\(activeLanguageCode)|\(cards.count)|\(reviews.count)|\(topics.count)|\(active)|\(focused)|\(isCovered)"
+    }
+
+    private func reloadSnapshot() async {
+        // `isCovered` is part of `refreshKey`, so dismissing the cover fires
+        // this again and the deferred refresh happens then.
+        guard !isCovered else { return }
+        let cache = LearningDataCache.shared
+        let phraseCount = (try? context.fetchCount(FetchDescriptor<Phrase>())) ?? 0
+        cache.update(
+            cards: cards, reviews: reviews, topics: topics,
+            languages: languages, phraseCount: phraseCount
+        )
+        guard loadedRevision != cache.revision
+                || loadedLanguageCode != activeLanguageCode
+                || today == nil else { return }
+        let result = await cache.snapshots(languageCode: activeLanguageCode)
+        guard !Task.isCancelled else { return }
+        today = result.snapshots.today
+        loadedRevision = result.revision
+        loadedLanguageCode = activeLanguageCode
+        WidgetSnapshotService.refresh(
+            dueCount: result.snapshots.today.dueCount,
+            newCount: result.snapshots.today.availableNewCount,
+            languageCode: activeLanguageCode
+        )
+        celebrateCompletedQuestsIfNeeded()
+    }
+
     private var greeting: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(greetingText)
                 .font(.system(verticalSizeClass == .compact ? .title2 : .largeTitle, design: .serif, weight: .bold))
                 .foregroundStyle(DS.textPrimary)
             if verticalSizeClass != .compact {
-                Text(reviewsToday == 0 ? "Bereit, etwas spontan abzurufen?" : "Heute schon \(reviewsToday) Antworten produziert.")
+                Text(snapshot.reviewsToday == 0
+                     ? "Bereit, etwas spontan abzurufen?"
+                     : "Heute schon \(snapshot.reviewsToday) Antworten produziert.")
                     .font(.subheadline)
                     .foregroundStyle(DS.textSecondary)
             }
@@ -486,7 +484,7 @@ private struct TodayView: View {
             Text("\(dueCount) Wiederholungen · \(plannedNewCount) neue Ausdrücke")
                 .font(.subheadline)
                 .foregroundStyle(DS.textSecondary)
-            if let tutorPacing, tutorPacing.remainingNewCount > 0 {
+            if let tutorPacing = snapshot.pacing, tutorPacing.remainingNewCount > 0 {
                 Label(
                     "Tutor-Fokus: heute \(tutorPacing.dailyNewTarget) neue · \(tutorPacing.daysUntilLesson) Tage verbleibend",
                     systemImage: "person.2.fill"
@@ -524,11 +522,11 @@ private struct TodayView: View {
     private var practiceSessionTarget: Int {
         switch practiceScope {
         case .difficultThisWeek:
-            return min(sessionTarget, difficultCards.count)
+            return min(sessionTarget, snapshot.difficultCount)
         case .topic:
             return sessionTarget
         case .recommended:
-            let tutorMinimum = dueCount + (tutorPacing?.dailyNewTarget ?? 0)
+            let tutorMinimum = dueCount + (snapshot.pacing?.dailyNewTarget ?? 0)
             return max(sessionTarget, min(20, tutorMinimum))
         }
     }
@@ -549,7 +547,7 @@ private struct TodayView: View {
                     Text("Diese Woche schwer gefallen")
                         .font(.headline)
                         .foregroundStyle(DS.textPrimary)
-                    Text("\(difficultCards.count) \(difficultCards.count == 1 ? "Ausdruck" : "Ausdrücke") gezielt festigen")
+                    Text("\(snapshot.difficultCount) \(snapshot.difficultCount == 1 ? "Ausdruck" : "Ausdrücke") gezielt festigen")
                         .font(.caption)
                         .foregroundStyle(DS.textSecondary)
                 }
@@ -568,16 +566,16 @@ private struct TodayView: View {
 
     @ViewBuilder
     private var missionCard: some View {
-        if let mission = currentMission {
+        if let missionName = snapshot.missionName {
             VStack(alignment: .leading, spacing: DS.space.sm) {
                 Text("AKTUELLE MISSION")
                     .font(.caption2.weight(.semibold))
                     .tracking(0.6)
                     .foregroundStyle(DS.textTertiary)
-                Text(mission.name)
+                Text(missionName)
                     .font(.headline)
                     .foregroundStyle(DS.textPrimary)
-                Text("\(mission.phrases?.count ?? 0) nützliche Ausdrücke · produktiv üben")
+                Text("\(snapshot.missionPhraseCount) nützliche Ausdrücke · produktiv üben")
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
             }

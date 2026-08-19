@@ -5,13 +5,14 @@ enum LearningExercise: String, Sendable {
     case typing = "typeDeToRu"
     case choice = "chooseDeToRu"
     case flip = "flipDeToRu"
+    case cloze = "clozeDeToRu"
 }
 
 struct LearningEvent: Equatable, Sendable {
     let timestamp: Date
-    let phraseID: String
+    let phraseID: ContentID
     let sourceText: String
-    let topicIDs: Set<String>
+    let topicIDs: Set<ContentID>
     let exercise: LearningExercise?
     let rating: Int
     let gradeTier: Int
@@ -19,14 +20,16 @@ struct LearningEvent: Equatable, Sendable {
     let spokenWordCount: Int
 
     var isProductive: Bool {
-        gradeTier >= 1 && (exercise == .speech || exercise == .typing)
+        // Cloze is unaided production too — the learner supplies the form from
+        // memory, with no options to choose from.
+        gradeTier >= 1 && (exercise == .speech || exercise == .typing || exercise == .cloze)
     }
 
     var isStrongProductiveRecall: Bool { isProductive && rating >= 3 && gradeTier >= 3 }
     var isSpoken: Bool { gradeTier >= 1 && exercise == .speech }
 }
 
-enum DailyQuestKind: String, CaseIterable, Identifiable {
+enum DailyQuestKind: String, CaseIterable, Identifiable, Sendable {
     case retrieve
     case speak
     case deepenMission
@@ -34,7 +37,7 @@ enum DailyQuestKind: String, CaseIterable, Identifiable {
     var id: String { rawValue }
 }
 
-struct DailyQuestProgress: Identifiable, Equatable {
+struct DailyQuestProgress: Identifiable, Equatable, Sendable {
     let kind: DailyQuestKind
     let title: String
     let detail: String
@@ -47,8 +50,8 @@ struct DailyQuestProgress: Identifiable, Equatable {
     var fraction: Double { min(1, Double(current) / Double(max(1, target))) }
 }
 
-struct ImprovingExpression: Equatable {
-    let phraseID: String
+struct ImprovingExpression: Equatable, Sendable {
+    let phraseID: ContentID
     let sourceText: String
     let improvedAt: Date
 }
@@ -64,7 +67,7 @@ enum LearningMotivation {
         let spokenWords = today.filter(\.isSpoken).reduce(0) { $0 + $1.spokenWordCount }
         let topicCounts = productive
             .flatMap { event in event.topicIDs.map { (topic: $0, count: 1) } }
-            .reduce(into: [String: Int]()) { $0[$1.topic, default: 0] += $1.count }
+            .reduce(into: [ContentID: Int]()) { $0[$1.topic, default: 0] += $1.count }
         let deepestMission = topicCounts.values.max() ?? 0
 
         return [
@@ -119,7 +122,7 @@ enum LearningMotivation {
         }.max { $0.improvedAt < $1.improvedAt }
     }
 
-    static func strongRecallFraction(events: [LearningEvent], phraseIDs: Set<String>) -> Double {
+    static func strongRecallFraction(events: [LearningEvent], phraseIDs: Set<ContentID>) -> Double {
         guard !phraseIDs.isEmpty else { return 0 }
         let strongIDs = Set(events.lazy.filter(\.isStrongProductiveRecall).map(\.phraseID))
         return Double(strongIDs.intersection(phraseIDs).count) / Double(phraseIDs.count)
@@ -130,9 +133,9 @@ enum LearningMotivation {
             guard let phrase = review.card?.phrase else { return nil }
             return LearningEvent(
                 timestamp: review.timestamp,
-                phraseID: String(describing: phrase.persistentModelID),
+                phraseID: phrase.contentID,
                 sourceText: phrase.sourceText,
-                topicIDs: Set((phrase.topics ?? []).map { String(describing: $0.persistentModelID) }),
+                topicIDs: Set((phrase.topics ?? []).map(\.contentID)),
                 exercise: LearningExercise(rawValue: review.modeRaw),
                 rating: review.rating,
                 gradeTier: review.gradeTier,

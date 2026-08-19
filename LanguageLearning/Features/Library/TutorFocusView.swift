@@ -158,10 +158,10 @@ struct TutorFocusView: View {
 
     @ViewBuilder
     private func existingFocusRow(_ topic: Topic) -> some View {
-        let phraseIDs = Set((topic.phrases ?? []).map { String(describing: $0.persistentModelID) })
+        let phraseIDs = Set((topic.phrases ?? []).map(\.contentID))
         let topicCards = existingCards.filter {
             guard let phrase = $0.phrase else { return false }
-            return phraseIDs.contains(String(describing: phrase.persistentModelID))
+            return phraseIDs.contains(phrase.contentID)
         }
         let introduced = topicCards.count { $0.state.isIntroduced }
         VStack(alignment: .leading, spacing: 8) {
@@ -257,6 +257,7 @@ struct TutorFocusView: View {
     private func persistChanges() {
         do {
             try context.save()
+            LearningDataCache.shared.invalidate()
         } catch {
             context.rollback()
             saveErrorMessage = error.localizedDescription
@@ -305,6 +306,7 @@ struct TutorFocusView: View {
 
         do {
             try context.save()
+            LearningDataCache.shared.invalidate()
             dismiss()
         } catch {
             context.rollback()

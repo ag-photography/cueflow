@@ -2,19 +2,15 @@ import Foundation
 import WidgetKit
 
 enum WidgetSnapshotService {
-    static func refresh(cards: [StudyCard], settings: [AppSettings]) {
-        let code = settings.first?.activeLanguageCode ?? "ru"
-        let active = cards.filter { $0.phrase?.language?.code == code }
-        let due = active.filter { $0.state != .new && $0.dueDate <= .now }.count
-        let new = active.filter {
-            $0.state == .new
-                && (($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false)
-                    || ($0.phrase?.isTutorPriorityActive ?? false))
-        }.count
+    /// Fed from the precomputed Heute snapshot — the counts are identical, and
+    /// deriving them here meant a second pass that faulted `phrase.topics` for
+    /// every card.
+    static func refresh(dueCount: Int, newCount: Int, languageCode: String) {
         let snapshot = CueFlowWidgetSnapshot(
-            dueCount: due,
-            newCount: new,
-            languageLabel: LanguagePack.configuration(for: code)?.germanLabel ?? code.uppercased(),
+            dueCount: dueCount,
+            newCount: newCount,
+            languageLabel: LanguagePack.configuration(for: languageCode)?.germanLabel
+                ?? languageCode.uppercased(),
             updatedAt: .now
         )
         guard let defaults = UserDefaults(suiteName: CueFlowWidgetSnapshot.suiteName),

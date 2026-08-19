@@ -1,7 +1,7 @@
 import Foundation
 
 struct ListeningChallenge: Equatable, Sendable {
-    let phraseID: String
+    let phraseID: ContentID
     let spokenText: String
     let correctMeaning: String
     let alternatives: [String]
@@ -13,7 +13,7 @@ struct ListeningChallenge: Equatable, Sendable {
 
 enum ListeningPracticeBuilder {
     static func challenge(
-        phraseID: String,
+        phraseID: ContentID,
         spokenText: String,
         meaning: String,
         languageCode: String,

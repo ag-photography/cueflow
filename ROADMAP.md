@@ -1,8 +1,8 @@
 # CueFlow — Release Roadmap
 
-**Updated:** 18 August 2026
+**Updated:** 19 August 2026
 
-**Current train:** 1.0, build 49
+**Current train:** 1.0, build 50
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.
 
 ## Product promise
@@ -21,6 +21,7 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 
 - FSRS-6 scheduling, pinned to an exact dependency revision;
 - speaking-first adaptive sessions with choice, tiles, typing, speech, reveal, retry, and fallback states;
+- a "Lücken" gap-fill mode derived from the bundled example sentences: the learner supplies the surface form the sentence requires, the headword is shown only when it differs from the answer, and the item is refused outright when the form cannot be located confidently (stem changes, vowel alternations, Arabic non-concatenative morphology) rather than guessed;
 - Russian and Arabic language packs with canonical Arabic script, RTL presentation, locale-specific TTS/ASR, and optional transliteration;
 - 60-second spoken Sprint, difficult-this-week practice, 3/7/15-minute session defaults, and universal guided Russian/Arabic role-play that does not require Apple Intelligence;
 - evidence-based speech feedback using recognized words, confidence, and hesitation signals, with slow playback and one conservative immediate retry—explicitly not presented as phoneme scoring;
@@ -45,6 +46,8 @@ The scheduler owns one memory per phrase. Recognition, tiles, typing, speaking, 
 - shared main-screen section hierarchy, a compact secondary-activity launcher, actionable progress recommendations, and exact rescheduling for ongoing tutor lessons;
 - language-aware learning-card typography with modern rounded Cyrillic and native Arabic shaping, while reserving serif display type for editorial headings;
 - immediate tab selection with revisioned, background-precomputed progress dashboards, retained chart state, and on-demand phrase search;
+- every primary and pushed screen reads a precomputed snapshot rather than deriving from live queries in `body`, and the practice loop resolves tutor priority once per pass instead of once per card;
+- language-scoped Fortschritt figures and a Bibliothek management filter that follows the active language;
 - a first-class Tutor Focus with multiple concurrent lessons, next-lesson dates, automatic daily preparation pacing, explicit completion, migration of existing tutor imports, and immediate topic-scoped practice;
 - account-aware asynchronous SwiftData startup, private CloudKit sync when available, local fallback, and an in-memory recovery session if persistent storage cannot open;
 - versioned full JSON backup and idempotent restore, including settings, topics, phrases, schedule, and review history;
@@ -71,6 +74,8 @@ The detailed device matrix, store copy, privacy draft, and screenshot plan are i
 
 Only prioritize these after beta evidence:
 
+- comprehensible input: a daily reading pass selected by the proportion of already-stabilised vocabulary in each bundled sentence, which is computable on device from the existing FSRS state;
+- dictation in the listening studio, morphology (case and aspect) as a first-class content type, frequency- and level-informed ordering for bundled new cards, and lifetime-lapse leech handling;
 - learner-authored conversation scenarios and true phoneme-level pronunciation feedback;
 - English UI and additional language packs;
 - Apple Watch;

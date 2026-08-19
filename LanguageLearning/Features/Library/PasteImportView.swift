@@ -182,6 +182,7 @@ struct PasteImportView: View {
 
         do {
             try context.save()
+            LearningDataCache.shared.invalidate()
             dismiss()
         } catch {
             context.rollback()
