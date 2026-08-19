@@ -554,8 +554,10 @@ struct PracticeView: View {
         .padding(4)
         .background(DS.surface1)
         .clipShape(Capsule())
-        // Compact 3-way control (tab-bar-like): cap growth so the segments
-        // keep fitting at accessibility sizes. The reading content scales fully.
+        // Compact 5-way control (tab-bar-like): cap growth so the segments keep
+        // fitting at accessibility sizes. The reading content scales fully.
+        // Adding a sixth mode would need a different control — at five, each
+        // segment is already relying on minimumScaleFactor on a small screen.
         .dynamicTypeSize(...DynamicTypeSize.xLarge)
     }
 

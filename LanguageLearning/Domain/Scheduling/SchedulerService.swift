@@ -75,12 +75,17 @@ struct SchedulerService {
 
         guard remaining > 0 else { return nil }
 
-        // 4. Regular new cards (only from active topics). Newest first, so
-        //    freshly-added/-activated content is what you see next.
+        // 4. Regular new cards (only from active topics). Learner-added content
+        //    stays newest-first; the bundled backlog follows band and frequency
+        //    instead of insertion order. See `NewCardOrdering`.
         let activeNew = cards
             .filter { $0.state == .new && ($0.phrase?.topics?.contains(where: { $0.isActive }) ?? false) }
-            .sorted { ($0.phrase?.createdAt ?? .distantPast) > ($1.phrase?.createdAt ?? .distantPast) }
-        return activeNew.first
+            .compactMap { card -> (card: StudyCard, order: NewCardOrdering.Candidate)? in
+                guard let phrase = card.phrase else { return nil }
+                return (card, NewCardOrdering.Candidate(phrase: phrase))
+            }
+            .sorted { NewCardOrdering.precedes($0.order, $1.order) }
+        return activeNew.first?.card
     }
 
     /// Applies a learner rating (1=Again, 2=Hard, 3=Good, 4=Easy) to a card,

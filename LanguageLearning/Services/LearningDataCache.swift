@@ -33,6 +33,9 @@ struct ProgressDashboardSnapshot: Equatable, Sendable {
     let fluencyLabel: String?
     let reviewsByLanguage: [String: Int]
     let topics: [ProgressTopicStat]
+    /// Items that keep slipping across their whole history — worth rewording
+    /// rather than drilling again.
+    let leechCount: Int
 
     static let empty = ProgressDashboardSnapshot(
         scenarioFractions: [:], learningPatterns: [], fastestRecall: nil,
@@ -40,7 +43,7 @@ struct ProgressDashboardSnapshot: Equatable, Sendable {
         currentStreak: 0, newCount: 0, learningCount: 0,
         reviewCount: 0, relearningCount: 0, weekly: [], spokenWeekly: [],
         spokenWordsTodayPractice: 0, fluencyLabel: nil,
-        reviewsByLanguage: [:], topics: []
+        reviewsByLanguage: [:], topics: [], leechCount: 0
     )
 }
 
@@ -85,6 +88,7 @@ private struct ProgressCardRecord: Sendable {
     let languageCode: String
     let state: LearningState
     let dueDate: Date
+    let lapses: Int
     /// Stored rather than pre-evaluated: the boost expires on a clock, so a
     /// cached boolean would freeze at whatever it was when the record was built.
     let isPriority: Bool
@@ -263,6 +267,7 @@ final class LearningDataCache {
                 languageCode: identity.languageCode,
                 state: card.state,
                 dueDate: card.dueDate,
+                lapses: card.lapses,
                 isPriority: identity.isPriority,
                 priorityUntil: identity.priorityUntil
             ))
@@ -518,7 +523,8 @@ final class LearningDataCache {
                 .reduce(0) { $0 + $1.event.spokenWordCount },
             fluencyLabel: fluency,
             reviewsByLanguage: reviews.reduce(into: [:]) { $0[$1.languageCode, default: 0] += 1 },
-            topics: topicStats
+            topics: topicStats,
+            leechCount: languageCards.count { $0.lapses >= DifficultPractice.leechLapseThreshold }
         )
     }
 

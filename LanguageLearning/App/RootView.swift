@@ -125,6 +125,7 @@ private struct TodayView: View {
     @State private var showingSprint = false
     @State private var showingConversation = false
     @State private var showingListeningLab = false
+    @State private var showingReading = false
     @State private var showingSkillPath = false
     @State private var showingSettings = false
     @State private var practiceScope: PracticeScope = .recommended
@@ -193,6 +194,7 @@ private struct TodayView: View {
             }
             .fullScreenCover(isPresented: $showingSprint) { SprintView() }
             .fullScreenCover(isPresented: $showingListeningLab) { ListeningLabView() }
+            .fullScreenCover(isPresented: $showingReading) { ReadingView() }
             .fullScreenCover(isPresented: $showingConversation) { ConversationView() }
             .navigationDestination(isPresented: $showingSkillPath) { SkillPathView() }
             .onAppear { consumePendingAction() }
@@ -205,6 +207,7 @@ private struct TodayView: View {
                     practiceScope = .recommended
                     showingPractice = true
                 case "listening": showingListeningLab = true
+                case "reading": showingReading = true
                 case "skill-path": showingSkillPath = true
                 case "conversation": showingConversation = true
                 default: break
@@ -231,7 +234,7 @@ private struct TodayView: View {
         VStack(alignment: .leading, spacing: DS.space.md) {
             DSSectionHeader(
                 title: "Mehr entdecken",
-                subtitle: "Vier kurze Wege, dieselben Ausdrücke aktiv anzuwenden."
+                subtitle: "Fünf kurze Wege, dieselben Ausdrücke aktiv anzuwenden."
             )
             LazyVGrid(
                 columns: [GridItem(.flexible(), spacing: DS.space.sm), GridItem(.flexible())],
@@ -249,6 +252,10 @@ private struct TodayView: View {
                     title: "Hörstudio", icon: "ear.and.waveform",
                     identifier: "listening-lab-start"
                 ) { showingListeningLab = true }
+                activityTile(
+                    title: "Lesen", icon: "book.pages",
+                    identifier: "reading-start"
+                ) { showingReading = true }
                 activityTile(
                     title: "Gespräch", icon: "person.2.wave.2.fill",
                     identifier: "conversation-start"
@@ -408,7 +415,8 @@ private struct TodayView: View {
     /// True while a session is covering Heute. Its numbers can't be seen, and
     /// they'd be recomputed after every answer.
     private var isCovered: Bool {
-        showingPractice || showingSprint || showingListeningLab || showingConversation
+        showingPractice || showingSprint || showingListeningLab
+            || showingConversation || showingReading
     }
 
     private var refreshKey: String {

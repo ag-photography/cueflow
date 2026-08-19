@@ -118,3 +118,58 @@ final class ClozeBuilderTests: XCTestCase {
         XCTAssertEqual(cloze.translation, "Heute Abend bin ich frei.")
     }
 }
+
+@MainActor
+final class LeechHandlingTests: XCTestCase {
+    private func card(lapses: Int, language: Language, state: LearningState = .review) -> StudyCard {
+        let phrase = Phrase(sourceText: "Wort \(lapses)", targetText: "слово \(lapses)", language: language)
+        let card = StudyCard(phrase: phrase)
+        card.lapses = lapses
+        card.state = state
+        return card
+    }
+
+    func testLeechesAreCardsThatKeepSlippingRegardlessOfRecency() {
+        let ru = Language(code: "ru", name: "Русский")
+        let chronic = card(lapses: 9, language: ru)
+        let occasional = card(lapses: 1, language: ru)
+        let borderline = card(lapses: DifficultPractice.leechLapseThreshold, language: ru)
+
+        let leeches = DifficultPractice.leeches(
+            cards: [occasional, chronic, borderline], languageCode: "ru"
+        )
+
+        XCTAssertEqual(leeches.count, 2)
+        XCTAssertTrue(leeches.first === chronic, "Worst offender first")
+    }
+
+    func testLeechesAreScopedToTheActiveLanguage() {
+        let ru = Language(code: "ru", name: "Русский")
+        let ar = Language(code: "ar", name: "العربية")
+        let russian = card(lapses: 8, language: ru)
+        let arabic = card(lapses: 8, language: ar)
+
+        XCTAssertEqual(DifficultPractice.leeches(cards: [russian, arabic], languageCode: "ru").count, 1)
+    }
+
+    func testAQuietLeechStillEntersTheDifficultSession() {
+        let ru = Language(code: "ru", name: "Русский")
+        let quiet = card(lapses: 7, language: ru)
+        quiet.lastReview = .now.addingTimeInterval(-60 * 86_400)
+
+        // No reviews at all in the last seven days, so the window alone would
+        // return nothing.
+        let candidates = DifficultPractice.candidates(
+            cards: [quiet], reviews: [], languageCode: "ru"
+        )
+
+        XCTAssertEqual(candidates.count, 1, "Chronic failures must not be invisible")
+        XCTAssertTrue(candidates.first === quiet)
+    }
+
+    func testCardsBelowTheThresholdAreNotPulledIn() {
+        let ru = Language(code: "ru", name: "Русский")
+        let fine = card(lapses: 2, language: ru)
+        XCTAssertTrue(DifficultPractice.candidates(cards: [fine], reviews: [], languageCode: "ru").isEmpty)
+    }
+}

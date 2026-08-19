@@ -169,18 +169,27 @@ enum ClozeBuilder {
             return stripped == strippedTarget ? 90 : nil
         }
 
-        // Concatenative inflection (Russian cases, verb endings): the stem is
-        // shared and only the tail moves.
-        let shared = commonPrefixLength(targetWord, sentenceWord)
-        let required = max(3, Int((Double(targetWord.count) * 0.6).rounded(.up)))
-        guard shared >= required else { return nil }
-        guard abs(targetWord.count - sentenceWord.count) <= 4 else { return nil }
+        guard isInflection(of: targetWord, sentenceWord) else { return nil }
+        return commonPrefixLength(targetWord, sentenceWord)
+    }
+
+    /// Whether `candidate` looks like an inflected form of `known` under
+    /// concatenative morphology (Russian cases, verb endings): the stem is
+    /// shared and only the tail moves. Both arguments must already be
+    /// `compareKey`-folded.
+    ///
+    /// Shared by the reading selector, which asks the same question in the
+    /// opposite direction — is this sentence word a form of something I know?
+    static func isInflection(of known: String, _ candidate: String) -> Bool {
+        if known == candidate { return true }
+        let shared = commonPrefixLength(known, candidate)
+        let required = max(3, Int((Double(min(known.count, candidate.count)) * 0.6).rounded(.up)))
+        guard shared >= required else { return false }
+        guard abs(known.count - candidate.count) <= 4 else { return false }
         // A short word is often a coincidental prefix of a longer, unrelated one
         // — стол ⊂ столица. An inflection appends an ending, not a new stem, so
         // cap the growth relative to the word's own length.
-        let growth = sentenceWord.count - targetWord.count
-        guard growth <= max(2, targetWord.count / 2) else { return nil }
-        return shared
+        return candidate.count - known.count <= max(2, known.count / 2)
     }
 
     private static func commonPrefixLength(_ a: String, _ b: String) -> Int {

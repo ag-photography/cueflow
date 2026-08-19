@@ -38,7 +38,7 @@ struct ProfileView: View {
                         VStack(spacing: DS.space.lg) {
                             speakingSection
                             capabilitySection
-                            if !learningPatterns.isEmpty { learningPatternSection }
+                            if !learningPatterns.isEmpty || leechCount > 0 { learningPatternSection }
                             miniStatsRow
                             topicProgress
                             weeklyChart
@@ -234,6 +234,34 @@ struct ProfileView: View {
         scenarioFractions[scenario.id] ?? 0
     }
 
+    private var leechCount: Int { dashboard?.leechCount ?? 0 }
+
+    /// Chronic leeches, surfaced rather than suspended. A phrase that has
+    /// lapsed this often usually needs rewording or splitting, not more drilling.
+    @ViewBuilder
+    private var leechNote: some View {
+        if leechCount > 0 {
+            HStack(alignment: .top, spacing: DS.space.sm) {
+                Image(systemName: "arrow.trianglehead.counterclockwise")
+                    .foregroundStyle(DS.gradeHesitant)
+                    .frame(width: 34, height: 34)
+                    .background(DS.gradeHesitant.opacity(0.12))
+                    .clipShape(Circle())
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(leechCount == 1 ? "Ein zäher Ausdruck" : "\(leechCount) zähe Ausdrücke")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(DS.textPrimary)
+                    Text("Diese rutschen immer wieder weg. Formuliere sie um oder teile sie auf — das hilft mehr als weiter zu wiederholen.")
+                        .font(.caption)
+                        .foregroundStyle(DS.textSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(.top, DS.space.sm)
+            .accessibilityElement(children: .combine)
+        }
+    }
+
     private var learningPatternSection: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
             DSSectionHeader(title: "Woran du gerade arbeitest")
@@ -268,6 +296,12 @@ struct ProfileView: View {
                     }
                     .padding(DS.space.md)
                     if index < learningPatterns.count - 1 { Divider().padding(.leading, 58) }
+                }
+                if leechCount > 0 {
+                    if !learningPatterns.isEmpty { Divider().padding(.leading, 58) }
+                    leechNote
+                        .padding(.horizontal, DS.space.md)
+                        .padding(.bottom, DS.space.md)
                 }
             }
             .background(DS.surface1)

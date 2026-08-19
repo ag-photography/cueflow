@@ -19,6 +19,26 @@ enum PracticeScope: Equatable, Sendable {
 }
 
 struct DifficultPractice {
+    /// Lifetime lapses after which an item counts as chronically difficult.
+    /// FSRS keeps re-scheduling a card like this forever without it ever being
+    /// learned, and the seven-day window below never sees it unless it happened
+    /// to come up this week.
+    static let leechLapseThreshold = 5
+
+    /// Cards that keep slipping across their whole history, regardless of
+    /// whether they came up recently.
+    ///
+    /// Deliberately not suspended: practice is never withheld. The point is to
+    /// surface them so the learner can reword the prompt or split the phrase.
+    static func leeches(cards: [StudyCard], languageCode: String) -> [StudyCard] {
+        cards
+            .filter { card in
+                card.phrase?.language?.code == languageCode
+                    && card.lapses >= leechLapseThreshold
+            }
+            .sorted { $0.lapses > $1.lapses }
+    }
+
     static func candidates(
         cards: [StudyCard],
         reviews: [Review],
@@ -41,6 +61,13 @@ struct DifficultPractice {
             guard eligibleIDs.contains(id) else { continue }
             let old = evidence[id]
             evidence[id] = ((old?.errors ?? 0) + 1, max(old?.latest ?? .distantPast, review.timestamp))
+        }
+        // Chronic leeches join the session even when they were quiet this week —
+        // otherwise they cycle indefinitely without ever being addressed.
+        for card in leeches(cards: cards, languageCode: languageCode) {
+            let id = card.contentID
+            guard eligibleIDs.contains(id), evidence[id] == nil else { continue }
+            evidence[id] = (card.lapses, card.lastReview ?? .distantPast)
         }
         guard !evidence.isEmpty else { return [] }
 

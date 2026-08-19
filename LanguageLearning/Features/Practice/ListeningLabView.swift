@@ -5,9 +5,15 @@ struct ListeningLabView: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var phrases: [Phrase]
     @Query private var settings: [AppSettings]
+    private enum LabMode: Hashable { case meaning, dictation }
+
     @State private var challenge: ListeningChallenge?
     @State private var options: [String] = []
     @State private var selected: String?
+    @State private var labMode: LabMode = .meaning
+    @State private var dictation = ""
+    @State private var dictationChecked = false
+    @FocusState private var dictationFocused: Bool
     @State private var completed = 0
     @State private var isShadowing = false
     @State private var hasShadowed = false
@@ -31,10 +37,24 @@ struct ListeningLabView: View {
         NavigationStack {
             VStack(spacing: DS.space.lg) {
                 progressHeader
+                if !isShadowing {
+                    Picker("Übung", selection: $labMode) {
+                        Text("Bedeutung").tag(LabMode.meaning)
+                        Text("Diktat").tag(LabMode.dictation)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: labMode) { _, _ in
+                        selected = nil
+                        dictation = ""
+                        dictationChecked = false
+                    }
+                }
                 Spacer(minLength: DS.space.sm)
                 if let challenge {
                     if isShadowing {
                         shadowingCard(challenge)
+                    } else if labMode == .dictation {
+                        dictationCard(challenge)
                     } else {
                         listeningCard(challenge)
                     }
@@ -137,6 +157,94 @@ struct ListeningLabView: View {
         .onAppear { play(challenge, slow: false) }
     }
 
+    /// Transcription rather than recognition. Picking from four options can be
+    /// done on partial phonological information; writing what you heard forces
+    /// the full parse, which is the actual bottleneck for understanding speech.
+    ///
+    /// Unscored, like the rest of the studio: no review is recorded and nothing
+    /// here feeds the scheduler.
+    private func dictationCard(_ challenge: ListeningChallenge) -> some View {
+        VStack(spacing: DS.space.lg) {
+            Button { play(challenge, slow: false) } label: {
+                Image(systemName: "speaker.wave.3.fill")
+                    .font(.system(size: 38, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 88, height: 88)
+                    .background(DS.accent)
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Ausdruck noch einmal anhören")
+
+            Button {
+                play(challenge, slow: true)
+            } label: {
+                Label("Langsam", systemImage: "tortoise")
+                    .font(.subheadline.weight(.medium))
+            }
+            .buttonStyle(.bordered)
+            .tint(DS.accent)
+
+            if dictationChecked {
+                VStack(spacing: DS.space.sm) {
+                    Text(challenge.spokenText)
+                        .font(LearningTypography.display(.title3, weight: .semibold, languageCode: languageCode))
+                        .foregroundStyle(DS.textPrimary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    DiffView(expected: challenge.spokenText, actual: dictation)
+                    Text(dictationMatches
+                         ? "Genau so. Dein Ohr hat den ganzen Satz erfasst."
+                         : "Vergleiche in Ruhe — hier geht es ums Hören, nicht um eine Note.")
+                        .font(.caption)
+                        .foregroundStyle(DS.textSecondary)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Button("Jetzt nachsprechen") { isShadowing = true }
+                        .buttonStyle(.borderedProminent)
+                        .tint(DS.accent)
+                }
+                .padding(DS.space.md)
+                .frame(maxWidth: .infinity)
+                .background(DS.surface1)
+                .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
+            } else {
+                TextField("Gehörtes tippen…", text: $dictation)
+                    .font(.title3)
+                    .textFieldStyle(.plain)
+                    .multilineTextAlignment(pack.isRTL ? .trailing : .leading)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+                    .focused($dictationFocused)
+                    .submitLabel(.done)
+                    .onSubmit(checkDictation)
+                    .padding(.horizontal, DS.space.lg)
+                    .padding(.vertical, 16)
+                    .background(DS.surface1)
+                    .clipShape(Capsule())
+                Button("Prüfen", action: checkDictation)
+                    .buttonStyle(.borderedProminent)
+                    .tint(DS.accent)
+                    .disabled(dictation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+            }
+        }
+        .onAppear {
+            play(challenge, slow: false)
+            dictationFocused = true
+        }
+    }
+
+    private var dictationMatches: Bool {
+        guard let challenge else { return false }
+        return FuzzyMatcher.normalize(dictation) == FuzzyMatcher.normalize(challenge.spokenText)
+    }
+
+    private func checkDictation() {
+        guard !dictation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        dictationFocused = false
+        dictationChecked = true
+        if dictationMatches { CompletionFeedbackService.shared.playStepSuccess() }
+    }
+
     private func shadowingCard(_ challenge: ListeningChallenge) -> some View {
         VStack(spacing: DS.space.lg) {
             Text("Sprich Rhythmus und Melodie nach")
@@ -231,6 +339,8 @@ struct ListeningLabView: View {
         selected = nil
         isShadowing = false
         hasShadowed = false
+        dictation = ""
+        dictationChecked = false
         let pool = eligible
         guard pool.count >= 3 else {
             challenge = nil
