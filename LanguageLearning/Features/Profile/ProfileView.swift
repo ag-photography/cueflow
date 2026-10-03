@@ -40,11 +40,9 @@ struct ProfileView: View {
                 if dashboard != nil {
                     ScrollView {
                         VStack(spacing: DS.space.lg) {
-                            Button { showingStories = true } label: {
-                                Label("Meine Geschichten & spätere Abrufe", systemImage: "books.vertical.fill")
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .dsCard(elevation: 1, padding: DS.space.md)
-                            }.buttonStyle(.plain).foregroundStyle(DS.accent)
+                            if let data = try? settings.first?.readExperience() {
+                                StoryPassportLink(passport: .init(language: activeLanguageCode, experience: data)) { showingStories = true }
+                            }
                             retentionEvidenceSection
                             speakingSection
                             capabilitySection

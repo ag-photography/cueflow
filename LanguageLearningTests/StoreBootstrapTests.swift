@@ -1,8 +1,13 @@
 import Foundation
+import SwiftData
 import Testing
 @testable import LanguageLearning
 
 struct StoreBootstrapTests {
+    @Test func allStorageModesUseTheJournalCapableSchema() {
+        #expect(StoreBootstrap.currentSchema.entities.contains { $0.name == "LearningJournalRecord" })
+        #expect(StoreBootstrap.currentSchema.entities.count == Schema(versionedSchema: SchemaV3.self).entities.count)
+    }
     private enum TestError: Error { case persistent, fallback }
 
     @Test func persistentStoreSuccessDoesNotCreateFallback() throws {

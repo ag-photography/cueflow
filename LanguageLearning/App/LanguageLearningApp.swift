@@ -5,6 +5,21 @@ import SwiftData
 struct LanguageLearningApp: App {
     @StateObject private var startup: AppStartupCoordinator
 
+    /// Deterministic screenshot appearance for the isolated debug UI harness.
+    /// Ordinary launches and release builds always follow the system setting.
+    private var testColorScheme: ColorScheme? {
+        #if DEBUG
+        guard ProcessInfo.processInfo.environment["CUEFLOW_FORCE_STORE_RECOVERY"] == "1" else { return nil }
+        switch ProcessInfo.processInfo.environment["CUEFLOW_TEST_APPEARANCE"] {
+        case "Dark": return .dark
+        case "Light": return .light
+        default: return nil
+        }
+        #else
+        return nil
+        #endif
+    }
+
     init() {
         MetricsDiagnosticsService.shared.start()
         #if DEBUG
@@ -41,6 +56,7 @@ struct LanguageLearningApp: App {
                 // selection indicators and active-topic badges inherit it
                 // without each view setting `.tint` manually.
                 .tint(DS.accent)
+                .preferredColorScheme(testColorScheme)
                 .task { NotificationService.shared.installRouting(); await startup.start() }
         }
     }

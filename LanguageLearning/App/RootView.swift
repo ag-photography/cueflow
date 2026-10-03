@@ -165,6 +165,7 @@ private struct TodayView: View {
     @State private var previewPlan: PracticePlan?
     @State private var previewRemaining = 0
     @State private var episodePreviewIDs: [String: UUID] = [:]
+    @State private var showingDailyDetails = false
     @State private var activitySaveError: String?
     @State private var tutorDailyDemand: Int?
     @State private var isReturning = false
@@ -202,15 +203,22 @@ private struct TodayView: View {
                         if let episode = suggestedEpisode { episodeCard(episode) }
                     } else {
                         if let episode = suggestedEpisode { episodeCard(episode) }
-                        recommendedSession
+                        if suggestedEpisode == nil || isReturning { recommendedSession }
+                        else { revisionShortcut }
                     }
-                    if snapshot.difficultCount > 0 { difficultPracticeCard }
-                    dailyQuestCard
+                    if let experience {
+                        StoryPassportLink(passport: .init(language: activeLanguageCode, experience: experience)) { showingEpisodes = true }
+                    }
                     exploreCard
-                    if snapshot.fastestRecall != nil || snapshot.recentImprovement != nil {
-                        achievementCard
+                    DisclosureGroup("Deine Ziele & Lernmomente", isExpanded: $showingDailyDetails) {
+                        VStack(spacing: DS.space.md) {
+                            if snapshot.difficultCount > 0 { difficultPracticeCard }
+                            dailyQuestCard
+                            if snapshot.fastestRecall != nil || snapshot.recentImprovement != nil { achievementCard }
+                            missionCard
+                        }.padding(.top, DS.space.md)
                     }
-                    missionCard
+                    .tint(DS.accentText)
                 }
                 .padding(.horizontal, DS.space.md)
                 .padding(.top, DS.space.sm)
@@ -301,9 +309,14 @@ private struct TodayView: View {
         let resuming = data.runs.contains { $0.episodeID == episode.id && $0.isOpen }
         let checking = data.isCheckDue(episode)
         return VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? DS.space.xs : DS.space.md) {
+            if verticalSizeClass != .compact {
+                StoryArtwork(episode: episode)
+                    .aspectRatio(320.0 / 150.0, contentMode: .fit)
+                    .frame(maxHeight: 150)
+            }
             HStack {
-                Label(checking ? "Was ist hängen geblieben?" : "DEINE MINI-GESCHICHTE", systemImage: episode.symbol)
-                    .font(.caption.weight(.bold)).foregroundStyle(DS.accent)
+                Label(checking ? "Was ist hängen geblieben?" : "DEIN KLEINES ABENTEUER", systemImage: episode.symbol)
+                    .font(.caption.weight(.bold)).foregroundStyle(DS.accentText)
                 Spacer()
                 Text("Vorschau").font(.caption2).foregroundStyle(DS.textSecondary)
             }
@@ -311,7 +324,7 @@ private struct TodayView: View {
             if verticalSizeClass != .compact {
                 Text(episode.outcome).font(.subheadline).foregroundStyle(DS.textSecondary)
             }
-            Text(checking ? "3 kurze Antworten · ohne Vorlage" : "2 Ausdrücke · 5 Schritte · etwa 2 Minuten")
+            Text(checking ? "3 kurze Antworten · ohne Vorlage" : "\(episode.uniqueExpressions) Ausdrücke · \(episode.steps.count) Schritte · etwa 2 Minuten")
                 .font(.caption).foregroundStyle(DS.textSecondary)
             Button { selectedEpisode = episode } label: {
                 Label(resuming ? "Geschichte fortsetzen" : checking ? "Kurz erinnern" : "Geschichte starten", systemImage: "play.fill")
@@ -321,10 +334,43 @@ private struct TodayView: View {
                 Text("\(data.learningDays(language: activeLanguageCode))/\(data.preference(for: activeLanguageCode).weeklyDays) Lerntage diese Woche")
                     .font(.caption).foregroundStyle(DS.textSecondary)
                 Spacer()
-                Button("Alle Geschichten") { showingEpisodes = true }.font(.caption.weight(.semibold))
+                Button { showingEpisodes = true } label: {
+                    Text("Alle Geschichten").font(.caption.weight(.semibold))
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                }.buttonStyle(.plain).foregroundStyle(DS.accentText)
             } }
-        }.dsCard(elevation: 2, padding: verticalSizeClass == .compact ? DS.space.sm : DS.space.lg)
+        }.dsCard(elevation: 2, padding: verticalSizeClass == .compact ? DS.space.sm : DS.space.md)
             .onAppear { recordEpisodePreview(episode) }
+    }
+
+    private var revisionShortcut: some View {
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            Button {
+                practiceScope = .recommended
+                showingPractice = true
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.triangle.2.circlepath")
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("Lieber kurz wiederholen?").font(.subheadline.weight(.semibold))
+                        Text("\(previewPlan != nil ? previewRemaining : sessionTarget) Ausdrücke · eine kleine Runde")
+                            .font(.caption).foregroundStyle(DS.textSecondary)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "arrow.right")
+                }.frame(minHeight: 48)
+            }.buttonStyle(.plain).foregroundStyle(DS.accentText)
+                .accessibilityIdentifier("recommended-session-start")
+            Menu {
+                sessionChoice("Schnellrunde", target: 5)
+                sessionChoice("Tägliche Einheit", target: 10)
+                sessionChoice("Intensiv üben", target: 20)
+            } label: { Label(sessionLabel, systemImage: "slider.horizontal.3").font(.caption).padding(.vertical, 8) }
+            if let pacing = snapshot.pacing, pacing.remainingNewCount > 0 {
+                Text("Tutor-Fokus: \(tutorDailyDemand ?? pacing.dailyNewTarget) neue Ausdrücke je Lerntag. Termine und Umfang findest du in der Bibliothek.")
+                    .font(.caption).foregroundStyle(DS.textSecondary)
+            }
+        }.padding(.horizontal, DS.space.sm)
     }
 
     private func recordEpisodePreview(_ episode: LearningEpisode) {
@@ -567,7 +613,7 @@ private struct TodayView: View {
     private var greeting: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(greetingText)
-                .font(.system(verticalSizeClass == .compact ? .title2 : .largeTitle, design: .serif, weight: .bold))
+                .font(.system(.title2, design: .rounded, weight: .bold))
                 .foregroundStyle(DS.textPrimary)
             if verticalSizeClass != .compact {
                 Text(snapshot.reviewsToday == 0

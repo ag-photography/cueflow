@@ -12,30 +12,40 @@ struct EpisodeCollectionView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.space.md) {
-                    Text("Kleine Geschichten, echte Formulierungen") .font(.title2.bold())
-                    Text("Wähle eine Szene, die zu deinem Unterricht oder Alltag passt. Die Vorschau ist noch nicht muttersprachlich geprüft; Arabisch verwendet Hocharabisch.")
+                    Text("Eine kleine Welt. Deine Geschichten.").font(.system(.title2, design: .rounded, weight: .bold))
+                    Text("Jede abgeschlossene Szene wird zu einer Postkarte. Alle Szenen sind frei wählbar – auch mit Hilfe sammelst du Erinnerungen.")
                         .font(.subheadline).foregroundStyle(DS.textSecondary)
                     if let data = experience {
+                        let passport = StoryPassport(language: language, experience: data)
+                        VStack(alignment: .leading, spacing: DS.space.sm) {
+                            Text("\(passport.collectedCount) von \(passport.episodes.count) Postkarten").font(.headline)
+                            ProgressView(value: Double(passport.collectedCount), total: Double(max(1, passport.episodes.count))).tint(DS.accent)
+                            Text("\(passport.recalledCount) ohne Hilfe · \(passport.rememberedCount) nach mindestens 7 Tagen abgerufen")
+                                .font(.caption).foregroundStyle(DS.textSecondary)
+                        }.dsCard().accessibilityIdentifier("passport-progress")
                         ForEach(EpisodeLibrary.all.filter { $0.language == language }) { episode in
+                            let stamp = passport.stamp(for: episode)
                             Button { selection = episode } label: {
-                                HStack(alignment: .top, spacing: DS.space.md) {
-                                    Image(systemName: episode.symbol).font(.title2).foregroundStyle(DS.accent).frame(width: 36)
+                                VStack(alignment: .leading, spacing: DS.space.md) {
+                                    StoryArtwork(episode: episode, celebrating: stamp.collected)
+                                        .aspectRatio(320.0 / 150.0, contentMode: .fit).frame(maxHeight: 140)
                                     VStack(alignment: .leading, spacing: 6) {
                                         Text(episode.title).font(.headline).foregroundStyle(DS.textPrimary)
                                         Text(episode.outcome).font(.subheadline).foregroundStyle(DS.textSecondary)
-                                        Text(status(episode, data: data)).font(.caption).foregroundStyle(DS.accent)
+                                        Text(status(episode, data: data)).font(.caption).foregroundStyle(DS.accentText)
                                     }
-                                    Spacer(minLength: 0)
-                                    Image(systemName: "chevron.right").foregroundStyle(DS.textSecondary)
+                                    StoryStampRow(stamp: stamp)
                                 }.frame(maxWidth: .infinity, alignment: .leading)
                                     .dsCard(elevation: 1, padding: DS.space.md)
                             }.buttonStyle(.plain).accessibilityIdentifier("episode-\(episode.id)")
                         }
                     } else { Text("Der Lernverlauf konnte nicht gelesen werden. Deine Daten werden nicht überschrieben.") }
+                    Text("Entdeckt heißt abgeschlossen, nicht beherrscht. Abruf-Marken beziehen sich auf alle Kursantworten einer Runde, nicht auf freies Sprechen. Inhalte sind noch nicht muttersprachlich geprüft; Arabisch verwendet Hocharabisch.")
+                        .font(.footnote).foregroundStyle(DS.textSecondary)
                 }.padding(DS.space.md).frame(maxWidth: DS.mainContentWidth).frame(maxWidth: .infinity)
             }
             .background(DS.pageBackground.ignoresSafeArea())
-            .navigationTitle("Geschichten").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Geschichtenpass").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fertig") { dismiss() } } }
             .fullScreenCover(item: $selection) { EpisodeView(episode: $0) }
         }

@@ -263,11 +263,9 @@ struct LibraryView: View {
             LazyVStack(alignment: .leading, spacing: DS.space.lg) {
                 tutorFocusCard
 
-                Button { showingStories = true } label: {
-                    Label("Mini-Geschichten · im Alltag anwenden", systemImage: "bubble.left.and.bubble.right.fill")
-                        .font(.headline).frame(maxWidth: .infinity, alignment: .leading)
-                        .dsCard(elevation: 1, padding: DS.space.md)
-                }.buttonStyle(.plain).foregroundStyle(DS.accent)
+                if let data = try? settings.first?.readExperience() {
+                    StoryPassportLink(passport: .init(language: activeLanguageCode, experience: data)) { showingStories = true }
+                }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Was willst du als Nächstes können?")

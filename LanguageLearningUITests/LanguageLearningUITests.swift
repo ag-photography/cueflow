@@ -1,6 +1,23 @@
 import XCTest
 
 final class LanguageLearningUITests: XCTestCase {
+    func testIllustratedTodayAndPassportInBothAppearances() {
+        for appearance in ["Light", "Dark"] {
+            let app = launch(appearance: appearance)
+            XCTAssertTrue(app.buttons["episode-start"].waitForExistence(timeout: 15))
+            XCTAssertTrue(app.buttons["episode-start"].isHittable)
+            let home = XCTAttachment(screenshot: app.screenshot())
+            home.name = "Illustrated Today — \(appearance)"; home.lifetime = .keepAlways; add(home)
+            let collection = app.buttons["Alle Geschichten"]
+            collection.tap()
+            XCTAssertTrue(app.navigationBars["Geschichtenpass"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["0 von 6 Postkarten"].exists)
+            let passport = XCTAttachment(screenshot: app.screenshot())
+            passport.name = "Story passport — \(appearance)"; passport.lifetime = .keepAlways; add(passport)
+            app.buttons["Fertig"].tap()
+            app.terminate()
+        }
+    }
     func testOptionalCalibrationStartsWithoutShowingAModel() {
         let app = launch()
         XCTAssertTrue(app.buttons["today-settings"].waitForExistence(timeout: 8))
@@ -22,6 +39,7 @@ final class LanguageLearningUITests: XCTestCase {
         let collection = app.buttons["Alle Geschichten"]
         XCTAssertTrue(collection.waitForExistence(timeout: 15))
         collection.tap()
+        XCTAssertTrue(app.navigationBars["Geschichtenpass"].waitForExistence(timeout: 5))
         let episode = app.buttons["episode-ru-seasons-1"]
         XCTAssertTrue(episode.waitForExistence(timeout: 5))
         episode.tap()
@@ -69,12 +87,16 @@ final class LanguageLearningUITests: XCTestCase {
         }
         let finish = app.buttons["episode-finish"]
         XCTAssertTrue(finish.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Eine neue Postkarte für dich"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "Story completion — quiet, supported answers"
         screenshot.lifetime = .keepAlways
         add(screenshot)
         finish.tap()
         XCTAssertTrue(start.waitForExistence(timeout: 5))
+        app.buttons["Alle Geschichten"].tap()
+        XCTAssertTrue(app.staticTexts["1 von 6 Postkarten"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["0 ohne Hilfe · 0 nach mindestens 7 Tagen abgerufen"].exists)
     }
 
     func testArabicStorySupportsLargeText() {
@@ -97,7 +119,8 @@ final class LanguageLearningUITests: XCTestCase {
 
     private func launch(
         language: String = "ru",
-        contentSize: String? = nil
+        contentSize: String? = nil,
+        appearance: String? = nil
     ) -> XCUIApplication {
         let app = XCUIApplication()
         app.launchEnvironment["CUEFLOW_FORCE_STORE_RECOVERY"] = "1"
@@ -106,7 +129,12 @@ final class LanguageLearningUITests: XCTestCase {
         if let contentSize {
             app.launchArguments += ["-UIPreferredContentSizeCategoryName", contentSize]
         }
+        if let appearance { app.launchEnvironment["CUEFLOW_TEST_APPEARANCE"] = appearance }
         app.launch()
+        // Each launch intentionally builds a new complete in-memory library.
+        // Keep this fixture-readiness allowance separate from the 3-second
+        // tab-transition assertions below; it is not a cold-launch benchmark.
+        XCTAssertTrue(app.tabBars.buttons["Heute"].waitForExistence(timeout: 45), "Fresh test library did not become ready")
         return app
     }
 

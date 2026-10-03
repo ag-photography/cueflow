@@ -12,6 +12,7 @@ struct EpisodeView: View {
     @Environment(\.modelContext) private var context
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.verticalSizeClass) private var verticalSizeClass
     @Query private var settings: [AppSettings]
     @StateObject private var speech = SpeechRecognitionService()
     @State private var run: EpisodeRun?
@@ -94,24 +95,33 @@ struct EpisodeView: View {
     private func scene(_ run: EpisodeRun) -> some View {
         VStack(alignment: .leading, spacing: DS.space.md) {
             HStack {
+                StoryCompanion(language: episode.language, celebrating: result?.correct == true || run.completedAt != nil)
                 Label(episode.language == "ar" ? "Mit Lina · Hocharabisch" : "Mit Sascha · Russisch", systemImage: "person.crop.circle.fill")
+                    .labelStyle(.titleOnly)
                 Spacer()
                 Text("\(min(run.stepIndex + 1, episode.steps.count))/\(episode.steps.count)").monospacedDigit()
             }.font(.caption).foregroundStyle(DS.textSecondary)
-            HStack(spacing: DS.space.lg) {
-                Image(systemName: run.completedAt == nil ? episode.symbol : "checkmark.seal.fill")
-                    .font(.system(size: 45)).foregroundStyle(DS.accent)
-                    .frame(width: 90, height: 90)
-                    .background(DS.accentSoft, in: RoundedRectangle(cornerRadius: DS.radius.lg))
-                    .accessibilityHidden(true)
+            if verticalSizeClass != .compact && (run.stepIndex == 0 || run.completedAt != nil) {
+                StoryArtwork(episode: episode, celebrating: run.completedAt != nil)
+                    .aspectRatio(320.0 / 150.0, contentMode: .fit).frame(maxHeight: 125)
+            }
+            HStack(spacing: DS.space.md) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text(episode.title).font(.title2.bold())
-                    Text(run.completedAt == nil ? episode.hook : "Ihr habt die Szene zusammen abgeschlossen.")
+                    Text(episode.title).font(.system(.title3, design: .rounded, weight: .bold))
+                    Text(run.completedAt != nil ? "Ihr habt die Szene zusammen abgeschlossen." : run.stepIndex < 2 ? episode.hook : "\(episode.language == "ar" ? "Lina" : "Sascha") hört zu. Du kannst es ausprobieren – Hilfe ist jederzeit da.")
                         .font(.subheadline).foregroundStyle(DS.textSecondary)
                 }
             }
-            ProgressView(value: Double(run.stepIndex), total: Double(episode.steps.count)).tint(DS.accent)
-                .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: run.stepIndex)
+            HStack(spacing: 6) {
+                ForEach(episode.steps.indices, id: \.self) { index in
+                    Capsule().fill(index < run.stepIndex ? DS.accent : DS.accentSoft)
+                        .frame(height: 7)
+                        .overlay { if index == run.stepIndex { Capsule().strokeBorder(DS.accentText, lineWidth: 1.5) } }
+                }
+            }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("\(run.stepIndex) von \(episode.steps.count) Schritten abgeschlossen")
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: run.stepIndex)
         }.padding(DS.space.md).background(DS.surface1, in: RoundedRectangle(cornerRadius: DS.radius.lg))
     }
 
@@ -136,7 +146,10 @@ struct EpisodeView: View {
                         .foregroundStyle(result.correct ? DS.gradePerfect : DS.textSecondary)
                     target(step.answer)
                     Text(episode.consequence(for: step, correct: result.correct))
-                        .font(.subheadline)
+                        .font(.subheadline.weight(.medium))
+                        .padding(DS.space.md).frame(maxWidth: .infinity, alignment: .leading)
+                        .background(StoryPalette(episode).paper, in: RoundedRectangle(cornerRadius: DS.radius.md))
+                        .foregroundStyle(StoryPalette(episode).ink)
                     Text(result.supported ? "Mit Unterstützung geübt. Das zählt als Übung, nicht als freier Abruf." : "Dein erster Versuch wurde gespeichert.")
                         .font(.footnote).foregroundStyle(DS.textSecondary)
                     nextButton("Weiter")
@@ -188,17 +201,29 @@ struct EpisodeView: View {
             .padding().background(DS.surface1, in: RoundedRectangle(cornerRadius: DS.radius.md))
     }
     private func nextButton(_ title: String) -> some View {
-        Button(title) { advance() }.buttonStyle(.borderedProminent).tint(DS.accent)
+        Button { advance() } label: { Text(title).frame(maxWidth: .infinity).padding(.vertical, 8) }
+            .buttonStyle(.borderedProminent).tint(DS.accent)
             .accessibilityIdentifier("episode-next")
     }
     private func completion(_ run: EpisodeRun) -> some View {
-        VStack(alignment: .leading, spacing: DS.space.md) {
+        let data = (try? settings.first?.readExperience()) ?? .init()
+        let stamp = StoryPassport(language: episode.language, experience: data).stamp(for: episode)
+        var previous = data
+        previous.runs.removeAll { $0.id == run.id }
+        let oldStamp = StoryPassport(language: episode.language, experience: previous).stamp(for: episode)
+        let reward = run.calibration == true ? "Dein Startpunkt ist gefunden" : !oldStamp.collected ? "Eine neue Postkarte für dich" : !oldStamp.remembered && stamp.remembered ? "Deine 7-Tage-Marke ist da" : !oldStamp.recalled && stamp.recalled ? "Jetzt auch ohne Hilfe abgerufen" : "Schön, wieder hier zu sein"
+        return VStack(alignment: .leading, spacing: DS.space.md) {
             Text(run.calibration == true ? "Startcheck geschafft" : "Geschichte geschafft").font(.title.bold())
-            Text(episode.outcome)
+            Label(reward, systemImage: "checkmark.seal.fill")
+                .font(.headline).foregroundStyle(DS.accentText).accessibilityIdentifier("episode-reward")
+            if run.calibration != true {
+                StoryStampRow(stamp: stamp)
+                Text("Deine Postkarte feiert die abgeschlossene Szene, nicht Sprachbeherrschung.")
+                    .font(.caption).foregroundStyle(DS.textSecondary)
+            }
             Text("\(run.independentCount) von \(run.attempts.count) Antworten ohne eingeblendete Hilfe getroffen.")
-            Text(run.isDelayedCheck ? "Das war eine zeitversetzte Wiederholung, kein Nachweis für freies Sprechen. In einer Woche kannst du erneut prüfen." : "Ab morgen kannst du ohne Vorlage erneut prüfen, was hängen geblieben ist. Diese Vorschau vergleicht deine Antwort mit Kursformulierungen; andere richtige Antworten sind möglich.")
-                .font(.footnote).foregroundStyle(DS.textSecondary)
-            Button("Fertig") { dismiss() }.buttonStyle(.borderedProminent).tint(DS.accent)
+            Button { dismiss() } label: { Text("Fertig").frame(maxWidth: .infinity).padding(.vertical, 8) }
+                .buttonStyle(.borderedProminent).tint(DS.accent)
                 .accessibilityIdentifier("episode-finish")
             if let next = EpisodeLibrary.all.first(where: { $0.language == episode.language && $0.id != episode.id &&
                 !((try? settings.first?.readExperience().completed(in: episode.language)) ?? []).contains($0.id) }) {
@@ -207,6 +232,10 @@ struct EpisodeView: View {
                 }.buttonStyle(.bordered).accessibilityIdentifier("episode-optional-next")
                 Text("Eine neue Runde, nur wenn du möchtest. Für heute bist du fertig.").font(.caption).foregroundStyle(DS.textSecondary)
             }
+            DisclosureGroup("Was zeigen die Abruf-Marken?") {
+                Text("Abgerufen heißt: alle Kursantworten einer Runde ohne eingeblendete Hilfe getroffen. Die 7-Tage-Marke benötigt zusätzlich eine spätere Prüfung nach mindestens sieben Tagen ohne erfasste erneute Begegnung. Das ist kein Nachweis für freies Sprechen. Andere richtige Formulierungen sind möglich. Eine neue Prüfung erscheint, wenn der Abstand zu deiner letzten Übung passt.")
+                    .font(.footnote).foregroundStyle(DS.textSecondary).padding(.top, DS.space.sm)
+            }.font(.subheadline).tint(DS.accentText)
         }
     }
     private func load() {

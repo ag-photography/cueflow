@@ -17,6 +17,8 @@ struct StoreBootstrapResult {
 }
 
 enum StoreBootstrap {
+    /// Every storage mode must expose the same model set, including journals.
+    static var currentSchema: Schema { Schema(versionedSchema: SchemaV3.self) }
     struct Resolution<Value> {
         let value: Value
         let persistentError: Error?
@@ -41,7 +43,7 @@ enum StoreBootstrap {
     }
 
     static func make(forceRecovery: Bool = false) throws -> StoreBootstrapResult {
-        let schema = Schema(versionedSchema: SchemaV3.self)
+        let schema = currentSchema
         if forceRecovery {
             let configuration = ModelConfiguration(
                 "LanguageLearningRecovery",
@@ -111,7 +113,7 @@ enum StoreBootstrap {
     }
 
     private static func makeCloudContainer() throws -> StoreBootstrapResult {
-        let schema = Schema(versionedSchema: SchemaV2.self)
+        let schema = currentSchema
         let configuration = ModelConfiguration(
             "LanguageLearning",
             schema: schema,

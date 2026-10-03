@@ -26,6 +26,8 @@ enum DS {
     /// muted shade so primary buttons read as confident, not tentative.
     static let accent = Color(red: 0.08, green: 0.42, blue: 0.52)
     static let accentSoft = Color(red: 0.08, green: 0.42, blue: 0.52).opacity(0.12)
+    /// Readable brand text on neutral dark surfaces; button fill stays deep teal.
+    static let accentText = Color(light: accent, dark: Color(red: 0.43, green: 0.79, blue: 0.87))
 
     /// Fixed warm cream that does NOT flip in dark mode — for content layered
     /// directly on the brand teal (e.g. the onboarding badge lettering), where

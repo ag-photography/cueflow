@@ -4,7 +4,7 @@ This file separates work the repository can verify from work that requires a phy
 
 ## October story-preview gate
 
-The new episode loop is a development preview. See [implementation status and limitations](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#16-build-55-roadmap-implementation). Earlier checked gates below describe prior builds and must not be read as fresh certification of these new features. Before public rollout, review RU/AR content, microphone/audio behavior, migration on physical stores, and simultaneous-device journal edits. Build 55 adds independent immutable journal fragments and merge tests; this removes the single-field overwrite design for run history, but does not certify real CloudKit concurrency or simultaneous scheduling of the same card.
+The new episode loop is a development preview. See [connected-learning status and limitations](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#16-build-55-roadmap-implementation) and the [Build 56 visual gamification contract](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#18-build-56--illustrated-story-loop-and-evidence-safe-gamification). Earlier checked gates below describe prior builds and must not be read as fresh certification of these new features. Before public rollout, review RU/AR content, microphone/audio behavior, migration on physical stores, and simultaneous-device journal edits. Build 55 adds independent immutable journal fragments and merge tests; this removes the single-field overwrite design for run history, but does not certify real CloudKit concurrency or simultaneous scheduling of the same card.
 
 Local episode events record IDs and timestamps, not answers or recordings. The app keeps raw events for 90 days (pruned on the next event write/merge), offers deletion and explicit aggregate export, and sends none to an analytics server. Include this local-learning-journal behavior in the final privacy text.
 
@@ -28,6 +28,18 @@ RESULT_BUNDLE=/tmp/cueflow-build55-repeat.xcresult \
 The diagnostics override disables verbose simulator-system collection, which stalled result packaging in an earlier run; test logs, screenshots and coverage remain available. The script defaults to serial tests and normal on-failure diagnostics otherwise. The final run includes canonical phrase reuse, once-per-run FSRS scheduling, supported follow-up, bounded/resumable plans, private attempt checkpoints, V2-to-V3 disk migration, independent fragment merge/reset, retained learning days after analytics deletion, tutor weekdays/deadlines, conservative exposure, timing comparability, branch validation, and optional calibration UI coverage.
 
 Arabic story layout at the largest accessibility text size and quiet supported completion were visually inspected from the preceding isolated passing run; the final changes were nonvisual reminder-cancellation and day-ledger safeguards. Simulator checks do not certify physical audio, VoiceOver, large-store performance, real CloudKit concurrency, native content quality, or improved learner retention. No push or TestFlight upload was performed for Build 55.
+
+### Build 56 final verification — 3 October 2026
+
+Complete quality gate passed with exit 0: **66 XCTest unit tests + 146 Swift Testing tests + 17 UI tests = 229 checks**, zero failures, **52.07% app-target line coverage**. Environment: iPhone 17 simulator / iOS 26.5 runtime / Xcode 27. Result bundle: `/tmp/cueflow-build56-releasecheck.xcresult`. Repeat with a fresh result path using the Build 55 command above.
+
+New coverage includes cosmetic reward deduplication, supported versus unaided answers, known seven-day intervals, calibration exclusion, content-version/language isolation, backup reconstruction, and the shared journal-capable schema for all storage modes. UI verification includes the illustrated hero/passport in genuine light and dark appearances, supported completion incrementing the collection without earning recall markers, typed Russian, Arabic at the largest accessibility size, landscape, resume, and the existing tutor/navigation journeys.
+
+Final light/dark screenshots, the collection, supported completion and Arabic large-text layout were exported and reviewed across the verification runs. Final attachments are under `/tmp/cueflow-build56-final-visuals/`; these are temporary local artifacts. The recovery banner in screenshots is intentional: UI tests use a fresh in-memory store, not a user's real learning history.
+
+Verification found and fixed a 14-point collection-link target (now 44 points), an ineffective appearance launch argument (now an isolated DEBUG-only harness override), and the CloudKit factory's stale V2 schema selection (now shared V3). One intermediate run had startup-readiness failures under host load and another caught the missed collection tap. The final harness waits explicitly up to 45 seconds for fresh-library preparation; tab-transition assertions still use their original three-second limit. This is not a physical-device cold-launch performance benchmark.
+
+Calculated brand text/card contrast is approximately 5.91:1 in light mode and 7.70:1 in dark mode; white on the primary teal button is 6.04:1. These specific token checks are not a whole-app accessibility certification. Physical VoiceOver/audio/Reduce Motion testing, real CloudKit migration/concurrency, native content review and prospective learner validation remain required. No claim of improved retention or addictiveness is established by the UI tests. Build 56 has not been pushed or uploaded to TestFlight.
 
 ## App Store positioning
 

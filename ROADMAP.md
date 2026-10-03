@@ -4,7 +4,9 @@ The [October learning experience specification](LEARNING_EXPERIENCE_IMPLEMENTATI
 
 **Updated:** 3 October 2026
 
-**Current train:** 1.0, build 55 development preview (not uploaded)
+**Current train:** 1.0, build 56 development preview (not uploaded)
+
+Build 56 adds an illustrated Today → story → completion loop, a shared story passport, distinct participation/unaided/delayed-recall markers, scene palettes and a quieter home hierarchy. Research rationale, reward rules and evaluation boundaries are documented in [the visual gamification contract](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#18-build-56--illustrated-story-loop-and-evidence-safe-gamification). Engagement improvements remain hypotheses to test with learners.
 
 Build 55 connects stories to canonical vocabulary/FSRS, persists bounded card plans and unconfirmed attempts, adds independent journal records, optional calibration, selected study days, tutor shortfalls, evidence-led Progress, permanent earned badges, contextual reminders, and an opt-in local comparison. See the [current acceptance ledger](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#16-build-55-roadmap-implementation) for exact boundaries; this is not a claim that every research/release criterion is complete.
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.

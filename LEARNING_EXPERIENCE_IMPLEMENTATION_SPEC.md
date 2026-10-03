@@ -474,3 +474,40 @@ Before enrolling learners, freeze the content version, acceptance rules, cohort 
 5. Ask participants separately whether CueFlow displaced Instagram and whether that was welcome. App-open counts alone cannot establish substitution or wellbeing. No cross-app surveillance is required.
 6. Inspect supported-answer use, recognition failures, early exits and opt-outs as possible friction or harm signals. A higher session count with worse delayed recall is not success.
 7. Publish a keep/revise/stop decision with content/policy versions, exclusions, missingness and limits. If the sample is too small, report descriptive results rather than inventing a significant result or causal claim.
+
+## 18. Build 56 — illustrated story loop and evidence-safe gamification
+
+### Research and design rationale (3 October 2026)
+
+The objective is willing return plus useful language learning, not compulsive time spent. [Sailer & Homner's meta-analysis](https://doi.org/10.1007/s10648-019-09498-w) found positive average effects of educational gamification, but motivational/behavioral effects were less stable in higher-rigor subsets. Game fiction is promising, not a guarantee that illustrations or collectibles cause durable learning. [Przybylski, Rigby & Ryan's motivational model](https://selfdeterminationtheory.org/SDT/documents/2010_PrzybylskiRigbyRyan_ROGP.pdf) motivates supporting competence, autonomy and relatedness: understandable feedback, voluntary choices and recurring companions. Fictional characters are not evidence of real social connection.
+
+[Duolingo's published streak experiments](https://blog.duolingo.com/how-streaks-keep-duolingo-learners-committed-to-their-language-goals/) are useful first-party product evidence that habit mechanics can change engagement; they are not independent proof of CueFlow learning effectiveness. We retain the existing flexible weekly learning-day goal rather than introducing a streak-loss penalty. There are no paid freezes, hearts, loot boxes, random rewards, leaderboards or auto-starting next sessions.
+
+### Implemented mechanisms
+
+| Mechanism | Implementation | Evidence boundary |
+|---|---|---|
+| Low-friction invitation | Today has one illustrated story hero, a secondary revision shortcut and expandable goal/detail cards. Existing cards-first experiment and return-round behavior remain available. | UI hypothesis, not proven Instagram substitution. |
+| Narrative identity | Offline native vector scenes, warm scene palettes and fictional Lina/Sascha portraits; scene consequences receive a distinct visual treatment. | No stereotyped language flags, downloaded assets or fabricated social messages. |
+| Visible finite progress | Each story shows its bounded step path, with the current step outlined. | Step completion is not a correct-answer score. |
+| Collection | One postcard per completed current-version scene, including supported practice. Passport is reachable from Today, Library and Progress. | Cosmetic participation reward; repeated play cannot farm additional postcards. |
+| Competence feedback | Separate markers for completion, all authored responses unaided in one run, and the same in a delayed check after a recorded interval of at least seven days. | Not conversation mastery. Unknown intervals, calibration and supported answers cannot earn recall markers. |
+| Agency and closure | All scenes remain freely selectable. Finish is primary; the next named story needs an explicit tap. | No practice lockout, countdown pressure or endless feed. |
+| Sensory reward | Existing step/completion sounds remain tied to saved outcomes and quiet-mode choices. Art uses only bounded state-change animation and respects Reduce Motion. | No timer-driven background animation or attention-grabbing notifications. |
+
+### Developer contract
+
+- `StoryPassport` derives rewards from durable `EpisodeRun` history. It adds no storage migration, currency or FSRS mutation. Backup restore naturally reconstructs the collection, and analytics deletion cannot erase it.
+- Only matching language/content version, valid completed runs, and non-calibration/non-ended runs count. Duplicate runs do not multiply collection counts. Every authored non-model step must have a correct unsupported attempt in the same run to earn an unaided marker; partial branching cannot claim all-response recall.
+- Markers describe historical evidence and survive later supported attempts. New content versions intentionally need fresh evidence; do not silently inherit mastery across changed answers. The collection currently contains six Russian and three Arabic draft scenes.
+- `StoryArtwork` and shared passport components are native SwiftUI/Canvas, decorative and hidden from VoiceOver. Meaning remains in text. Scene colours are not grading colours; `DS.accentText` supplies a lighter dark-mode brand text token without changing button fill contrast.
+- The small companion portrait remains beside the scene label during recall and gives a single, Reduce-Motion-aware tilt after a correct saved answer. Completion keeps its evidence count visible and places the longer marker explanation in a disclosure below Finish; encouragement must not require reading a methodology paragraph.
+- Retain system typography for Cyrillic and Arabic, Dynamic Type, native tab navigation, bounded scene sizes, and scrollable completion. Do not reintroduce chart rebuilding or timers on tab switches.
+- All storage modes now select the same journal-capable schema through `StoreBootstrap.currentSchema`; the CloudKit factory's older V2 selection was caught during verification. The shared-schema regression does not replace real multi-device migration testing.
+- Existing optional comparison tests story-first versus cards-first order, not the causal effect of this redesign. Do not pool pre/post-build cohorts as if randomized. A visual experiment would need its own frozen version and assignment before enrollment.
+
+### Acceptance and evaluation
+
+Automated checks cover reward deduplication, support boundaries, known delayed intervals, version/language separation, malformed attempts, calibration/paused rounds, history preservation and JSON round trip. UI checks cover the hero, passport entry, supported completion and collection increment, both appearances, Arabic accessibility size, landscape and existing navigation journeys. Record final results and visual QA in `RELEASE_READINESS.md` before release.
+
+In the four-week pilot, ask whether the scenes are enjoyable and whether users voluntarily return. Inspect meaningful learning days, early exits, supported-answer use, optional continuation and delayed recall separately. A collection completion spike alone is not success. Physical accessibility/audio checks, native content review, expanded scene art/content and learner validation remain open; no claim of proven addictiveness or faster learning is made.
