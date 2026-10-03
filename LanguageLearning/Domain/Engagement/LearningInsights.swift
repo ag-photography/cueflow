@@ -51,7 +51,7 @@ struct LearningPatternInsight: Identifiable, Equatable, Sendable {
 enum LearningInsightAnalyzer {
     static func patterns(from reviews: [Review], limit: Int = 3) -> [LearningPatternInsight] {
         let candidates = reviews
-            .filter { $0.gradeTier >= 1 && !$0.userAnswer.isEmpty }
+            .filter { LearningEvidencePolicy.productive(exercise: LearningExercise(rawValue: $0.modeRaw), tier: $0.gradeTier, evidence: $0.evidence) && !$0.userAnswer.isEmpty }
             .sorted { $0.timestamp > $1.timestamp }
             .prefix(40)
 
@@ -77,12 +77,8 @@ enum LearningInsightAnalyzer {
                 examples[pattern, default: phrase.sourceText] = phrase.sourceText
             }
 
-            if review.responseTimeMs >= 9_000,
-               review.rating >= 3,
-               review.modeRaw == CardDirection.speakDeToRu.rawValue {
-                counts[.slowRetrieval, default: 0] += 1
-                examples[.slowRetrieval, default: phrase.sourceText] = phrase.sourceText
-            }
+            // Total submission time mixes reading, answer length and ASR.
+            // Do not label it a retrieval weakness without calibrated onset data.
         }
 
         return counts.map { pattern, count in

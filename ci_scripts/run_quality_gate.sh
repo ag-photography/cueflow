@@ -20,10 +20,13 @@ if [[ -e "$RESULT_BUNDLE" ]]; then
   echo "Refusing to overwrite existing result bundle: $RESULT_BUNDLE"
   exit 4
 fi
+# UI checks change orientation, keyboard and accessibility size. Default to a
+# single runner for reproducibility; CI can explicitly opt into parallel runs.
 xcodebuild test \
   -project "$PROJECT" \
   -scheme "$SCHEME" \
   -destination "$DESTINATION" \
+  -parallel-testing-enabled "${PARALLEL_TESTING_ENABLED:-NO}" \
   -resultBundlePath "$RESULT_BUNDLE"
 
 APP_COVERAGE=$(xcrun xccov view --report "$RESULT_BUNDLE" \

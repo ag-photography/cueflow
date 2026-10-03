@@ -80,6 +80,7 @@ struct SettingsView: View {
 
                 // MARK: Üben
                 Section {
+                    NavigationLink("Mein Lernrhythmus") { LearningPreferencesView() }
                     Picker("Standardlänge", selection: $preferredSessionTarget) {
                         Text("Schnell · etwa 3 Min.").tag(5)
                         Text("Täglich · etwa 7 Min.").tag(10)

@@ -119,7 +119,7 @@ enum ProgressionSystem {
     ) -> [WeeklyMissionProgress] {
         guard let interval = calendar.dateInterval(of: .weekOfYear, for: now) else { return [] }
         let week = events.filter { interval.contains($0.timestamp) }
-        let productive = week.filter { $0.isProductive && $0.rating >= 3 }
+        let productive = week.filter(\.isStrongProductiveRecall)
         let productiveDays = Set(productive.map { calendar.startOfDay(for: $0.timestamp) }).count
 
         let grouped = Dictionary(grouping: week, by: \.phraseID)

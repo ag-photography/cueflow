@@ -5,6 +5,7 @@ CueFlow is a privacy-first native iOS language coach for German speakers learnin
 ## Highlights
 
 - adaptive FSRS-6 sessions that progress from recognition to tiles, unaided production, and speech;
+- a preview collection of six Russian and three Modern Standard Arabic mini-stories, with saved position, optional quiet typing, and next-day/later recall checks;
 - a reading pass that selects bundled sentences at *i+1* from the learner's own FSRS state — at most one unfamiliar word — plus dictation in the listening studio;
 - a gap-fill ("Lücken") mode built from the bundled example sentences, which asks for the inflected form a sentence actually needs rather than the dictionary form the flashcard taught;
 - on-device Russian and Arabic speech recognition, speech synthesis, grading, and optional Apple Intelligence assistance;
@@ -14,12 +15,14 @@ CueFlow is a privacy-first native iOS language coach for German speakers learnin
 - a five-item listening and shadowing studio with normal/slow playback, bounded recording, and explicit non-diagnostic feedback;
 - six Russian and six Arabic guided situations, including longer shopping, hotel, and pharmacy drafts with authored response branches;
 - practical topic journeys, curated starters, tutor imports, phrase metadata, and an editorial/native-speaker review queue;
-- a Tutor Focus for pasting the vocabulary from the current lesson, prioritising it for two weeks, and practising that topic directly;
+- persistent Tutor Focus for current or past lessons, per-deadline introduction pacing, and reserved slots inside bounded practice rounds;
 - progress centered on successful recalls, spoken output, recovery, and fluency—not hearts or streak anxiety;
 - private CloudKit sync when available, reliable local fallback, complete JSON backup/restore, widgets, Siri/App Shortcuts, and MetricKit diagnostics;
 - VoiceOver-aware, Dynamic Type, dark mode, Reduce Motion, RTL Arabic, and adaptive iPhone/iPad layout.
 
-CueFlow has no account system, ads, behavioral tracking, server-side analytics, subscription, or practice gate. CloudKit uses the learner's Apple account and the app remains fully useful offline and without iCloud.
+CueFlow has no account system, ads, third-party tracking, server-side analytics, subscription, or practice gate. Story lifecycle events are stored locally (90-day raw-event retention); aggregate sharing is explicit. CloudKit uses the learner's Apple account and the app remains useful offline and without iCloud.
+
+The October story loop is a **development preview**, not proof of better retention or free-speaking proficiency. Story attempts currently stay separate from canonical vocabulary FSRS schedules. Content review, physical-device checks, cross-device journal conflict handling, and the remaining implementation tickets are tracked in [the implementation specification](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#15-october-implementation-status).
 
 ## Stack
 
@@ -74,7 +77,7 @@ LanguageLearningTests/
 LanguageLearningUITests/
 ```
 
-See [`PRODUCT_UX_REMEDIATION_PLAN.md`](PRODUCT_UX_REMEDIATION_PLAN.md) for the audit and architecture, [`ROADMAP.md`](ROADMAP.md) for current status, and [`RELEASE_READINESS.md`](RELEASE_READINESS.md) for the human release gates.
+See [`LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md`](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md) for the October learning/engagement audit and developer-ready backlog. [`PRODUCT_UX_REMEDIATION_PLAN.md`](PRODUCT_UX_REMEDIATION_PLAN.md) preserves the earlier audit and architecture, [`ROADMAP.md`](ROADMAP.md) tracks shipped work, and [`RELEASE_READINESS.md`](RELEASE_READINESS.md) lists the human release gates.
 
 ## License
 

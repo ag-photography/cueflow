@@ -70,6 +70,8 @@ struct PracticeView: View {
     @State private var showingProfile = false
     @State private var showingSprint = false
     @State private var sessionCount: Int = 0
+    @State private var plannedCardIDs: [ContentID]?
+    @State private var answerWasRevealed = false
     @State private var sessionCorrect: Int = 0
     @State private var consecutiveProductiveRecalls: Int = 0
     @State private var sessionSpokenAnswers: Int = 0
@@ -130,7 +132,9 @@ struct PracticeView: View {
     private let speakHesitantStartDelaySec: Double = 4.0
     private let speakHesitantPauseSec: Double = 1.5
 
-    private let grader = GraderService()
+    // Prompt-to-submit time includes reading, typing and ASR latency. Until
+    // timing is calibrated per modality, correctness suggests Good, not Easy.
+    private let grader = GraderService(fastResponseCutoffMs: 0)
     private let scheduler = SchedulerService()
     private let tts = TTSService.shared
 
@@ -255,7 +259,7 @@ struct PracticeView: View {
             // Each mode decides the daily-limit override independently.
             invalidateInteraction()
             newCardsUnlocked = false
-            speechMuted = false
+            speechMuted = savedQuietPreference
             resetSession()
             phase = .loading
             input = ""
@@ -266,7 +270,7 @@ struct PracticeView: View {
             // reload the first card for the new language.
             invalidateInteraction()
             newCardsUnlocked = false
-            speechMuted = false
+            speechMuted = savedQuietPreference
             resetSession()
             phase = .loading
             input = ""
@@ -276,6 +280,7 @@ struct PracticeView: View {
             }
         }
         .onAppear {
+            speechMuted = savedQuietPreference
             if let locale = activeLanguage?.speechLocale {
                 speech.setLocale(locale)
             }
@@ -752,7 +757,7 @@ struct PracticeView: View {
               let token = interactionGate.begin(.persistence)
         else { return }
         do {
-            let wasNew = card.state == .new
+            let wasNew = card.state == .new && !reviews.contains { $0.card === card }
             try scheduler.record(rating: rating, on: card)
 
             let review = Review(
@@ -934,16 +939,15 @@ struct PracticeView: View {
         token: PracticeInteractionGate.Token
     ) {
         guard interactionGate.accepts(token) else { return }
-        let rating = correct ? (responseTimeMs <= 4000 ? 4 : 3) : 1
+        let rating = correct ? 3 : 1
         do {
-            let wasNew = card.state == .new
-            try scheduler.record(rating: rating, on: card)
+            let wasNew = card.state == .new && !reviews.contains { $0.card === card }
             let review = Review(
                 card: card,
                 rating: rating,
                 autoGradeRating: rating,
                 userAnswer: chosenAnswer,
-                mode: mode,
+                mode: .chooseDeToRu,
                 responseTimeMs: responseTimeMs,
                 gradeTier: 0,   // recognition, no character grading
                 wasNew: wasNew
@@ -1195,7 +1199,7 @@ struct PracticeView: View {
         .background(DS.gradePerfect.opacity(0.10))
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
         .onAppear {
-            tts.speak(cloze.sentence, language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1)
+            if !speechMuted { tts.speak(cloze.sentence, language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1) }
         }
     }
 
@@ -1237,7 +1241,7 @@ struct PracticeView: View {
         .padding(DS.space.md)
         .background(DS.gradePerfect.opacity(0.10))
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
-        .onAppear { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) }
+        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) } }
     }
 
     @ViewBuilder
@@ -1246,7 +1250,11 @@ struct PracticeView: View {
         case .typeDeToRu:
             typingInputSection(revealed: revealed)
         case .speakDeToRu:
-            speakInputSection(revealed: revealed)
+            if speechMuted {
+                typingInputSection(revealed: revealed)
+            } else {
+                speakInputSection(revealed: revealed)
+            }
         case .clozeDeToRu:
             typingInputSection(revealed: revealed)
         case .flipDeToRu, .chooseDeToRu:
@@ -1459,7 +1467,7 @@ struct PracticeView: View {
             }
             .padding(.vertical, DS.space.md)
         }
-        .onAppear { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) }
+        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) } }
     }
 
     private func spokenRecallCard(card: StudyCard, userAnswer: String) -> some View {
@@ -1764,9 +1772,12 @@ struct PracticeView: View {
     }
 
     private func revealSubtitle(for grade: AutoGrade) -> String {
+        if !selectedTileIDs.isEmpty, grade == .perfect || grade == .hesitant {
+            return "Mit Wortbausteinen richtig zusammengesetzt."
+        }
         switch grade {
         case .perfect:  return "Sauber gewusst."
-        case .hesitant: return "Richtig – nächstes Mal flüssiger."
+        case .hesitant: return "Richtig aus dem Gedächtnis abgerufen."
         case .minor:    return "Ganz nah dran!"
         case .wrong:    return "Kein Stress – du siehst sie bald wieder."
         case .studied:  return "Angeschaut – das zählt auch."
@@ -1887,7 +1898,7 @@ struct PracticeView: View {
     private func gradeColor(for grade: AutoGrade) -> Color {
         switch grade {
         case .perfect: return DS.gradePerfect
-        case .hesitant: return DS.gradeHesitant
+        case .hesitant: return DS.gradePerfect
         case .minor: return DS.gradeMinor
         case .wrong: return DS.gradeWrong
         case .studied: return DS.accent
@@ -2015,13 +2026,13 @@ struct PracticeView: View {
             }
             Spacer()
             VStack(spacing: DS.space.xs) {
-                Text("Heute gesprochen")
+                Text(sessionSpokenAnswers > 0 ? "In dieser Runde gesprochen" : "In dieser Runde geübt")
                     .font(.headline)
                     .foregroundStyle(DS.textPrimary)
-                Text("\(sessionSpokenAnswers)")
+                Text("\(sessionSpokenAnswers > 0 ? sessionSpokenAnswers : sessionCount)")
                     .font(.system(size: 64, weight: .bold, design: .rounded))
                     .foregroundStyle(DS.accent)
-                Text("Antworten · \(sessionSpokenWords) Wörter")
+                Text(sessionSpokenAnswers > 0 ? "Antworten · \(sessionSpokenWords) Wörter" : "Ausdrücke · \(sessionCorrect) richtige Antworten")
                     .font(.subheadline)
                     .foregroundStyle(DS.textSecondary)
             }
@@ -2258,9 +2269,11 @@ struct PracticeView: View {
         // The phrase's accepted alternatives are alternatives for the *headword*
         // and say nothing about the inflected form the sentence needs.
         let alternatives = mode == .clozeDeToRu ? [] : (card.phrase?.acceptedAlternatives ?? [])
-        let userAnswer = answerOverride ?? ((mode == .speakDeToRu) ? speech.transcription : input)
+        let userAnswer = answerOverride ?? ((mode == .speakDeToRu && !speechMuted) ? speech.transcription : input)
+        if speechMuted && mode == .speakDeToRu { reviewModeOverride = .typeDeToRu }
         lastSubmissionWasSpeech = answerOverride == nil
             && mode == .speakDeToRu
+            && !speechMuted
             && !speech.transcription.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let useJudge = settings.first?.useAIGradingAssist == true
         inputFocused = false
@@ -2285,7 +2298,7 @@ struct PracticeView: View {
                 card: card,
                 baseline: baseline,
                 revealed: revealed,
-                applySpeechHesitancy: answerOverride == nil,
+                applySpeechHesitancy: lastSubmissionWasSpeech,
                 userAnswer: userAnswer,
                 elapsedMs: elapsedMs
             )
@@ -2342,6 +2355,7 @@ struct PracticeView: View {
 
     private func showStudyMode() {
         guard case .prompt(let card) = phase else { return }
+        answerWasRevealed = true
         phase = .study(card)
     }
 
@@ -2357,15 +2371,20 @@ struct PracticeView: View {
               let token = interactionGate.begin(.persistence)
         else { return }
         var savedAlternative: String?
-        let wasNewBeforeReview = card.state == .new
+        let wasNewBeforeReview = card.state == .new && !reviews.contains { $0.card === card }
         let exerciseMode = reviewModeOverride ?? mode
         let cardLanguageCode = card.phrase?.language?.code
         let priorEvents = LearningMotivation.events(from: reviews.filter {
             $0.card?.phrase?.language?.code == cardLanguageCode
         })
         do {
-            let wasNew = card.state == .new
-            try scheduler.record(rating: rating, on: card)
+            let wasNew = wasNewBeforeReview
+            let support: AttemptEvidence.Support = !selectedTileIDs.isEmpty ? .tiles
+                : (answerWasRevealed ? .revealed : (retryWasNeeded ? .retry : .none))
+            if support != .tiles {
+                // A retry cannot erase the first failure; copied answers aren't recall.
+                try scheduler.record(rating: support == .none ? rating : 1, on: card)
+            }
 
             if rating >= 3, result.autoGrade.suggestedRating < 3, let phrase = card.phrase {
                 let normalized = FuzzyMatcher.normalize(userAnswer)
@@ -2386,6 +2405,12 @@ struct PracticeView: View {
                 responseTimeMs: responseTimeMs,
                 gradeTier: result.tier,
                 wasNew: wasNew
+            )
+            review.evidence = AttemptEvidence(
+                support: rating != result.autoGrade.suggestedRating ? .selfReported : support,
+                inputWasSpeech: lastSubmissionWasSpeech,
+                assessedCorrect: result.autoGrade.suggestedRating >= 3,
+                gradingMethod: result.tier
             )
             context.insert(review)
             try context.save()
@@ -2414,13 +2439,15 @@ struct PracticeView: View {
         sessionCount += 1
         if rating >= 3 {
             sessionCorrect += 1
-            consecutiveProductiveRecalls += 1
-            if wasNewBeforeReview,
+            let independent = selectedTileIDs.isEmpty && !retryWasNeeded && !answerWasRevealed
+                && rating == result.autoGrade.suggestedRating
+            consecutiveProductiveRecalls = independent ? consecutiveProductiveRecalls + 1 : 0
+            if independent, wasNewBeforeReview,
                let phrase = card.phrase?.targetText,
                !sessionNewlyRecalled.contains(phrase) {
                 sessionNewlyRecalled.append(phrase)
             }
-            maybeCelebrateProductiveRun()
+            if independent { maybeCelebrateProductiveRun() }
         } else {
             consecutiveProductiveRecalls = 0
             sessionNeedsWork += 1
@@ -2454,7 +2481,9 @@ struct PracticeView: View {
         priorEvents: [LearningEvent]
     ) {
         guard rating >= 3,
-              result.tier >= 3,
+              result.autoGrade.suggestedRating >= 3,
+              selectedTileIDs.isEmpty, !retryWasNeeded,
+              !answerWasRevealed, rating == result.autoGrade.suggestedRating,
               responseTimeMs > 0,
               exerciseMode == .speakDeToRu || exerciseMode == .typeDeToRu,
               let phrase = card.phrase
@@ -2559,6 +2588,7 @@ struct PracticeView: View {
     }
 
     private func resetSession() {
+        plannedCardIDs = nil
         sessionCount = 0
         sessionCorrect = 0
         consecutiveProductiveRecalls = 0
@@ -2582,13 +2612,14 @@ struct PracticeView: View {
         reviewModeOverride = nil
         lastSubmissionWasSpeech = false
         retryWasNeeded = false
+        answerWasRevealed = false
         var pool: [StudyCard]
         switch scope {
         case .difficultThisWeek:
             pool = difficultCards
         case .recommended:
             pool = cardsForActiveLanguage
-        case .topic:
+        case .topic, .scenario:
             pool = cardsForActiveLanguage.filter(scope.includes)
         }
         if mode == .clozeDeToRu {
@@ -2600,13 +2631,14 @@ struct PracticeView: View {
         if scope == .difficultThisWeek {
             next = pool.first { !reviewedCardIDs.contains($0.contentID) }
         } else {
-            next = scheduler.nextCard(
-                from: pool,
-                reviews: reviews,
-                dailyNewLimit: effectiveDailyLimit,
-                tutorDailyNewTarget: tutorPacing?.dailyNewTarget ?? 0,
-                tutorPriorityPhraseIDs: tutorPriorityPhraseIDs
-            )
+            if plannedCardIDs == nil {
+                plannedCardIDs = SessionPlanner.cards(
+                    from: pool, reviews: reviews, target: sessionTarget,
+                    dailyNewLimit: effectiveDailyLimit, tutorIDs: tutorPriorityPhraseIDs
+                ).map(\.contentID)
+            }
+            let byID = Dictionary(pool.map { ($0.contentID, $0) }, uniquingKeysWith: { first, _ in first })
+            next = plannedCardIDs?.filter { !reviewedCardIDs.contains($0) }.compactMap { byID[$0] }.first
         }
         if let next {
             if presentAsTiles(next) {
@@ -2616,7 +2648,7 @@ struct PracticeView: View {
             }
             phase = .prompt(next)
         } else {
-            if scope == .difficultThisWeek, sessionCount > 0 {
+            if sessionCount > 0 {
                 showingSessionSummary = true
             } else {
                 phase = .empty
@@ -2636,13 +2668,14 @@ struct PracticeView: View {
     }
 
     private func smartPresentation(for card: StudyCard) -> AdaptivePresentation {
+        if speechMuted { return .speech } // Shared input renders unaided typing in quiet mode.
         let ratings = reviews
             .filter { $0.card === card }
             .sorted { $0.timestamp > $1.timestamp }
             .prefix(3)
             .map(\.rating)
         return AdaptiveExercisePolicy.presentation(
-            state: card.state,
+            state: card.state == .new && reviews.contains(where: { $0.card === card }) ? .learning : card.state,
             targetWordCount: card.phrase?.targetText.split(whereSeparator: { $0.isWhitespace }).count ?? 0,
             speechAvailable: !speechMuted,
             recentRatings: ratings
@@ -2659,6 +2692,10 @@ struct PracticeView: View {
         newCardsUnlocked ? .max : (settings.first?.dailyNewLimit ?? 10)
     }
 
+    private var savedQuietPreference: Bool {
+        (try? settings.first?.readExperience().preference(for: activeLanguage?.code ?? "ru").quiet) ?? false
+    }
+
     private var tutorPacing: TutorFocusPacing? {
         TutorFocusPlanner.pacing(
             topics: topics.filter { $0.language?.code == activeLanguage?.code },
@@ -2670,7 +2707,7 @@ struct PracticeView: View {
     /// topics or priority/homework), regardless of the daily cap.
     private var availableNewCount: Int {
         cardsForActiveLanguage.filter(scope.includes).filter { card in
-            guard card.state == .new, let phrase = card.phrase else { return false }
+            guard !card.hasBeenIntroduced, let phrase = card.phrase else { return false }
             return (phrase.topics?.contains(where: \.isActive) ?? false)
                 || tutorPriorityPhraseIDs.contains(phrase.contentID)
         }.count

@@ -1,6 +1,84 @@
 import XCTest
 
 final class LanguageLearningUITests: XCTestCase {
+    func testStoryAcceptsUnaidedTypedRussianAnswer() {
+        let app = launch()
+        let collection = app.buttons["Alle Geschichten"]
+        XCTAssertTrue(collection.waitForExistence(timeout: 15))
+        collection.tap()
+        let episode = app.buttons["episode-ru-seasons-1"]
+        XCTAssertTrue(episode.waitForExistence(timeout: 5))
+        episode.tap()
+        let next = app.buttons["episode-next"]
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        next.tap()
+        next.tap()
+        let quiet = app.switches["Leise üben"]
+        if quiet.value as? String == "0" { quiet.tap() }
+        let answer = app.descendants(matching: .any).matching(identifier: "episode-answer").firstMatch
+        XCTAssertTrue(answer.waitForExistence(timeout: 5))
+        answer.tap()
+        answer.typeText("Я люблю осень.")
+        app.buttons["episode-check"].tap()
+        XCTAssertTrue(app.staticTexts["Formulierung getroffen"].waitForExistence(timeout: 5))
+        next.tap()
+        XCTAssertTrue(app.staticTexts["Ich mag den Winter."].waitForExistence(timeout: 5))
+    }
+
+    func testStoryResumesAtSavedStepAndCompletesWithoutMicrophone() {
+        let app = launch()
+        let start = app.buttons["episode-start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        start.tap()
+        let next = app.buttons["episode-next"]
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        next.tap()
+        next.tap()
+        let quiet = app.switches["Leise üben"]
+        XCTAssertTrue(quiet.waitForExistence(timeout: 3))
+        if quiet.value as? String == "0" { quiet.tap() }
+        let skip = app.buttons["Noch unsicher · gemeinsam weiter"]
+        if !skip.isHittable { app.scrollViews.firstMatch.swipeUp() }
+        skip.tap()
+        next.tap()
+        app.buttons["episode-close"].tap()
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+        start.tap()
+        XCTAssertTrue(app.buttons["episode-check"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["episode-next"].exists, "Resume must not replay the model or completed answer")
+        for _ in 0..<2 {
+            if !skip.isHittable { app.scrollViews.firstMatch.swipeUp() }
+            skip.tap()
+            next.tap()
+        }
+        let finish = app.buttons["episode-finish"]
+        XCTAssertTrue(finish.waitForExistence(timeout: 5))
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Story completion — quiet, supported answers"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        finish.tap()
+        XCTAssertTrue(start.waitForExistence(timeout: 5))
+    }
+
+    func testArabicStorySupportsLargeText() {
+        let app = launch(language: "ar", contentSize: "UICTContentSizeCategoryAccessibilityXXXL")
+        let start = app.buttons["episode-start"]
+        XCTAssertTrue(start.waitForExistence(timeout: 15))
+        // Native accessibility scrolling brings the exact button into view;
+        // full-page swipes can skip it at the largest Dynamic Type size.
+        start.tap()
+        let next = app.buttons["episode-next"]
+        XCTAssertTrue(next.waitForExistence(timeout: 5))
+        next.tap()
+        XCTAssertTrue(app.staticTexts["Eine zweite Möglichkeit"].waitForExistence(timeout: 3))
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Arabic story — accessibility text size"
+        screenshot.lifetime = .keepAlways
+        add(screenshot)
+        app.buttons["episode-close"].tap()
+    }
+
     private func launch(
         language: String = "ru",
         contentSize: String? = nil
@@ -158,10 +236,10 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testLandscapeKeepsPrimaryActionReachable() {
         let app = launch()
-        XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["episode-start"].waitForExistence(timeout: 8))
         XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 4))
-        XCTAssertTrue(app.buttons["recommended-session-start"].isHittable)
+        XCTAssertTrue(app.buttons["episode-start"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.buttons["episode-start"].isHittable)
         XCUIDevice.shared.orientation = .portrait
     }
 

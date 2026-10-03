@@ -59,7 +59,7 @@ struct ExampleSentencesTests {
     }
 
     @Test func seedingPopulatesExampleSentences() throws {
-        let schema = Schema(versionedSchema: SchemaV1.self)
+        let schema = Schema(versionedSchema: SchemaV2.self)
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: config)
         let ctx = ModelContext(container)
@@ -75,7 +75,7 @@ struct ExampleSentencesTests {
     }
 
     @Test func arabicSeedingUsesScriptAsCanonicalTarget() throws {
-        let schema = Schema(versionedSchema: SchemaV1.self)
+        let schema = Schema(versionedSchema: SchemaV2.self)
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: config)
         let ctx = ModelContext(container)
@@ -97,7 +97,7 @@ struct ExampleSentencesTests {
     }
 
     @Test func migrationSwapsLegacyArabicWithoutResettingProgress() throws {
-        let schema = Schema(versionedSchema: SchemaV1.self)
+        let schema = Schema(versionedSchema: SchemaV2.self)
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: config)
         let ctx = ModelContext(container)

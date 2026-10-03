@@ -127,6 +127,7 @@ struct OnboardingView: View {
         .onChange(of: selectedLanguageCode) { _, _ in
             // New language → its starter topics differ, so re-seed the picks.
             rehydrateTopicSelection()
+            selectedPurpose = (try? settings.first?.readExperience().preference(for: selectedLanguageCode).purpose) ?? "Reisen"
             firstSpeechSucceeded = false
             firstSpeechUnavailable = false
             speech.stop()
@@ -760,6 +761,7 @@ struct OnboardingView: View {
         let row = settings.first
         selectedLanguageCode = row?.activeLanguageCode ?? "ru"
         selectedDailyLimit = row?.dailyNewLimit ?? 10
+        selectedPurpose = (try? row?.readExperience().preference(for: selectedLanguageCode).purpose) ?? "Reisen"
         rehydrateTopicSelection()
         if let locale = activeLanguage?.speechLocale { speech.setLocale(locale) }
         didHydrate = true
@@ -792,8 +794,14 @@ struct OnboardingView: View {
         }
         row.hasCompletedOnboarding = true
         do {
+            var experience = try row.readExperience()
+            var preference = experience.preference(for: row.activeLanguageCode)
+            preference.purpose = selectedPurpose
+            experience.preferences[row.activeLanguageCode] = preference
+            try row.writeExperience(experience)
             try context.save()
         } catch {
+            context.rollback()
             // Keep onboarding open if the durable hand-off failed.
             return
         }

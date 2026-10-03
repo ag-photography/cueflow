@@ -1,8 +1,10 @@
 # CueFlow — Release Roadmap
 
+The [October learning experience specification](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md) contains the next proposed implementation phases and newly confirmed defects. The shipped-feature inventory below does not imply those defects are resolved.
+
 **Updated:** 19 August 2026
 
-**Current train:** 1.0, build 53
+**Current train:** 1.0, build 54 development preview (not uploaded)
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.
 
 ## Product promise

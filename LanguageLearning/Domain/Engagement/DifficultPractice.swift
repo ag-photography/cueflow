@@ -5,6 +5,7 @@ enum PracticeScope: Equatable, Sendable {
     case recommended
     case difficultThisWeek
     case topic(id: PersistentIdentifier)
+    case scenario(id: String)
 
     func includes(_ card: StudyCard) -> Bool {
         switch self {
@@ -13,6 +14,11 @@ enum PracticeScope: Equatable, Sendable {
         case .topic(let id):
             return card.phrase?.topics?.contains {
                 $0.persistentModelID == id
+            } ?? false
+        case .scenario(let id):
+            guard let scenario = ScenarioDefinition.defaults.first(where: { $0.id == id }) else { return false }
+            return card.phrase?.topics?.contains { topic in
+                scenario.topicTerms.contains(topic.name.replacingOccurrences(of: " (AR)", with: ""))
             } ?? false
         }
     }

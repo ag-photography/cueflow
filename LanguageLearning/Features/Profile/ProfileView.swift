@@ -16,7 +16,9 @@ struct ProfileView: View {
     @State private var loadedRevision = -1
     @State private var loadedLanguageCode = ""
     @State private var showingSettings = false
+    @State private var showingStories = false
     @State private var showingRecommendedPractice = false
+    @State private var recommendedScope: PracticeScope = .recommended
 
     // Speaking-volume scoreboard — shared with Sprint via UserDefaults.
     @AppStorage("sprintBest") private var sprintBest: Int = 0
@@ -36,6 +38,11 @@ struct ProfileView: View {
                 if dashboard != nil {
                     ScrollView {
                         VStack(spacing: DS.space.lg) {
+                            Button { showingStories = true } label: {
+                                Label("Meine Geschichten & spätere Abrufe", systemImage: "books.vertical.fill")
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .dsCard(elevation: 1, padding: DS.space.md)
+                            }.buttonStyle(.plain).foregroundStyle(DS.accent)
                             speakingSection
                             capabilitySection
                             if !learningPatterns.isEmpty || leechCount > 0 { learningPatternSection }
@@ -77,8 +84,9 @@ struct ProfileView: View {
                 }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
+            .sheet(isPresented: $showingStories) { EpisodeCollectionView() }
             .fullScreenCover(isPresented: $showingRecommendedPractice) {
-                PracticeView(sessionTarget: 10, isFocusedSession: true, scope: .recommended)
+                PracticeView(sessionTarget: 10, isFocusedSession: true, scope: recommendedScope)
             }
             .task(id: activeLanguageCode) { await loadDashboardIfNeeded() }
         }
@@ -144,10 +152,15 @@ struct ProfileView: View {
 
     private var capabilitySection: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            DSSectionHeader(title: "Was du sagen kannst")
+            DSSectionHeader(title: "Deine bisherigen Abrufe")
+            Text("Anteil bisher richtig beantworteter Ausdrücke, kein Nachweis für freies Sprechen. Bei älteren Antworten ist verwendete Hilfe nicht immer bekannt.")
+                .font(.caption).foregroundStyle(DS.textSecondary)
             VStack(spacing: DS.space.md) {
                 if let recommendation = CurriculumPlanner.recommendation(from: curriculumProgress) {
-                    Button { showingRecommendedPractice = true } label: {
+                    Button {
+                        recommendedScope = .scenario(id: recommendation.scenario.id)
+                        showingRecommendedPractice = true
+                    } label: {
                         HStack(spacing: DS.space.sm) {
                             Image(systemName: "location.fill")
                                 .foregroundStyle(.white)
@@ -311,7 +324,7 @@ struct ProfileView: View {
 
     private func capabilityLabel(_ fraction: Double) -> String {
         switch fraction {
-        case 0.8...: return "Gesprächsbereit"
+        case 0.8...: return "Viele Ausdrücke abgerufen"
         case 0.4...: return "Im Aufbau"
         case 0.01...: return "Erste sichere Abrufe"
         default: return "Noch nicht begonnen"

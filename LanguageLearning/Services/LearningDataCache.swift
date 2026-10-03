@@ -54,6 +54,7 @@ struct ProgressDashboardSnapshot: Equatable, Sendable {
 /// changes, that put ~1.3 s of relationship faulting and list-building on the
 /// main thread for *every* tab switch — including switches away from Heute.
 struct TodaySnapshot: Equatable, Sendable {
+    var tutorFocusNames: [String] = []
     let dueCount: Int
     let availableNewCount: Int
     let reviewsToday: Int
@@ -87,6 +88,7 @@ private struct ProgressCardRecord: Sendable {
     let phraseID: ContentID
     let languageCode: String
     let state: LearningState
+    let introduced: Bool
     let dueDate: Date
     let lapses: Int
     /// Stored rather than pre-evaluated: the boost expires on a clock, so a
@@ -229,7 +231,8 @@ final class LearningDataCache {
                     rating: review.rating,
                     gradeTier: review.gradeTier,
                     responseTimeMs: review.responseTimeMs,
-                    spokenWordCount: review.userAnswer.split(whereSeparator: \.isWhitespace).count
+                    spokenWordCount: review.userAnswer.split(whereSeparator: \.isWhitespace).count,
+                    evidence: review.evidence
                 ),
                 autoGradeRating: review.autoGradeRating,
                 expectedAnswer: phrase.targetText,
@@ -239,6 +242,7 @@ final class LearningDataCache {
             reviewRecords.append(record)
         }
         reviewRecordsByID = nextReviewRecords
+        let introducedCardIDs = Set(reviewRecords.map(\.cardID))
 
         var nextIdentities: [ContentID: CardIdentity] = [:]
         nextIdentities.reserveCapacity(cards.count)
@@ -266,6 +270,7 @@ final class LearningDataCache {
                 phraseID: identity.phraseID,
                 languageCode: identity.languageCode,
                 state: card.state,
+                introduced: card.state.isIntroduced || introducedCardIDs.contains(cardID),
                 dueDate: card.dueDate,
                 lapses: card.lapses,
                 isPriority: identity.isPriority,
@@ -385,7 +390,7 @@ final class LearningDataCache {
         let tutorTopicPhraseIDs = Set(languageTopics.lazy.filter(\.isTutorFocusActive).flatMap(\.phraseIDs))
 
         let availableNew = languageCards.count { card in
-            card.state == .new
+            !card.introduced
                 && (activeTopicPhraseIDs.contains(card.phraseID)
                     || card.isPriorityActive(at: now)
                     || tutorTopicPhraseIDs.contains(card.phraseID))
@@ -396,7 +401,7 @@ final class LearningDataCache {
                 TutorFocusPlanner.TopicInput(phraseIDs: $0.phraseIDs, nextLessonAt: $0.tutorNextLessonAt)
             },
             cards: languageCards.map {
-                TutorFocusPlanner.CardInput(phraseID: $0.phraseID, state: $0.state)
+                TutorFocusPlanner.CardInput(phraseID: $0.phraseID, state: $0.state, introduced: $0.introduced)
             },
             now: now,
             calendar: calendar
@@ -406,6 +411,7 @@ final class LearningDataCache {
         let startOfToday = calendar.startOfDay(for: now)
 
         return TodaySnapshot(
+            tutorFocusNames: languageTopics.filter(\.isTutorFocusActive).map(\.name),
             dueCount: languageCards.count { $0.state != .new && $0.dueDate <= now },
             availableNewCount: availableNew,
             reviewsToday: reviews.count {
@@ -462,10 +468,7 @@ final class LearningDataCache {
         let languageTopics = topics.filter { $0.languageCode == activeLanguageCode }
         let events = languageReviews.map(\.event)
         let startOfToday = calendar.startOfDay(for: now)
-        let phraseStates = Dictionary(
-            languageCards.map { ($0.phraseID, $0.state) },
-            uniquingKeysWith: { first, _ in first }
-        )
+        let introducedPhraseIDs = Set(languageCards.filter(\.introduced).map(\.phraseID))
         let weekly = dayStats(now: now, calendar: calendar) { start, end in
             languageReviews.count { $0.event.timestamp >= start && $0.event.timestamp < end }
         }
@@ -497,7 +500,7 @@ final class LearningDataCache {
                 id: topic.id,
                 name: topic.name,
                 isActive: topic.isActive,
-                practised: topic.phraseIDs.count { phraseStates[$0]?.isIntroduced == true },
+                practised: topic.phraseIDs.intersection(introducedPhraseIDs).count,
                 total: topic.phraseIDs.count
             )
         }.sorted {
@@ -551,8 +554,7 @@ final class LearningDataCache {
         _ reviews: [ProgressReviewRecord]
     ) -> [ContentID] {
         reviews.compactMap {
-            guard $0.event.gradeTier >= 3,
-                  $0.event.exercise == .speech || $0.event.exercise == .typing
+            guard $0.event.isStrongProductiveRecall
             else { return nil }
             return $0.event.phraseID
         }
@@ -576,7 +578,7 @@ final class LearningDataCache {
     ) -> [LearningPatternInsight] {
         var counts: [LearningErrorPattern: Int] = [:]
         var examples: [LearningErrorPattern: String] = [:]
-        for review in reviews.filter({ $0.event.gradeTier >= 1 && !$0.userAnswer.isEmpty })
+        for review in reviews.filter({ $0.event.isProductive && !$0.userAnswer.isEmpty })
             .sorted(by: { $0.event.timestamp > $1.event.timestamp }).prefix(40) {
             let expected = words(review.expectedAnswer)
             let actual = words(review.userAnswer)
@@ -586,11 +588,6 @@ final class LearningDataCache {
                     : actual.sorted() == expected.sorted() && actual != expected ? .wordOrder : .wordForm
                 counts[pattern, default: 0] += 1
                 examples[pattern, default: review.event.sourceText] = review.event.sourceText
-            }
-            if review.event.responseTimeMs >= 9_000, review.event.rating >= 3,
-               review.event.exercise == .speech {
-                counts[.slowRetrieval, default: 0] += 1
-                examples[.slowRetrieval, default: review.event.sourceText] = review.event.sourceText
             }
         }
         return counts.map { LearningPatternInsight(

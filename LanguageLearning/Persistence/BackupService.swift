@@ -2,7 +2,7 @@ import Foundation
 import SwiftData
 
 struct CueFlowBackup: Codable {
-    static let currentVersion = 4
+    static let currentVersion = 5
 
     let formatVersion: Int
     let exportedAt: Double
@@ -65,6 +65,7 @@ struct CueFlowBackup: Codable {
     }
 
     struct ReviewRecord: Codable {
+        var evidenceJSON: String? = nil
         let timestamp: Double
         let rating: Int
         let autoGradeRating: Int
@@ -76,6 +77,7 @@ struct CueFlowBackup: Codable {
     }
 
     struct SettingsRecord: Codable {
+        var experienceJSON: String? = nil
         let dailyNewLimit: Int
         let activeLanguageCode: String
         let transliterationVisible: Bool?
@@ -179,6 +181,7 @@ enum BackupService {
                     },
                     reviews: (card?.reviews ?? []).map {
                         .init(
+                            evidenceJSON: $0.evidenceJSON,
                             timestamp: $0.timestamp.timeIntervalSince1970,
                             rating: $0.rating,
                             autoGradeRating: $0.autoGradeRating,
@@ -193,6 +196,7 @@ enum BackupService {
             },
             settings: settings.map {
                 .init(
+                    experienceJSON: $0.experienceJSON,
                     dailyNewLimit: $0.dailyNewLimit,
                     activeLanguageCode: $0.activeLanguageCode,
                     transliterationVisible: $0.transliterationVisible,
@@ -229,6 +233,22 @@ enum BackupService {
         guard backup.formatVersion <= CueFlowBackup.currentVersion else {
             throw BackupServiceError.unsupportedVersion(backup.formatVersion)
         }
+        // Validate and serialize the journal before touching live models.
+        // SwiftData rollback may leave already-observed property values stale;
+        // malformed imports must never mutate those values in the first place.
+        let mergedExperienceJSON: String?
+        if let json = backup.settings?.experienceJSON {
+            let imported = try JSONDecoder().decode(LearningExperience.self, from: Data(json.utf8))
+            guard imported.version == 1 else { throw ExperienceError.unsupportedVersion }
+            let stored = try context.fetch(FetchDescriptor<AppSettings>()).first
+            var current = try stored?.readExperience() ?? LearningExperience()
+            current.merge(imported)
+            mergedExperienceJSON = String(decoding: try JSONEncoder().encode(current), as: UTF8.self)
+        } else {
+            mergedExperienceJSON = nil
+        }
+        // Every decode, merge and save belongs to the same rollback boundary.
+        do {
         var summary = BackupImportSummary()
         var languages = Dictionary(uniqueKeysWithValues:
             try context.fetch(FetchDescriptor<Language>()).map { ($0.code, $0) }
@@ -324,6 +344,7 @@ enum BackupService {
                     wasNew: reviewRecord.wasNew
                 )
                 review.timestamp = Date(timeIntervalSince1970: reviewRecord.timestamp)
+                review.evidenceJSON = reviewRecord.evidenceJSON
                 context.insert(review)
                 existingReviewKeys.insert(reviewKey(reviewRecord))
                 summary.reviewsAdded += 1
@@ -347,9 +368,9 @@ enum BackupService {
             settings.dailyReminderMinute = incoming.dailyReminderMinute
             settings.surpriseRewardsEnabled = incoming.surpriseRewardsEnabled
             settings.hasCompletedOnboarding = incoming.hasCompletedOnboarding
+            if let mergedExperienceJSON { settings.experienceJSON = mergedExperienceJSON }
         }
 
-        do {
             try context.save()
             // A restore replaces the content graph wholesale.
             LearningDataCache.shared.invalidate()

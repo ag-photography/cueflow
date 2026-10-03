@@ -4,6 +4,7 @@ import SwiftData
 /// Root gate: onboarding first, then the native primary navigation.
 struct RootView: View {
     @Query private var settings: [AppSettings]
+    @State private var showingRecoveryDetails = false
     let storeRecoveryMessage: String?
 
     init(storeRecoveryMessage: String? = nil) {
@@ -37,14 +38,15 @@ struct RootView: View {
     }
 
     private func storeRecoveryBanner(_ message: String) -> some View {
-        HStack(alignment: .top, spacing: DS.space.sm) {
+        Button { showingRecoveryDetails = true } label: {
+        HStack(alignment: .center, spacing: DS.space.sm) {
             Image(systemName: "externaldrive.badge.exclamationmark")
                 .foregroundStyle(DS.gradeWrong)
             VStack(alignment: .leading, spacing: 2) {
-                Text("Sichere Sitzung")
-                    .font(.subheadline.weight(.bold))
+                Text("Temporäre Sitzung")
+                    .font(.caption.weight(.bold))
                     .foregroundStyle(DS.textPrimary)
-                Text(message)
+                Text("Fortschritt nicht dauerhaft gespeichert · Details")
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -55,8 +57,17 @@ struct RootView: View {
         .padding(.vertical, DS.space.sm)
         .background(.ultraThinMaterial)
         .overlay(alignment: .bottom) { Divider() }
+        }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Sichere Sitzung. \(message)")
+        .sheet(isPresented: $showingRecoveryDetails) {
+            NavigationStack {
+                ScrollView { Text(message).padding() }
+                    .navigationTitle("Temporäre Sitzung")
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fertig") { showingRecoveryDetails = false } } }
+            }
+        }
     }
 }
 
@@ -128,6 +139,8 @@ private struct TodayView: View {
     @State private var showingReading = false
     @State private var showingSkillPath = false
     @State private var showingSettings = false
+    @State private var selectedEpisode: LearningEpisode?
+    @State private var showingEpisodes = false
     @State private var practiceScope: PracticeScope = .recommended
 
     /// Everything below the fold is read from here. Deriving it in `body`
@@ -142,7 +155,7 @@ private struct TodayView: View {
     private var plannedNewCount: Int {
         min(
             snapshot.availableNewCount,
-            max(settings.first?.dailyNewLimit ?? 10, snapshot.pacing?.dailyNewTarget ?? 0)
+            settings.first?.dailyNewLimit ?? 10
         )
     }
     private var estimatedMinutes: Int {
@@ -156,7 +169,8 @@ private struct TodayView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? DS.space.sm : DS.space.lg) {
-                    greeting
+                    if verticalSizeClass != .compact { greeting }
+                    if let episode = suggestedEpisode { episodeCard(episode) }
                     recommendedSession
                     if snapshot.difficultCount > 0 { difficultPracticeCard }
                     dailyQuestCard
@@ -185,6 +199,8 @@ private struct TodayView: View {
                 }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
+            .sheet(isPresented: $showingEpisodes) { EpisodeCollectionView() }
+            .fullScreenCover(item: $selectedEpisode) { EpisodeView(episode: $0) }
             .fullScreenCover(isPresented: $showingPractice) {
                 PracticeView(
                     sessionTarget: practiceSessionTarget,
@@ -228,6 +244,48 @@ private struct TodayView: View {
         case nil:
             break
         }
+    }
+
+    private var experience: LearningExperience? { try? settings.first?.readExperience() }
+    private var suggestedEpisode: LearningEpisode? {
+        guard let experience else { return nil }
+        if let open = experience.runs.last(where: { $0.language == activeLanguageCode && $0.isOpen }),
+           let episode = EpisodeLibrary.all.first(where: { $0.id == open.episodeID && $0.version == open.contentVersion }) { return episode }
+        if let due = experience.dueEpisode(language: activeLanguageCode) { return due }
+        return EpisodeLibrary.recommendation(
+            language: activeLanguageCode, purpose: experience.preference(for: activeLanguageCode).purpose,
+            focusNames: snapshot.tutorFocusNames,
+            completed: experience.completed(in: activeLanguageCode))
+    }
+
+    private func episodeCard(_ episode: LearningEpisode) -> some View {
+        let data = experience ?? .init()
+        let resuming = data.runs.contains { $0.episodeID == episode.id && $0.isOpen }
+        let checking = data.isCheckDue(episode)
+        return VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? DS.space.xs : DS.space.md) {
+            HStack {
+                Label(checking ? "Was ist hängen geblieben?" : "DEINE MINI-GESCHICHTE", systemImage: episode.symbol)
+                    .font(.caption.weight(.bold)).foregroundStyle(DS.accent)
+                Spacer()
+                Text("Vorschau").font(.caption2).foregroundStyle(DS.textSecondary)
+            }
+            Text(episode.title).font(verticalSizeClass == .compact ? .headline : .title2.bold())
+            if verticalSizeClass != .compact {
+                Text(episode.outcome).font(.subheadline).foregroundStyle(DS.textSecondary)
+            }
+            Text(checking ? "3 kurze Antworten · ohne Vorlage" : "2 Ausdrücke · 5 Schritte · etwa 2 Minuten")
+                .font(.caption).foregroundStyle(DS.textSecondary)
+            Button { selectedEpisode = episode } label: {
+                Label(resuming ? "Geschichte fortsetzen" : checking ? "Kurz erinnern" : "Geschichte starten", systemImage: "play.fill")
+                    .frame(maxWidth: .infinity).padding(.vertical, verticalSizeClass == .compact ? 0 : 8)
+            }.buttonStyle(.borderedProminent).tint(DS.accent).accessibilityIdentifier("episode-start")
+            if verticalSizeClass != .compact { HStack {
+                Text("\(data.learningDays(language: activeLanguageCode))/\(data.preference(for: activeLanguageCode).weeklyDays) Lerntage diese Woche")
+                    .font(.caption).foregroundStyle(DS.textSecondary)
+                Spacer()
+                Button("Alle Geschichten") { showingEpisodes = true }.font(.caption.weight(.semibold))
+            } }
+        }.dsCard(elevation: 2, padding: verticalSizeClass == .compact ? DS.space.sm : DS.space.lg)
     }
 
     private var exploreCard: some View {
@@ -486,10 +544,10 @@ private struct TodayView: View {
                 }
             }
 
-            Text("Weiterlernen")
+            Text("Gezielt wiederholen")
                 .font((verticalSizeClass == .compact ? Font.title3 : Font.title2).weight(.bold))
                 .foregroundStyle(DS.textPrimary)
-            Text("\(dueCount) Wiederholungen · \(plannedNewCount) neue Ausdrücke")
+            Text("Bis zu \(sessionTarget) Ausdrücke · eine überschaubare Runde")
                 .font(.subheadline)
                 .foregroundStyle(DS.textSecondary)
             if let tutorPacing = snapshot.pacing, tutorPacing.remainingNewCount > 0 {
@@ -499,6 +557,10 @@ private struct TodayView: View {
                 )
                 .font(.caption.weight(.medium))
                 .foregroundStyle(DS.accent)
+                if tutorPacing.dailyNewTarget > (settings.first?.dailyNewLimit ?? 10) {
+                    Text("Das liegt über deinem Tageslimit. Dein Limit bleibt unverändert; passe bei Bedarf Termin oder Umfang in der Bibliothek an.")
+                        .font(.caption).foregroundStyle(DS.textSecondary)
+                }
             }
             if verticalSizeClass != .compact {
                 Label("Etwa \(estimatedMinutes) Minuten", systemImage: "clock")
@@ -510,12 +572,12 @@ private struct TodayView: View {
                 practiceScope = .recommended
                 showingPractice = true
             } label: {
-                Label("Einheit starten", systemImage: "arrow.right.circle.fill")
+                Label("Wiederholungsrunde starten", systemImage: "arrow.right.circle.fill")
                     .font(.headline.weight(.bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(DS.accent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, verticalSizeClass == .compact ? 10 : 16)
-                    .background(DS.accent)
+                    .background(DS.accentSoft)
                     .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
             }
             .buttonStyle(.plain)
@@ -531,11 +593,10 @@ private struct TodayView: View {
         switch practiceScope {
         case .difficultThisWeek:
             return min(sessionTarget, snapshot.difficultCount)
-        case .topic:
+        case .topic, .scenario:
             return sessionTarget
         case .recommended:
-            let tutorMinimum = dueCount + (snapshot.pacing?.dailyNewTarget ?? 0)
-            return max(sessionTarget, min(20, tutorMinimum))
+            return sessionTarget
         }
     }
 

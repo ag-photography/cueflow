@@ -18,15 +18,19 @@ struct LearningEvent: Equatable, Sendable {
     let gradeTier: Int
     let responseTimeMs: Int
     let spokenWordCount: Int
+    var evidence: AttemptEvidence? = nil
 
     var isProductive: Bool {
         // Cloze is unaided production too — the learner supplies the form from
         // memory, with no options to choose from.
-        gradeTier >= 1 && (exercise == .speech || exercise == .typing || exercise == .cloze)
+        LearningEvidencePolicy.productive(exercise: exercise, tier: gradeTier, evidence: evidence)
     }
 
-    var isStrongProductiveRecall: Bool { isProductive && rating >= 3 && gradeTier >= 3 }
-    var isSpoken: Bool { gradeTier >= 1 && exercise == .speech }
+    var isStrongProductiveRecall: Bool {
+        LearningEvidencePolicy.successful(exercise: exercise, tier: gradeTier, rating: rating, evidence: evidence)
+    }
+    var isVerifiedUnaidedRecall: Bool { evidence != nil && isStrongProductiveRecall }
+    var isSpoken: Bool { evidence?.inputWasSpeech ?? (gradeTier >= 1 && exercise == .speech) }
 }
 
 enum DailyQuestKind: String, CaseIterable, Identifiable, Sendable {
@@ -140,7 +144,8 @@ enum LearningMotivation {
                 rating: review.rating,
                 gradeTier: review.gradeTier,
                 responseTimeMs: review.responseTimeMs,
-                spokenWordCount: review.userAnswer.split(whereSeparator: { $0.isWhitespace }).count
+                spokenWordCount: review.userAnswer.split(whereSeparator: { $0.isWhitespace }).count,
+                evidence: review.evidence
             )
         }
     }

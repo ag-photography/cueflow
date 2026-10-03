@@ -32,6 +32,7 @@ struct LibraryView: View {
     @State private var showingPDFImport = false
     @State private var showingTutorFocus = false
     @State private var showingSettings = false
+    @State private var showingStories = false
     @State private var phraseInEditor: Phrase?
     @State private var creatingPhrase = false
     @State private var creatingTopic = false
@@ -142,6 +143,7 @@ struct LibraryView: View {
             .sheet(isPresented: $showingPDFImport) { PDFImportView() }
             .sheet(isPresented: $showingTutorFocus) { TutorFocusView() }
             .sheet(isPresented: $showingSettings) { SettingsView() }
+            .sheet(isPresented: $showingStories) { EpisodeCollectionView() }
             .sheet(isPresented: $creatingPhrase) { PhraseEditorView(phrase: nil) }
             .sheet(item: $phraseInEditor) { phrase in PhraseEditorView(phrase: phrase) }
             .sheet(isPresented: $creatingTopic) { TopicEditorView(topic: nil) }
@@ -261,6 +263,12 @@ struct LibraryView: View {
             LazyVStack(alignment: .leading, spacing: DS.space.lg) {
                 tutorFocusCard
 
+                Button { showingStories = true } label: {
+                    Label("Mini-Geschichten · im Alltag anwenden", systemImage: "bubble.left.and.bubble.right.fill")
+                        .font(.headline).frame(maxWidth: .infinity, alignment: .leading)
+                        .dsCard(elevation: 1, padding: DS.space.md)
+                }.buttonStyle(.plain).foregroundStyle(DS.accent)
+
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Was willst du als Nächstes können?")
                         .font(.title3.weight(.bold))
@@ -379,7 +387,7 @@ struct LibraryView: View {
                             .font(.title3.weight(.bold))
                             .foregroundStyle(DS.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
-                        Text("\(journeys.tutorIntroduced) von \(journeys.tutorTotal) Ausdrücken vorbereitet" + tutorDeadlineText)
+                        Text("\(journeys.tutorIntroduced) von \(journeys.tutorTotal) Ausdrücken kennengelernt" + tutorDeadlineText)
                             .font(.subheadline)
                             .foregroundStyle(DS.textSecondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -442,6 +450,9 @@ struct LibraryView: View {
     private var tutorDeadlineText: String {
         guard let date = journeys.tutorNextLesson else {
             return " · Termin noch nicht gesetzt."
+        }
+        if Calendar.current.startOfDay(for: date) < Calendar.current.startOfDay(for: .now) {
+            return " · Termin vergangen. Fokus bleibt aktiv; nächsten Termin setzen."
         }
         return " · nächste Stunde \(date.formatted(date: .abbreviated, time: .omitted))."
     }
@@ -559,7 +570,7 @@ struct LibraryView: View {
 
     private func capabilityLabel(_ fraction: Double) -> String {
         switch fraction {
-        case 0.8...: return "Gesprächsbereit"
+        case 0.8...: return "Viele Ausdrücke abgerufen"
         case 0.4...: return "Im Aufbau"
         case 0.01...: return "Erste sichere Abrufe"
         default: return "Neu"

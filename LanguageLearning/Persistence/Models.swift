@@ -153,6 +153,9 @@ final class Topic {
     }
 
     func isTutorFocusActive(at date: Date) -> Bool {
+        // A running course unit stays relevant after its lesson date. Only the
+        // learner finishes it; legacy transient imports keep their old expiry.
+        if isTutorFocus { return true }
         guard isTutorFocus || containsTutorMaterial else { return false }
         guard let tutorFocusUntil else { return true }
         // Strictly greater: `finishTutorFocus` stamps `tutorFocusUntil = .now`,
@@ -175,9 +178,7 @@ final class Topic {
         isActive = true
         tutorFocusStartedAt = tutorFocusStartedAt ?? now
         tutorNextLessonAt = nextLessonAt
-        tutorFocusUntil = nextLessonAt.flatMap {
-            calendar.date(byAdding: .day, value: 7, to: $0)
-        }
+        tutorFocusUntil = nil
     }
 
     func finishTutorFocus() {
@@ -409,6 +410,8 @@ final class StudyCard {
         set { stateRaw = newValue.rawValue }
     }
 
+    var hasBeenIntroduced: Bool { state.isIntroduced || !(reviews ?? []).isEmpty }
+
     init(phrase: Phrase, direction: CardDirection = .speakDeToRu) {
         self.phrase = phrase
         self.directionRaw = direction.rawValue
@@ -424,6 +427,8 @@ final class StudyCard {
 
 @Model
 final class Review {
+    /// Optional additive metadata. Nil means legacy support is unknown.
+    var evidenceJSON: String? = nil
     var card: StudyCard?
     var timestamp: Date = Date.now
     var rating: Int = 0
@@ -473,6 +478,7 @@ final class Session {
 
 @Model
 final class AppSettings {
+    var experienceJSON: String? = nil
     var dailyNewLimit: Int = 10
     var activeLanguageCode: String = "ru"
     var transliterationVisible: Bool?

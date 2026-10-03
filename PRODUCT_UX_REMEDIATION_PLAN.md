@@ -1,5 +1,7 @@
 # CueFlow Product, UI/UX, and Reliability Plan
 
+> **October 2026 update:** This document records the August implementation assessment. The [learning experience implementation specification](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md) identifies additional confirmed defects in progress evidence, session scope, and tutor prioritisation, and supplies the new phased backlog. Its findings supersede the completion claims below for those areas; historical test counts are not current validation results.
+
 **Status:** Core implementation complete; release validation in progress
 
 **Scope:** Russian, Arabic, and a language-pack foundation for future target languages

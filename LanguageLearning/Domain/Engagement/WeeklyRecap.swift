@@ -29,9 +29,10 @@ enum WeeklyRecap {
             answers: relevant.count,
             newlyIntroduced: relevant.filter(\.wasNew).count,
             successfulSpokenRecalls: relevant.filter {
-                $0.modeRaw == CardDirection.speakDeToRu.rawValue
-                    && $0.rating >= 3
-                    && $0.gradeTier >= 2
+                LearningEvidencePolicy.successful(
+                    exercise: LearningExercise(rawValue: $0.modeRaw), tier: $0.gradeTier,
+                    rating: $0.rating, evidence: $0.evidence
+                ) && ($0.evidence?.inputWasSpeech ?? ($0.modeRaw == CardDirection.speakDeToRu.rawValue))
             }.count
         )
     }

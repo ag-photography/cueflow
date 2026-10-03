@@ -2,6 +2,14 @@
 
 This file separates work the repository can verify from work that requires a physical device, native speakers, an Apple account, or real learners.
 
+## October story-preview gate
+
+The new episode loop is a development preview. See [implementation status and limitations](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#15-october-implementation-status). Earlier checked gates below describe prior builds and must not be read as fresh certification of these new features. Before public rollout, review RU/AR content, microphone/audio behavior, migration on physical stores, and simultaneous-device journal edits. The story journal currently uses a single settings JSON field, so CloudKit last-writer-wins conflicts remain a release limitation.
+
+Local episode events record IDs and timestamps, not answers or recordings. The app keeps raw events for 90 days (pruned on the next event write/merge), offers deletion and explicit aggregate export, and sends none to an analytics server. Include this local-learning-journal behavior in the final privacy text.
+
+Build 54 local validation, 3 October 2026: complete quality gate passed, 184 unit/domain tests and 15 UI tests, 49.82% app line coverage on iPhone 17 / iOS 26.5 simulator. Includes frozen-V1 migration, backup round trip/idempotence/malformed-journal preflight, typed Russian recall, Arabic accessibility-size layout, quiet resume/completion, and landscape/tab checks. This is not physical-device or content-quality sign-off, and no TestFlight upload has been performed.
+
 ## App Store positioning
 
 **Name:** CueFlow  

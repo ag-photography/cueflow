@@ -41,7 +41,7 @@ enum StoreBootstrap {
     }
 
     static func make(forceRecovery: Bool = false) throws -> StoreBootstrapResult {
-        let schema = Schema(versionedSchema: SchemaV1.self)
+        let schema = Schema(versionedSchema: SchemaV2.self)
         if forceRecovery {
             let configuration = ModelConfiguration(
                 "LanguageLearningRecovery",
@@ -111,7 +111,7 @@ enum StoreBootstrap {
     }
 
     private static func makeCloudContainer() throws -> StoreBootstrapResult {
-        let schema = Schema(versionedSchema: SchemaV1.self)
+        let schema = Schema(versionedSchema: SchemaV2.self)
         let configuration = ModelConfiguration(
             "LanguageLearning",
             schema: schema,

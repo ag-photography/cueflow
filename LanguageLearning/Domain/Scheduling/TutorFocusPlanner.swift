@@ -30,10 +30,12 @@ enum TutorFocusPlanner {
     struct CardInput: Sendable {
         let phraseID: ContentID
         let state: LearningState
+        let introduced: Bool
 
-        init(phraseID: ContentID, state: LearningState) {
+        init(phraseID: ContentID, state: LearningState, introduced: Bool? = nil) {
             self.phraseID = phraseID
             self.state = state
+            self.introduced = introduced ?? state.isIntroduced
         }
     }
 
@@ -46,20 +48,11 @@ enum TutorFocusPlanner {
         let focused = topics.filter { $0.isTutorFocusActive(at: now) }
         guard !focused.isEmpty else { return nil }
 
-        // Identity by object reference, not `persistentModelID`: this path also
-        // runs against models that were never inserted into a store (tests).
-        let phraseIDs = Set(focused.flatMap { $0.phrases ?? [] }.map(ObjectIdentifier.init))
-        guard !phraseIDs.isEmpty else { return nil }
-        let focusedCards = cards.filter {
-            guard let phrase = $0.phrase else { return false }
-            return phraseIDs.contains(ObjectIdentifier(phrase))
-        }
         return pacing(
-            focusedTopicCount: focused.count,
-            totalPhraseCount: phraseIDs.count,
-            introducedPhraseCount: focusedCards.count { $0.state.isIntroduced },
-            remainingNewCount: focusedCards.count { $0.state == .new },
-            nextLesson: focused.compactMap(\.tutorNextLessonAt).min(),
+            focusedTopics: focused.map { .init(phraseIDs: Set(($0.phrases ?? []).map(\.contentID)), nextLessonAt: $0.tutorNextLessonAt) },
+            cards: cards.compactMap { card in
+                card.phrase.map { .init(phraseID: $0.contentID, state: card.state, introduced: card.hasBeenIntroduced) }
+            },
             now: now,
             calendar: calendar
         )
@@ -75,15 +68,29 @@ enum TutorFocusPlanner {
         guard !focusedTopics.isEmpty else { return nil }
         let phraseIDs = Set(focusedTopics.flatMap(\.phraseIDs))
         guard !phraseIDs.isEmpty else { return nil }
-        let focusedCards = cards.filter { phraseIDs.contains($0.phraseID) }
-        return pacing(
+        let introduced = Set(cards.filter(\.introduced).map(\.phraseID)).intersection(phraseIDs)
+        // Allocate shared phrases once, to their nearest deadline. Each topic
+        // keeps its own preparation horizon rather than borrowing the first date.
+        var allocated: Set<ContentID> = []
+        var target = 0
+        var nearest = 7
+        for topic in focusedTopics.sorted(by: { ($0.nextLessonAt ?? now.addingTimeInterval(7 * 86_400)) < ($1.nextLessonAt ?? now.addingTimeInterval(7 * 86_400)) }) {
+            let ids = topic.phraseIDs.subtracting(allocated)
+            allocated.formUnion(ids)
+            let item = pacing(focusedTopicCount: 1, totalPhraseCount: ids.count,
+                              introducedPhraseCount: ids.intersection(introduced).count,
+                              remainingNewCount: ids.subtracting(introduced).count,
+                              nextLesson: topic.nextLessonAt, now: now, calendar: calendar)
+            target += item.dailyNewTarget
+            nearest = allocated == ids ? item.daysUntilLesson : min(nearest, item.daysUntilLesson)
+        }
+        return TutorFocusPacing(
             focusedTopicCount: focusedTopics.count,
             totalPhraseCount: phraseIDs.count,
-            introducedPhraseCount: focusedCards.count { $0.state.isIntroduced },
-            remainingNewCount: focusedCards.count { $0.state == .new },
-            nextLesson: focusedTopics.compactMap(\.nextLessonAt).min(),
-            now: now,
-            calendar: calendar
+            introducedPhraseCount: introduced.count,
+            remainingNewCount: phraseIDs.subtracting(introduced).count,
+            daysUntilLesson: nearest,
+            dailyNewTarget: target
         )
     }
 

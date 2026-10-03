@@ -50,11 +50,12 @@ struct LibraryJourneys {
         var phraseIDsByTopic: [PersistentIdentifier: Set<ContentID>] = [:]
         var introducedByTopic: [PersistentIdentifier: Int] = [:]
         var baseNameByTopic: [PersistentIdentifier: String] = [:]
+        let exposedIDs = Set(events.map(\.phraseID))
         for topic in learningTopics {
             let phrases = topic.phrases ?? []
             phraseIDsByTopic[topic.persistentModelID] = Set(phrases.map(\.contentID))
             introducedByTopic[topic.persistentModelID] = phrases.count { phrase in
-                phrase.cards?.first?.state.isIntroduced == true
+                exposedIDs.contains(phrase.contentID) || phrase.cards?.first?.state.isIntroduced == true
             }
             baseNameByTopic[topic.persistentModelID] = Self.baseTopicName(topic.name)
         }
@@ -116,7 +117,7 @@ struct LibraryJourneys {
         let tutorPhraseIDs = Set(tutorTopics.flatMap { phraseIDsByTopic[$0.persistentModelID] ?? [] })
         tutorTotal = tutorPhraseIDs.count
         tutorIntroduced = tutorTopics.reduce(into: Set<ContentID>()) { introduced, topic in
-            for phrase in topic.phrases ?? [] where phrase.cards?.contains(where: { $0.state.isIntroduced }) == true {
+            for phrase in topic.phrases ?? [] where exposedIDs.contains(phrase.contentID) || phrase.cards?.contains(where: { $0.state.isIntroduced }) == true {
                 introduced.insert(phrase.contentID)
             }
         }.count

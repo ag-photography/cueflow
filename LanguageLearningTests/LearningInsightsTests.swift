@@ -33,8 +33,8 @@ struct LearningInsightsTests {
         #expect(CurriculumPlanner.recommendation(from: progress)?.id == "first-conversations")
     }
 
-    @Test func analyzerFindsOmissionAndSlowRetrieval() throws {
-        let schema = Schema(versionedSchema: SchemaV1.self)
+    @Test func analyzerFindsOmissionWithoutCallingUncalibratedTimingAWeakness() throws {
+        let schema = Schema(versionedSchema: SchemaV2.self)
         let container = try ModelContainer(
             for: schema,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true, cloudKitDatabase: .none)
@@ -59,6 +59,6 @@ struct LearningInsightsTests {
 
         let patterns = LearningInsightAnalyzer.patterns(from: [omission, slow])
         #expect(patterns.contains { $0.pattern == .omittedWords })
-        #expect(patterns.contains { $0.pattern == .slowRetrieval })
+        #expect(!patterns.contains { $0.pattern == .slowRetrieval })
     }
 }

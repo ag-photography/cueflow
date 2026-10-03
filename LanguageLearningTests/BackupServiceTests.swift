@@ -5,6 +5,23 @@ import Testing
 
 @MainActor
 struct BackupServiceTests {
+    @Test func malformedJournalRollsBackTheEntireRestore() throws {
+        let language = Language(code: "ru", name: "Русский")
+        let phrase = Phrase(sourceText: "Herbst", targetText: "осень", language: language)
+        let incoming = AppSettings(dailyNewLimit: 50)
+        incoming.experienceJSON = "not-valid-json"
+        let backup = BackupService.makeBackup(languages: [language], topics: [], phrases: [phrase], settings: incoming, appVersion: "test")
+        let destination = try makeContext()
+        let existing = AppSettings(dailyNewLimit: 6)
+        destination.insert(existing)
+        try destination.save()
+        #expect(throws: DecodingError.self) { try BackupService.restore(backup, into: destination) }
+        #expect(try destination.fetchCount(FetchDescriptor<Phrase>()) == 0)
+        #expect(try destination.fetchCount(FetchDescriptor<Language>()) == 0)
+        #expect(existing.dailyNewLimit == 6)
+        #expect(existing.experienceJSON == nil)
+    }
+
     @Test func completeBackupRoundTripsAndRestoresIdempotently() throws {
         let source = try makeContext()
         let russian = Language(code: "ru", name: "Русский")
@@ -40,8 +57,14 @@ struct BackupServiceTests {
             wasNew: false
         )
         review.timestamp = Date(timeIntervalSince1970: 1_700_000_000)
+        review.evidence = .init(support: .none, inputWasSpeech: true, assessedCorrect: true, gradingMethod: 1)
         let settings = AppSettings(activeLanguageCode: "ru", transliterationVisible: true)
         settings.hasCompletedOnboarding = true
+        var experience = LearningExperience()
+        var run = EpisodeRun(episodeID: "ru-seasons-1", contentVersion: 1, language: "ru")
+        run.stepIndex = 3
+        experience.save(run)
+        try settings.writeExperience(experience)
         source.insert(russian)
         source.insert(topic)
         source.insert(phrase)
@@ -79,6 +102,10 @@ struct BackupServiceTests {
         #expect(restored.topics?.first?.tutorNextLessonAt == topic.tutorNextLessonAt)
         #expect(restored.cards?.first?.reps == 7)
         #expect(restored.cards?.first?.reviews?.count == 1)
+        #expect(restored.cards?.first?.reviews?.first?.evidence == review.evidence)
+        let restoredSettings = try #require(destination.fetch(FetchDescriptor<AppSettings>()).first)
+        #expect(try restoredSettings.readExperience().runs.count == 1)
+        #expect(try restoredSettings.readExperience().runs.first?.stepIndex == 3)
         #expect(restored.level == .a1)
         #expect(restored.phraseRegister == .formal)
         #expect(restored.dialect == "Standardrussisch")
@@ -149,7 +176,7 @@ struct BackupServiceTests {
     }
 
     private func makeContext() throws -> ModelContext {
-        let schema = Schema(versionedSchema: SchemaV1.self)
+        let schema = Schema(versionedSchema: SchemaV2.self)
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try ModelContainer(for: schema, configurations: configuration)
         return ModelContext(container)
