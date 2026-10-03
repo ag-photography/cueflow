@@ -4,11 +4,30 @@ This file separates work the repository can verify from work that requires a phy
 
 ## October story-preview gate
 
-The new episode loop is a development preview. See [implementation status and limitations](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#15-october-implementation-status). Earlier checked gates below describe prior builds and must not be read as fresh certification of these new features. Before public rollout, review RU/AR content, microphone/audio behavior, migration on physical stores, and simultaneous-device journal edits. The story journal currently uses a single settings JSON field, so CloudKit last-writer-wins conflicts remain a release limitation.
+The new episode loop is a development preview. See [implementation status and limitations](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#16-build-55-roadmap-implementation). Earlier checked gates below describe prior builds and must not be read as fresh certification of these new features. Before public rollout, review RU/AR content, microphone/audio behavior, migration on physical stores, and simultaneous-device journal edits. Build 55 adds independent immutable journal fragments and merge tests; this removes the single-field overwrite design for run history, but does not certify real CloudKit concurrency or simultaneous scheduling of the same card.
 
 Local episode events record IDs and timestamps, not answers or recordings. The app keeps raw events for 90 days (pruned on the next event write/merge), offers deletion and explicit aggregate export, and sends none to an analytics server. Include this local-learning-journal behavior in the final privacy text.
 
+Card-attempt checkpoints are **private learning data**, distinct from analytics events: they preserve submitted text and the original attempt before a grade is confirmed. They follow the existing private learning-store/iCloud/backup behavior. Aggregate pilot exports contain no answer text, recordings, or per-phrase identities. Event deletion does not delete learning history; its reset timestamp prevents old event fragments from resurrecting on merge.
+
 Build 54 local validation, 3 October 2026: complete quality gate passed, 184 unit/domain tests and 15 UI tests, 49.82% app line coverage on iPhone 17 / iOS 26.5 simulator. Includes frozen-V1 migration, backup round trip/idempotence/malformed-journal preflight, typed Russian recall, Arabic accessibility-size layout, quiet resume/completion, and landscape/tab checks. This is not physical-device or content-quality sign-off, and no TestFlight upload has been performed.
+
+### Build 55 final verification — 3 October 2026
+
+The final complete quality gate passed with exit 0: **66 XCTest unit tests + 137 Swift Testing tests + 16 UI tests = 219 checks**, zero failures, **51.94% app-target line coverage**. Environment: iPhone 17 simulator, iOS 26.5, Xcode 27. Result bundle: `/tmp/cueflow-build55-final-verified.xcresult` (temporary local artifact, not committed).
+
+Repeat with a fresh result path:
+
+```sh
+COLLECT_TEST_DIAGNOSTICS=never \
+DESTINATION='platform=iOS Simulator,name=iPhone 17,OS=26.5' \
+RESULT_BUNDLE=/tmp/cueflow-build55-repeat.xcresult \
+./ci_scripts/run_quality_gate.sh
+```
+
+The diagnostics override disables verbose simulator-system collection, which stalled result packaging in an earlier run; test logs, screenshots and coverage remain available. The script defaults to serial tests and normal on-failure diagnostics otherwise. The final run includes canonical phrase reuse, once-per-run FSRS scheduling, supported follow-up, bounded/resumable plans, private attempt checkpoints, V2-to-V3 disk migration, independent fragment merge/reset, retained learning days after analytics deletion, tutor weekdays/deadlines, conservative exposure, timing comparability, branch validation, and optional calibration UI coverage.
+
+Arabic story layout at the largest accessibility text size and quiet supported completion were visually inspected from the preceding isolated passing run; the final changes were nonvisual reminder-cancellation and day-ledger safeguards. Simulator checks do not certify physical audio, VoiceOver, large-store performance, real CloudKit concurrency, native content quality, or improved learner retention. No push or TestFlight upload was performed for Build 55.
 
 ## App Store positioning
 

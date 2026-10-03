@@ -10,7 +10,7 @@ import UIKit
 ///
 /// Deliberately *outside* the FSRS schedule: Sprint is a warm-up / fluency game,
 /// not spaced study, so it records no `Review` and changes no card's due date.
-/// It only tracks a personal best (UserDefaults via `@AppStorage`). Low-stakes
+/// It tracks a personal best and private, unscored activity events. Low-stakes
 /// by design — the point is to get your mouth moving, not to be graded. The
 /// transcription is shown as a mirror, never a "wrong".
 ///
@@ -19,6 +19,7 @@ import UIKit
 /// (`SprintMatcher`, unit-tested) are verifiable without a mic.
 struct SprintView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     @Query private var cards: [StudyCard]
@@ -46,6 +47,8 @@ struct SprintView: View {
     @State private var countdownEndDate = Date()
     @State private var preparationGeneration = UUID()
     @State private var unavailableMessage: String?
+    @State private var activityID = UUID()
+    @State private var activityError: String?
     @State private var skippedPhrases: [Phrase] = []
     @State private var revealedAnswer: String?
     @State private var skipGeneration = UUID()
@@ -87,6 +90,8 @@ struct SprintView: View {
             }
         }
         .onAppear(perform: handleAppear)
+        .modifier(ExposureBoundary(mode: "sprint", sessionID: activityID))
+        .safeAreaInset(edge: .bottom) { if let activityError { Text(activityError).font(.caption).padding() } }
         .onDisappear {
             preparationGeneration = UUID()
             skipGeneration = UUID()
@@ -462,6 +467,7 @@ struct SprintView: View {
     }
 
     private func startRound() {
+        activityID = UUID()
         pool = buildPool()
         guard !pool.isEmpty else {
             unavailableMessage = "Lerne zuerst einige Ausdrücke, dann ist dein Sprint bereit."
@@ -513,10 +519,12 @@ struct SprintView: View {
         endDate = Date().addingTimeInterval(duration)
         now = Date()
         pulse = true
+        recordActivity("sprint_started", support: "speech")
         withAnimation(reduceMotion ? .none : .easeInOut(duration: 0.2)) { phase = .running }
     }
 
     private func clearCurrent() {
+        recordActivity("sprint_answer", support: revealedAnswer == nil ? "speechMatch" : "model")
         UINotificationFeedbackGenerator().notificationOccurred(.success)
         if let said = currentPhrase?.targetText { recordSpokenWords(said) }
         withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
@@ -578,6 +586,7 @@ struct SprintView: View {
     }
 
     private func endRound() {
+        recordActivity("sprint_completed", support: "speechGame")
         preparationGeneration = UUID()
         skipGeneration = UUID()
         revealedAnswer = nil
@@ -592,6 +601,14 @@ struct SprintView: View {
     /// Unique phrases in the active language, preferring ones the user has
     /// already seen (a card past `.new`) so they can plausibly be said fast.
     /// Falls back to all active-language phrases if too few are "seen".
+    private func recordActivity(_ name: String, support: String) {
+        do {
+            try LearningActivityRecorder.record(name, language: activeCode, session: activityID,
+                step: name == "sprint_answer" ? currentPhrase?.contentID.description : nil, support: support, context: context)
+            activityError = nil
+        } catch { context.rollback(); activityError = "Aktivität konnte nicht gespeichert werden." }
+    }
+
     private func buildPool() -> [Phrase] {
         var seen: [PersistentIdentifier: Phrase] = [:]
         var all: [PersistentIdentifier: Phrase] = [:]

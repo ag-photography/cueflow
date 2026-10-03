@@ -203,6 +203,7 @@ final class LearningDataCache {
         reviewRecords.reserveCapacity(reviews.count)
         for review in reviews {
             let reviewID = review.contentID
+            guard review.evidence?.kind != "exposure" else { continue }
             // Already converted on an earlier pass — reuse it rather than
             // faulting card → phrase → topics all over again.
             if let known = reviewRecordsByID[reviewID] {
@@ -231,7 +232,7 @@ final class LearningDataCache {
                     rating: review.rating,
                     gradeTier: review.gradeTier,
                     responseTimeMs: review.responseTimeMs,
-                    spokenWordCount: review.userAnswer.split(whereSeparator: \.isWhitespace).count,
+                    spokenWordCount: review.evidence?.spokenWordCount ?? review.userAnswer.split(whereSeparator: \.isWhitespace).count,
                     evidence: review.evidence
                 ),
                 autoGradeRating: review.autoGradeRating,
@@ -242,7 +243,7 @@ final class LearningDataCache {
             reviewRecords.append(record)
         }
         reviewRecordsByID = nextReviewRecords
-        let introducedCardIDs = Set(reviewRecords.map(\.cardID))
+        let introducedCardIDs = Set(reviews.compactMap { $0.card?.contentID })
 
         var nextIdentities: [ContentID: CardIdentity] = [:]
         nextIdentities.reserveCapacity(cards.count)

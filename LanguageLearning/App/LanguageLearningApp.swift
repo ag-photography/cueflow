@@ -41,7 +41,7 @@ struct LanguageLearningApp: App {
                 // selection indicators and active-topic badges inherit it
                 // without each view setting `.tint` manually.
                 .tint(DS.accent)
-                .task { await startup.start() }
+                .task { NotificationService.shared.installRouting(); await startup.start() }
         }
     }
 }

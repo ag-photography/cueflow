@@ -163,7 +163,13 @@ struct TutorFocusView: View {
             guard let phrase = $0.phrase else { return false }
             return phraseIDs.contains(phrase.contentID)
         }
-        let introduced = topicCards.count { $0.state.isIntroduced }
+        let introduced = topicCards.count { $0.hasBeenIntroduced }
+        let experience = try? settings.first?.readExperience()
+        let language = targetLanguage?.code ?? "ru"
+        let retained = topicCards.count { DurableRecall.demonstrated($0.reviews ?? [], after: experience?.otherModeExposureAt?[language]) }
+        let contextual = topicCards.count { ($0.reviews ?? []).contains { $0.evidence?.kind == "transfer" && $0.evidence?.support == AttemptEvidence.Support.none && $0.evidence?.assessedCorrect == true } }
+        let budget = TutorStudyBudget.make(remaining: max(0, phraseIDs.count - introduced), deadline: topic.tutorNextLessonAt,
+            weekdays: experience?.preference(for: language).effectiveStudyWeekdays, dailyLimit: settings.first?.dailyNewLimit ?? 10)
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
@@ -185,6 +191,14 @@ struct TutorFocusView: View {
             }
             ProgressView(value: topicCards.isEmpty ? 0 : Double(introduced) / Double(topicCards.count))
                 .tint(DS.accent)
+            Text("\(introduced) kennengelernt · \(retained) nach 7 Tagen abgerufen · \(contextual) in einer Szene angewandt")
+                .font(.caption).foregroundStyle(DS.textSecondary)
+            Text("\(budget.opportunities) Übungsgelegenheiten · \(budget.requiredPerOpportunity) neue Ausdrücke je Lerntag nötig")
+                .font(.caption)
+            if budget.shortfall > 0 {
+                Text("Beim aktuellen Limit bleiben voraussichtlich \(budget.shortfall) neue Ausdrücke offen. Passe Umfang, Lerntage oder Termin an – deine Runden werden nicht automatisch länger.")
+                    .font(.caption).foregroundStyle(DS.gradeHesitant)
+            }
             HStack {
                 Button {
                     beginEditingDate(topic)

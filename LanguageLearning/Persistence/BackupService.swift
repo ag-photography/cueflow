@@ -368,7 +368,9 @@ enum BackupService {
             settings.dailyReminderMinute = incoming.dailyReminderMinute
             settings.surpriseRewardsEnabled = incoming.surpriseRewardsEnabled
             settings.hasCompletedOnboarding = incoming.hasCompletedOnboarding
-            if let mergedExperienceJSON { settings.experienceJSON = mergedExperienceJSON }
+            if let mergedExperienceJSON {
+                try settings.writeExperience(JSONDecoder().decode(LearningExperience.self, from: Data(mergedExperienceJSON.utf8)))
+            }
         }
 
             try context.save()

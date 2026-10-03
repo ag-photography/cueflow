@@ -22,7 +22,7 @@ CueFlow is a privacy-first native iOS language coach for German speakers learnin
 
 CueFlow has no account system, ads, third-party tracking, server-side analytics, subscription, or practice gate. Story lifecycle events are stored locally (90-day raw-event retention); aggregate sharing is explicit. CloudKit uses the learner's Apple account and the app remains useful offline and without iCloud.
 
-The October story loop is a **development preview**, not proof of better retention or free-speaking proficiency. Story attempts currently stay separate from canonical vocabulary FSRS schedules. Content review, physical-device checks, cross-device journal conflict handling, and the remaining implementation tickets are tracked in [the implementation specification](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#15-october-implementation-status).
+The October story loop is a **development preview**, not proof of better retention or free-speaking proficiency. Build 55 connects stories to canonical vocabulary and its FSRS schedule, preserves card-round/attempt checkpoints, and saves independent journal fragments. Optional calibration, study-day pacing, delayed-recall examples, and a local opt-in comparison are available. Content review, physical-device checks, multi-device behavior, and remaining acceptance work are tracked in [the implementation specification](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#16-build-55-roadmap-implementation).
 
 ## Stack
 

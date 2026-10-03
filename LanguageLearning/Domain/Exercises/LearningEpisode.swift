@@ -9,6 +9,8 @@ struct LearningEpisode: Identifiable, Codable, Equatable, Sendable {
         let answer: String
         let alternatives: [String]
         let meaning: String
+        var nextOnCorrect: String? = nil
+        var nextOnSupport: String? = nil
     }
     let id: String
     let version: Int
@@ -20,6 +22,10 @@ struct LearningEpisode: Identifiable, Codable, Equatable, Sendable {
     let interest: String
     let topicTags: [String]
     let steps: [Step]
+    var difficulty = "A1"
+    var provenance = "CueFlow authored pilot"
+    var reviewStatus = "native-review-pending"
+    var audioFileName: String? = nil
     var estimatedSeconds: Int { steps.count * 20 }
     var uniqueExpressions: Int { Set(steps.map(\.answer)).count }
     var validationErrors: [String] {
@@ -28,7 +34,48 @@ struct LearningEpisode: Identifiable, Codable, Equatable, Sendable {
         if steps.isEmpty || !steps.contains(where: { $0.kind == .transfer }) { errors.append("Missing application") }
         if Set(steps.map(\.id)).count != steps.count { errors.append("Duplicate steps") }
         if steps.contains(where: { $0.prompt.isEmpty || $0.answer.isEmpty || $0.meaning.isEmpty }) { errors.append("Empty content") }
+        if version < 1 || id.isEmpty || provenance.isEmpty || difficulty.isEmpty { errors.append("Missing content metadata") }
+        if steps.contains(where: { step in Set(step.alternatives.map(FuzzyMatcher.normalize)).count != step.alternatives.count }) { errors.append("Duplicate alternatives") }
+        if steps.count > 32 { errors.append("Episode exceeds bounded step budget"); return errors }
+        let ids = Set(steps.map(\.id))
+        let edges = Dictionary(steps.enumerated().map { index, step in
+            let next = index + 1 < steps.count ? steps[index + 1].id : "finish"
+            return (step.id, Set([step.nextOnCorrect ?? next, step.nextOnSupport ?? next]))
+        }, uniquingKeysWith: { first, _ in first })
+        if edges.values.flatMap({ $0 }).contains(where: { $0 != "finish" && !ids.contains($0) }) { errors.append("Unknown branch destination") }
+        var checked: Set<String> = []
+        func hasCycle(_ id: String, path: Set<String>) -> Bool {
+            if id == "finish" { return false }
+            if path.contains(id) { return true }
+            if checked.contains(id) { return false }
+            let cycle = (edges[id] ?? []).contains { hasCycle($0, path: path.union([id])) }
+            if !cycle { checked.insert(id) }
+            return cycle
+        }
+        if steps.contains(where: { hasCycle($0.id, path: []) }) { errors.append("Branch cannot finish") }
         return errors
+    }
+
+    /// A bounded DAG, never an unbounded retry loop. Help/failure can take an
+    /// authored reinforcement route; a correct unaided answer may skip it.
+    func nextIndex(after index: Int, attempt: EpisodeAttempt?) -> Int {
+        guard steps.indices.contains(index) else { return steps.count }
+        let step = steps[index]
+        let independent = step.kind == .model || (attempt?.correct == true && attempt?.supported == false)
+        guard let destination = independent ? step.nextOnCorrect : step.nextOnSupport else { return index + 1 }
+        if destination == "finish" { return steps.count }
+        return steps.firstIndex { $0.id == destination } ?? steps.count
+    }
+
+    func consequence(for step: Step, correct: Bool) -> String {
+        guard correct else { return "Ihr schaut euch die Formulierung gemeinsam an. Danach geht die Geschichte weiter – ohne Punktverlust." }
+        switch interest {
+        case "Beruf": return "Dein Gegenüber wiederholt die Auskunft langsamer. Du kannst dem Gespräch wieder folgen."
+        default:
+            if id.contains("cafe") { return step.id == "apply" ? "Der Tee kommt an euren Tisch. Eure Bestellung hat geklappt." : "Die Bedienung nimmt deine Bestellung auf." }
+            if id.contains("seasons") { return step.id == "apply" ? "Ihr kennt jetzt eure Vorlieben und plant den nächsten Ausflug." : "Dein Gegenüber erfährt etwas über dich und fragt weiter." }
+            return "Du bekommst eine Antwort. Aus der Begrüßung wird ein Gespräch."
+        }
     }
 }
 
@@ -78,13 +125,22 @@ enum EpisodeLibrary {
             "ar-cafe-1": "Heute möchtest du keinen Kaffee. Sage höflich: Ich möchte einen Tee, bitte.",
             "ar-work-1": "Du verstehst die Auskunft eines Mannes am Bahnhof nicht. Bitte ihn auf Hocharabisch um Wiederholung."
         ]
+        let variants: [String: [String]] = [
+            "Кофе, пожалуйста.": ["Можно кофе, пожалуйста?"],
+            "Чай, пожалуйста.": ["Можно чай, пожалуйста?"],
+            "Повторите, пожалуйста.": ["Повторите, пожалуйста, ещё раз."],
+            "Я не понимаю.": ["Я не понял.", "Я не поняла."],
+            "لا أفهم.": ["أنا لا أفهم."],
+            "أحب الصيف.": ["أنا أحب الصيف."],
+            "أحب الربيع.": ["أنا أحب الربيع."]
+        ]
         return .init(id: id, version: 1, language: language, title: title, outcome: outcome, hook: hook,
               symbol: symbol, interest: interest, topicTags: tags, steps: [
                 .init(id: "model-a", kind: .model, prompt: "So kannst du es sagen", answer: first, alternatives: [], meaning: firstMeaning),
                 .init(id: "model-b", kind: .model, prompt: "Eine zweite Möglichkeit", answer: second, alternatives: [], meaning: secondMeaning),
-                .init(id: "recall-a", kind: .recall, prompt: firstMeaning, answer: first, alternatives: [], meaning: firstMeaning),
-                .init(id: "recall-b", kind: .recall, prompt: secondMeaning, answer: second, alternatives: [], meaning: secondMeaning),
-                .init(id: "apply", kind: .transfer, prompt: contexts[id] ?? secondMeaning, answer: second, alternatives: [], meaning: secondMeaning)
+                .init(id: "recall-a", kind: .recall, prompt: firstMeaning, answer: first, alternatives: variants[first] ?? [], meaning: firstMeaning),
+                .init(id: "recall-b", kind: .recall, prompt: secondMeaning, answer: second, alternatives: variants[second] ?? [], meaning: secondMeaning),
+                .init(id: "apply", kind: .transfer, prompt: contexts[id] ?? secondMeaning, answer: second, alternatives: variants[second] ?? [], meaning: secondMeaning)
               ])
     }
 

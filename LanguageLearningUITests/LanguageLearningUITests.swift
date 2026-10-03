@@ -1,6 +1,22 @@
 import XCTest
 
 final class LanguageLearningUITests: XCTestCase {
+    func testOptionalCalibrationStartsWithoutShowingAModel() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["today-settings"].waitForExistence(timeout: 8))
+        app.buttons["today-settings"].tap()
+        let rhythm = app.buttons["Mein Lernrhythmus"]
+        XCTAssertTrue(rhythm.waitForExistence(timeout: 4))
+        rhythm.tap()
+        let calibration = app.buttons["Startcheck ausprobieren"]
+        for _ in 0..<4 where !calibration.isHittable { app.swipeUp() }
+        XCTAssertTrue(calibration.exists)
+        calibration.tap()
+        XCTAssertTrue(app.buttons["episode-check"].waitForExistence(timeout: 4))
+        XCTAssertFalse(app.buttons["episode-next"].exists)
+        XCTAssertTrue(app.buttons["Formulierung zeigen"].exists)
+    }
+
     func testStoryAcceptsUnaidedTypedRussianAnswer() {
         let app = launch()
         let collection = app.buttons["Alle Geschichten"]

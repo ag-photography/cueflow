@@ -2,9 +2,11 @@
 
 The [October learning experience specification](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md) contains the next proposed implementation phases and newly confirmed defects. The shipped-feature inventory below does not imply those defects are resolved.
 
-**Updated:** 19 August 2026
+**Updated:** 3 October 2026
 
-**Current train:** 1.0, build 54 development preview (not uploaded)
+**Current train:** 1.0, build 55 development preview (not uploaded)
+
+Build 55 connects stories to canonical vocabulary/FSRS, persists bounded card plans and unconfirmed attempts, adds independent journal records, optional calibration, selected study days, tutor shortfalls, evidence-led Progress, permanent earned badges, contextual reminders, and an opt-in local comparison. See the [current acceptance ledger](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#16-build-55-roadmap-implementation) for exact boundaries; this is not a claim that every research/release criterion is complete.
 **Product:** a private, native iOS speaking-first language coach for German speakers learning Russian or Arabic.
 
 ## Product promise

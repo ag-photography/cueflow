@@ -71,7 +71,16 @@ struct PracticeView: View {
     @State private var showingSprint = false
     @State private var sessionCount: Int = 0
     @State private var plannedCardIDs: [ContentID]?
+    @State private var persistedPlan: PracticePlan?
+    @State private var activeSince: Date? = .now
+    @State private var playedSummarySound = false
     @State private var answerWasRevealed = false
+    @State private var firstRetryAnswer: String?
+    @State private var firstRetryCorrect: Bool?
+    @State private var restoredTileSupport = false
+    @State private var inputAvailableMs: Int?
+    @State private var gradingWaitMs: Int?
+    @State private var timingInterrupted = false
     @State private var sessionCorrect: Int = 0
     @State private var consecutiveProductiveRecalls: Int = 0
     @State private var sessionSpokenAnswers: Int = 0
@@ -128,6 +137,7 @@ struct PracticeView: View {
     let sessionTarget: Int
     let isFocusedSession: Bool
     let scope: PracticeScope
+    let suppliedPlan: PracticePlan?
     private let transliterationGracePeriod = 200
     private let speakHesitantStartDelaySec: Double = 4.0
     private let speakHesitantPauseSec: Double = 1.5
@@ -141,11 +151,13 @@ struct PracticeView: View {
     init(
         sessionTarget: Int = 10,
         isFocusedSession: Bool = false,
-        scope: PracticeScope = .recommended
+        scope: PracticeScope = .recommended,
+        suppliedPlan: PracticePlan? = nil
     ) {
         self.sessionTarget = max(1, sessionTarget)
         self.isFocusedSession = isFocusedSession
         self.scope = scope
+        self.suppliedPlan = suppliedPlan
     }
 
     enum Phase {
@@ -289,18 +301,25 @@ struct PracticeView: View {
             refreshTutorPriority()
         }
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase != .active { invalidateInteraction() }
+            if newPhase != .active { timingInterrupted = true; recordLifecycle("session_paused"); activeSince = nil; invalidateInteraction() }
+            else { activeSince = .now; recordLifecycle("session_resumed") }
         }
         .onChange(of: speech.transcription) { _, newValue in
+            markInputAvailable(newValue)
             scheduleSilenceCompletion(after: newValue)
         }
-        .onDisappear { invalidateInteraction() }
+        .onChange(of: input) { _, value in markInputAvailable(value) }
+        .onChange(of: speech.lastError) { _, message in
+            if message != nil { recordLifecycle("recognition_failed") }
+        }
+        .onDisappear { recordLifecycle("session_paused"); invalidateInteraction() }
+        .modifier(ExposureBoundary())
         .confirmationDialog(
             "Einheit beenden?",
             isPresented: $showingExitConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Einheit beenden", role: .destructive) { dismiss() }
+            Button("Einheit beenden", role: .destructive) { if recordLifecycle("session_ended") { dismiss() } }
             Button("Weiter üben", role: .cancel) {}
         } message: {
             Text("Dein bereits gespeicherter Fortschritt bleibt erhalten.")
@@ -326,7 +345,7 @@ struct PracticeView: View {
             .accessibilityLabel("Einheit schließen")
             .accessibilityIdentifier("practice-close")
 
-            Text("\(min(sessionCount + 1, sessionTarget)) von \(sessionTarget)")
+            Text("\(min(sessionCount + 1, plannedOpportunityCount)) von \(plannedOpportunityCount)")
                 .font(.subheadline.weight(.semibold).monospacedDigit())
                 .foregroundStyle(DS.textSecondary)
                 .frame(maxWidth: .infinity)
@@ -399,9 +418,10 @@ struct PracticeView: View {
     }
 
     private var progressFraction: CGFloat {
-        guard sessionTarget > 0 else { return 0 }
-        return CGFloat(min(sessionCount, sessionTarget)) / CGFloat(sessionTarget)
+        guard plannedOpportunityCount > 0 else { return 0 }
+        return CGFloat(min(sessionCount, plannedOpportunityCount)) / CGFloat(plannedOpportunityCount)
     }
+    private var plannedOpportunityCount: Int { persistedPlan?.items.count ?? sessionTarget }
 
     private var headerBar: some View {
         VStack(spacing: DS.space.sm) {
@@ -770,7 +790,10 @@ struct PracticeView: View {
                 gradeTier: 0,  // tier 0 = recognition flip, no character grading
                 wasNew: wasNew
             )
+            review.evidence = .init(support: .selfReported, inputWasSpeech: false, assessedCorrect: rating >= 3, gradingMethod: 0)
+            review.evidence?.sessionID = persistedPlan?.id
             context.insert(review)
+            try recordPracticeAnswer(review)
             try context.save()
             interactionGate.finish(token)
             persistenceErrorMessage = nil
@@ -952,7 +975,10 @@ struct PracticeView: View {
                 gradeTier: 0,   // recognition, no character grading
                 wasNew: wasNew
             )
+            review.evidence = .init(support: .recognition, inputWasSpeech: false, assessedCorrect: correct, gradingMethod: 0)
+            review.evidence?.sessionID = persistedPlan?.id
             context.insert(review)
+            try recordPracticeAnswer(review)
             try context.save()
             interactionGate.finish(token)
             persistenceErrorMessage = nil
@@ -1772,7 +1798,7 @@ struct PracticeView: View {
     }
 
     private func revealSubtitle(for grade: AutoGrade) -> String {
-        if !selectedTileIDs.isEmpty, grade == .perfect || grade == .hesitant {
+        if !selectedTileIDs.isEmpty || restoredTileSupport, grade == .perfect || grade == .hesitant {
             return "Mit Wortbausteinen richtig zusammengesetzt."
         }
         switch grade {
@@ -1870,7 +1896,11 @@ struct PracticeView: View {
     }
 
     private func retrySpokenAnswer(_ card: StudyCard) {
-        guard case .reveal(let current, _, _, _) = phase, current === card else { return }
+        guard case .reveal(let current, let grade, let answer, _) = phase, current === card else { return }
+        if !retryWasNeeded {
+            firstRetryAnswer = answer
+            firstRetryCorrect = grade.autoGrade.suggestedRating >= 3
+        }
         invalidateInteraction()
         retryWasNeeded = true
         lastSubmissionWasSpeech = false
@@ -2098,7 +2128,10 @@ struct PracticeView: View {
         }
         .padding()
         .presentationDetents([.large])
-        .onAppear { CompletionFeedbackService.shared.playCompletion() }
+        .onAppear {
+            if !playedSummarySound && !speechMuted { CompletionFeedbackService.shared.playCompletion() }
+            playedSummarySound = true
+        }
     }
 
     private func recapRow(icon: String, title: String, detail: String, color: Color) -> some View {
@@ -2280,6 +2313,7 @@ struct PracticeView: View {
 
         gradingTask?.cancel()
         gradingTask = Task { @MainActor in
+            let gradingStartedAt = Date.now
             let baseline = await grader.gradeWithJudge(
                 german: card.phrase?.sourceText ?? "",
                 expected: expected,
@@ -2293,6 +2327,7 @@ struct PracticeView: View {
                   interactionGate.accepts(token),
                   phaseContains(card)
             else { return }
+            gradingWaitMs = max(0, Int(Date.now.timeIntervalSince(gradingStartedAt) * 1000))
             interactionGate.finish(token)
             finalize(
                 card: card,
@@ -2350,11 +2385,14 @@ struct PracticeView: View {
             }
         }
         inputFocused = false
+        guard saveAttemptCheckpoint(card: card, result: result, answer: userAnswer, elapsed: elapsedMs,
+                                    support: !selectedTileIDs.isEmpty ? .tiles : (answerWasRevealed ? .revealed : retryWasNeeded ? .retry : .none)) else { return }
         phase = .reveal(card, result, userAnswer: userAnswer, responseTimeMs: elapsedMs)
     }
 
     private func showStudyMode() {
         guard case .prompt(let card) = phase else { return }
+        guard saveAttemptCheckpoint(card: card, result: nil, answer: "", elapsed: 0, support: .revealed) else { return }
         answerWasRevealed = true
         phase = .study(card)
     }
@@ -2379,7 +2417,7 @@ struct PracticeView: View {
         })
         do {
             let wasNew = wasNewBeforeReview
-            let support: AttemptEvidence.Support = !selectedTileIDs.isEmpty ? .tiles
+            let support: AttemptEvidence.Support = (!selectedTileIDs.isEmpty || restoredTileSupport) ? .tiles
                 : (answerWasRevealed ? .revealed : (retryWasNeeded ? .retry : .none))
             if support != .tiles {
                 // A retry cannot erase the first failure; copied answers aren't recall.
@@ -2412,7 +2450,18 @@ struct PracticeView: View {
                 assessedCorrect: result.autoGrade.suggestedRating >= 3,
                 gradingMethod: result.tier
             )
+            review.evidence?.firstAnswer = firstRetryAnswer
+            review.evidence?.inputAvailableMs = inputAvailableMs
+            review.evidence?.gradingWaitMs = gradingWaitMs
+            review.evidence?.timingInterrupted = timingInterrupted
+            review.evidence?.sessionID = persistedPlan?.id
+            review.evidence?.firstCorrect = firstRetryCorrect
+            review.evidence?.previousExposureAt = reviews.filter { $0.card === card }.map(\.timestamp).max()
+            if let barrier = try settings.first?.readExperience().otherModeExposureAt?[cardLanguageCode ?? "ru"] {
+                review.evidence?.previousExposureAt = max(review.evidence?.previousExposureAt ?? .distantPast, barrier)
+            }
             context.insert(review)
+            try recordPracticeAnswer(review)
             try context.save()
             interactionGate.finish(token)
             persistenceErrorMessage = nil
@@ -2439,7 +2488,7 @@ struct PracticeView: View {
         sessionCount += 1
         if rating >= 3 {
             sessionCorrect += 1
-            let independent = selectedTileIDs.isEmpty && !retryWasNeeded && !answerWasRevealed
+            let independent = selectedTileIDs.isEmpty && !restoredTileSupport && !retryWasNeeded && !answerWasRevealed
                 && rating == result.autoGrade.suggestedRating
             consecutiveProductiveRecalls = independent ? consecutiveProductiveRecalls + 1 : 0
             if independent, wasNewBeforeReview,
@@ -2482,7 +2531,7 @@ struct PracticeView: View {
     ) {
         guard rating >= 3,
               result.autoGrade.suggestedRating >= 3,
-              selectedTileIDs.isEmpty, !retryWasNeeded,
+              selectedTileIDs.isEmpty, !restoredTileSupport, !retryWasNeeded,
               !answerWasRevealed, rating == result.autoGrade.suggestedRating,
               responseTimeMs > 0,
               exerciseMode == .speakDeToRu || exerciseMode == .typeDeToRu,
@@ -2589,6 +2638,8 @@ struct PracticeView: View {
 
     private func resetSession() {
         plannedCardIDs = nil
+        persistedPlan = nil
+        playedSummarySound = false
         sessionCount = 0
         sessionCorrect = 0
         consecutiveProductiveRecalls = 0
@@ -2612,6 +2663,12 @@ struct PracticeView: View {
         reviewModeOverride = nil
         lastSubmissionWasSpeech = false
         retryWasNeeded = false
+        firstRetryAnswer = nil
+        firstRetryCorrect = nil
+        restoredTileSupport = false
+        inputAvailableMs = nil
+        gradingWaitMs = nil
+        timingInterrupted = false
         answerWasRevealed = false
         var pool: [StudyCard]
         switch scope {
@@ -2628,19 +2685,45 @@ struct PracticeView: View {
             pool = pool.filter { clozeItem(for: $0) != nil }
         }
         let next: StudyCard?
-        if scope == .difficultThisWeek {
-            next = pool.first { !reviewedCardIDs.contains($0.contentID) }
-        } else {
+        do {
             if plannedCardIDs == nil {
-                plannedCardIDs = SessionPlanner.cards(
-                    from: pool, reviews: reviews, target: sessionTarget,
-                    dailyNewLimit: effectiveDailyLimit, tutorIDs: tutorPriorityPhraseIDs
-                ).map(\.contentID)
+                do {
+                    guard let row = settings.first else { return }
+                    var data = try row.readExperience()
+                    let language = activeLanguage?.code ?? "ru"
+                    let reusable = (data.practicePlans ?? []).last {
+                        $0.canResume(language: language, scope: scope.planKey, mode: mode, budget: sessionTarget, endedIDs: data.endedPlanIDs ?? [])
+                        && !$0.remaining(in: pool, reviews: reviews).isEmpty
+                    }
+                    let supplied = suppliedPlan.flatMap { $0.canResume(language: language, scope: scope.planKey, mode: mode, budget: sessionTarget, endedIDs: data.endedPlanIDs ?? []) && !$0.remaining(in: pool, reviews: reviews).isEmpty ? $0 : nil }
+                    let plan = reusable ?? supplied ?? PracticePlan.make(cards: pool, reviews: reviews,
+                        language: language, scope: scope.planKey, mode: mode, budget: sessionTarget,
+                        dailyLimit: effectiveDailyLimit, tutorIDs: tutorPriorityPhraseIDs)
+                    if !(data.practicePlans ?? []).contains(where: { $0.id == plan.id }) {
+                        data.practicePlans = (data.practicePlans ?? []) + [plan]
+                        data.events.append(.init(name: "practice_started", language: language, sessionID: plan.id, timestamp: .now, stepID: nil))
+                        try row.writeExperience(data)
+                        try context.save()
+                    }
+                    persistedPlan = plan
+                    let remaining = plan.remaining(in: pool, reviews: reviews)
+                    plannedCardIDs = remaining.map(\.contentID)
+                    let prior = reviews.filter { $0.evidence?.sessionID == plan.id }
+                    sessionCount = prior.count
+                    sessionCorrect = prior.filter { $0.rating >= 3 }.count
+                    sessionSpokenAnswers = prior.filter { $0.evidence?.inputWasSpeech == true }.count
+                    sessionSpokenWords = prior.filter { $0.evidence?.inputWasSpeech == true }.reduce(0) { $0 + $1.userAnswer.split(whereSeparator: \.isWhitespace).count }
+                } catch {
+                    context.rollback()
+                    showPersistenceError(error)
+                    return
+                }
             }
             let byID = Dictionary(pool.map { ($0.contentID, $0) }, uniquingKeysWith: { first, _ in first })
             next = plannedCardIDs?.filter { !reviewedCardIDs.contains($0) }.compactMap { byID[$0] }.first
         }
         if let next {
+            if restoreAttemptCheckpoint(for: next) { return }
             if presentAsTiles(next) {
                 tileOptions = makeTileOptions(for: next)
             } else if presentAsChoice(next) {
@@ -2656,6 +2739,89 @@ struct PracticeView: View {
         }
     }
 
+    private func saveAttemptCheckpoint(card: StudyCard, result: GradeResult?, answer: String, elapsed: Int,
+                                       support: AttemptEvidence.Support) -> Bool {
+        guard let plan = persistedPlan, let row = settings.first else { return true }
+        do {
+            var data = try row.readExperience()
+            let previous = data.cardAttempts?.last { $0.planID == plan.id && $0.cardKey == PracticePlan.key(card) }
+            var checkpoint = CardAttemptCheckpoint(planID: plan.id, cardKey: PracticePlan.key(card), result: result,
+                answer: answer, responseTimeMs: elapsed, support: support, spoken: lastSubmissionWasSpeech,
+                firstAnswer: previous?.firstAnswer ?? (result == nil ? nil : answer),
+                firstCorrect: previous?.firstCorrect ?? result.map { $0.autoGrade.suggestedRating >= 3 },
+                reviewMode: reviewModeOverride?.rawValue)
+            if let previous { checkpoint.id = previous.id }
+            checkpoint.inputAvailableMs = inputAvailableMs
+            checkpoint.gradingWaitMs = gradingWaitMs
+            checkpoint.timingInterrupted = timingInterrupted
+            data.save(checkpoint)
+            try row.writeExperience(data)
+            try context.save()
+            return true
+        } catch { context.rollback(); showPersistenceError(error); return false }
+    }
+
+    private func restoreAttemptCheckpoint(for card: StudyCard) -> Bool {
+        guard let plan = persistedPlan,
+              let data = try? settings.first?.readExperience(),
+              let checkpoint = data.cardAttempts?.last(where: { $0.planID == plan.id && $0.cardKey == PracticePlan.key(card) }) else { return false }
+        firstRetryAnswer = checkpoint.firstAnswer
+        firstRetryCorrect = checkpoint.firstCorrect
+        retryWasNeeded = checkpoint.support == .retry
+        answerWasRevealed = checkpoint.support == .revealed
+        lastSubmissionWasSpeech = checkpoint.spoken
+        reviewModeOverride = checkpoint.reviewMode.flatMap(CardDirection.init(rawValue:))
+        // Retain tile support without rebuilding/shuffling the old tile bank.
+        restoredTileSupport = checkpoint.support == .tiles
+        inputAvailableMs = checkpoint.inputAvailableMs
+        gradingWaitMs = checkpoint.gradingWaitMs
+        timingInterrupted = checkpoint.timingInterrupted ?? true
+        if let result = checkpoint.result {
+            phase = .reveal(card, result, userAnswer: checkpoint.answer, responseTimeMs: checkpoint.responseTimeMs)
+        } else { phase = .study(card) }
+        return true
+    }
+
+    private func markInputAvailable(_ text: String) {
+        guard inputAvailableMs == nil, !text.isEmpty, let promptStart else { return }
+        inputAvailableMs = max(0, Int(Date.now.timeIntervalSince(promptStart) * 1000))
+    }
+
+    private func recordPracticeAnswer(_ review: Review) throws {
+        guard let row = settings.first, let evidence = review.evidence else { return }
+        var data = try row.readExperience()
+        guard !data.events.contains(where: { $0.id == evidence.id }) else { return }
+        let language = review.card?.phrase?.language?.code ?? "ru"
+        let session = persistedPlan?.id ?? evidence.id
+        data.events.append(.init(id: evidence.id, name: "practice_answer", language: language,
+            sessionID: session, timestamp: review.timestamp, stepID: nil,
+            activeSeconds: min(60, max(0, activeSince.map { Date.now.timeIntervalSince($0) } ?? 0))))
+        if let plan = persistedPlan, plan.remaining(in: cards, reviews: reviews + [review]).isEmpty,
+           !data.events.contains(where: { $0.sessionID == plan.id && $0.name == "practice_completed" }) {
+            data.events.append(.init(name: "practice_completed", language: language, sessionID: plan.id, timestamp: .now, stepID: nil))
+        }
+        try row.writeExperience(data)
+        activeSince = .now
+    }
+
+    @discardableResult private func recordLifecycle(_ name: String) -> Bool {
+        guard let plan = persistedPlan else { return true }
+        do {
+            guard let row = settings.first else { return false }
+            var data = try row.readExperience()
+            if (data.endedPlanIDs ?? []).contains(plan.id) || data.events.contains(where: { $0.sessionID == plan.id && $0.name == "practice_completed" }) { return true }
+            let previous = data.events.last { $0.sessionID == plan.id }
+            if previous?.name == name { return true }
+            if name == "session_ended" { data.endedPlanIDs = (data.endedPlanIDs ?? []) + [plan.id] }
+            data.events.append(.init(name: name, language: plan.language, sessionID: plan.id, timestamp: .now, stepID: nil,
+                activeSeconds: min(60, max(0, activeSince.map { Date.now.timeIntervalSince($0) } ?? 0))))
+            try row.writeExperience(data)
+            try context.save()
+            activeSince = scenePhase == .active ? .now : nil
+            return true
+        } catch { context.rollback(); showPersistenceError(error); return false }
+    }
+
     /// Show the card as multiple-choice now: always in "Wählen", and in "Üben"
     /// (speakDeToRu) for brand-new cards — a gentle recognition step before we
     /// ask the user to *speak* a word they've just met.
@@ -2668,6 +2834,7 @@ struct PracticeView: View {
     }
 
     private func smartPresentation(for card: StudyCard) -> AdaptivePresentation {
+        if ProductionFollowUp.pending(reviews.filter { $0.card === card }) { return .speech }
         if speechMuted { return .speech } // Shared input renders unaided typing in quiet mode.
         let ratings = reviews
             .filter { $0.card === card }

@@ -4,17 +4,20 @@ import Foundation
 enum SessionPlanner {
     static func cards(
         from cards: [StudyCard], reviews: [Review], target: Int,
-        dailyNewLimit: Int, tutorIDs: Set<ContentID>, now: Date = .now
+        dailyNewLimit: Int, tutorIDs: Set<ContentID>, now: Date = .now, allowInactiveTopics: Bool = false
     ) -> [StudyCard] {
         let introduced = Set(reviews.compactMap { $0.card?.contentID })
         let newToday = Set(reviews.filter { $0.wasNew && Calendar.current.isDate($0.timestamp, inSameDayAs: now) }
             .compactMap { $0.card?.contentID }).count
         var remainingNew = max(0, dailyNewLimit - newToday)
         let due = cards.filter { $0.state != .new && $0.dueDate <= now }.sorted { $0.dueDate < $1.dueDate }
-        let followups = cards.filter { $0.state == .new && introduced.contains($0.contentID) }
+        let byCard = Dictionary(grouping: reviews.filter { $0.card != nil }, by: { $0.card!.contentID })
+        let followups = cards.filter {
+            ($0.state == .new && introduced.contains($0.contentID)) || ProductionFollowUp.pending(byCard[$0.contentID] ?? [])
+        }
         let fresh = cards.filter {
             $0.state == .new && !introduced.contains($0.contentID)
-                && (($0.phrase?.topics?.contains(where: \.isActive) ?? false)
+                && (allowInactiveTopics || ($0.phrase?.topics?.contains(where: \.isActive) ?? false)
                     || $0.phrase.map { tutorIDs.contains($0.contentID) } == true)
         }.sorted {
             guard let lhs = $0.phrase, let rhs = $1.phrase else { return false }

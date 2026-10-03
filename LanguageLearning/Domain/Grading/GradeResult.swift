@@ -2,7 +2,7 @@ import Foundation
 
 /// Auto-graded outcome before any user override. Drives the suggested FSRS rating
 /// and the reveal-screen colour chip.
-enum AutoGrade {
+enum AutoGrade: String, Codable {
     case perfect    // Tier 1 exact match, fast
     case hesitant   // Tier 1 exact match, slow (or via accepted alternative)
     case minor      // Tier 2: 1–2 char edits in a single word (likely morphology)
@@ -36,7 +36,7 @@ extension AutoGrade {
     }
 }
 
-struct GradeResult {
+struct GradeResult: Codable {
     let autoGrade: AutoGrade
     let tier: Int   // 1, 2, or 3
     let normalizedExpected: String

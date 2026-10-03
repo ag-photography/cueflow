@@ -10,12 +10,16 @@ import SwiftUI
 /// genuine attempt at meaning.
 struct ReadingView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
     @Query private var phrases: [Phrase]
     @Query private var settings: [AppSettings]
 
     @State private var passages: [ReadingPassage] = []
     @State private var revealed: Set<ContentID> = []
     @State private var isLoading = true
+    @State private var beginner = false
+    @State private var activityID = UUID()
+    @State private var activityError: String?
 
     private let tts = TTSService.shared
 
@@ -29,11 +33,15 @@ struct ReadingView: View {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if passages.isEmpty {
+                    VStack {
                     ContentUnavailableView(
                         "Noch nicht genug gefestigt",
                         systemImage: "book",
-                        description: Text("Sobald einige Ausdrücke eine Woche sitzen, erscheinen hier Sätze, die du fast vollständig verstehst.")
+                        description: Text("Der Wiederholungsplan schätzt noch zu wenige Ausdrücke als vertraut ein. Das ist eine Schätzung, kein Verständnisnachweis.")
                     )
+                    Button("Einfache Szenen lesen") { loadBeginnerPassages() }
+                        .buttonStyle(.borderedProminent).padding(.bottom, DS.space.xl)
+                    }
                 } else {
                     content
                 }
@@ -49,6 +57,8 @@ struct ReadingView: View {
         }
         .task(id: languageCode) { await load() }
         .onDisappear { tts.stop() }
+        .modifier(ExposureBoundary(mode: "reading", sessionID: activityID))
+        .safeAreaInset(edge: .bottom) { if let activityError { Text(activityError).font(.caption).padding() } }
     }
 
     private var content: some View {
@@ -69,10 +79,10 @@ struct ReadingView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("Fast alles bekannt")
+            Text(beginner ? "Einfache Alltagsszenen" : "Vermutlich vertraute Wörter")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(DS.textPrimary)
-            Text("Diese Sätze bestehen aus Wörtern, die bei dir sitzen — höchstens eines ist neu. Erst selbst lesen, dann die Übersetzung aufdecken.")
+            Text(beginner ? "Kurze Formulierungen aus den Geschichten. Erst lesen, dann bei Bedarf die Übersetzung zeigen. Entwurf: muttersprachliche Prüfung ausstehend." : "Der Wiederholungsplan schätzt fast alle Wörter als vertraut ein. Grammatik und Verständnis werden damit nicht geprüft. Erst lesen, dann die Übersetzung aufdecken.")
                 .font(.subheadline)
                 .foregroundStyle(DS.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -112,6 +122,7 @@ struct ReadingView: View {
 
             HStack(spacing: DS.space.md) {
                 Button {
+                    recordActivity("reading_audio", step: passage.id, support: "audio")
                     tts.speak(passage.sentence, language: pack.ttsLocale, times: 1)
                 } label: {
                     Label("Hören", systemImage: "speaker.wave.2.fill")
@@ -126,6 +137,7 @@ struct ReadingView: View {
                         revealed.remove(passage.id)
                     } else {
                         revealed.insert(passage.id)
+                        recordActivity("reading_translation", step: passage.id, support: "translation")
                     }
                 } label: {
                     Label(
@@ -139,10 +151,10 @@ struct ReadingView: View {
 
                 Spacer()
 
-                Text("\(passage.knownWordCount)/\(passage.totalWordCount)")
+                if !beginner { Text("\(passage.knownWordCount)/\(passage.totalWordCount)")
                     .font(.caption2.monospacedDigit())
                     .foregroundStyle(DS.textTertiary)
-                    .accessibilityLabel("\(passage.knownWordCount) von \(passage.totalWordCount) Wörtern bekannt")
+                    .accessibilityLabel("\(passage.knownWordCount) von \(passage.totalWordCount) Wörtern vermutlich vertraut") }
             }
         }
         .dsCard(elevation: 1, padding: DS.space.md)
@@ -150,9 +162,29 @@ struct ReadingView: View {
 
     @MainActor
     private func load() async {
+        beginner = false
         // Off the first frame: this walks every phrase's cards.
         await Task.yield()
         passages = ReadingSelector.passages(phrases: phrases, languageCode: languageCode)
         isLoading = false
+    }
+
+    private func loadBeginnerPassages() {
+        beginner = true
+        passages = EpisodeLibrary.all.filter { $0.language == languageCode }.prefix(3).flatMap { episode in
+            episode.steps.filter { $0.kind == .model }.map { step in
+                ReadingPassage(id: .token(episode.id + ":" + step.id), sentence: step.answer,
+                    translation: step.meaning, transliteration: nil, unknownWords: [], knownWordCount: 0,
+                    totalWordCount: step.answer.split(whereSeparator: \.isWhitespace).count)
+            }
+        }
+    }
+
+    private func recordActivity(_ name: String, step: ContentID, support: String) {
+        do {
+            try LearningActivityRecorder.record(name, language: languageCode, session: activityID,
+                step: step.description, support: support, context: context)
+            activityError = nil
+        } catch { context.rollback(); activityError = "Aktivität konnte nicht gespeichert werden." }
     }
 }

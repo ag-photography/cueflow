@@ -134,6 +134,7 @@ enum LearningMotivation {
 
     static func events(from reviews: [Review]) -> [LearningEvent] {
         reviews.compactMap { review -> LearningEvent? in
+            guard review.evidence?.kind != "exposure" else { return nil }
             guard let phrase = review.card?.phrase else { return nil }
             return LearningEvent(
                 timestamp: review.timestamp,
@@ -144,7 +145,7 @@ enum LearningMotivation {
                 rating: review.rating,
                 gradeTier: review.gradeTier,
                 responseTimeMs: review.responseTimeMs,
-                spokenWordCount: review.userAnswer.split(whereSeparator: { $0.isWhitespace }).count,
+                spokenWordCount: review.evidence?.spokenWordCount ?? review.userAnswer.split(whereSeparator: { $0.isWhitespace }).count,
                 evidence: review.evidence
             )
         }

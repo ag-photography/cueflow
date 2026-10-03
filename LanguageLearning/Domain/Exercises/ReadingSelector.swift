@@ -29,8 +29,8 @@ struct ReadingPassage: Equatable, Sendable, Identifiable {
 /// phrase, what this learner has stabilised. The threshold is a computation
 /// rather than an editorial guess, and it is per learner.
 enum ReadingSelector {
-    /// A phrase counts as known once its memory has some durability. FSRS
-    /// stability is in days; a week means it survived at least one real gap.
+    /// Familiarity heuristic only. FSRS stability is an estimated interval;
+    /// it does not prove that a phrase survived an observed seven-day gap.
     static let knownStabilityDays: Double = 7
 
     struct KnownPhrase: Sendable {

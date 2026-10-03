@@ -14,8 +14,8 @@ enum CapabilityLevel: Int, CaseIterable, Comparable, Sendable {
         switch self {
         case .discover: return "Entdecken"
         case .practise: return "Festigen"
-        case .use: return "Anwenden"
-        case .fluent: return "Gesprächsbereit"
+        case .use: return "Ausbauen"
+        case .fluent: return "Breit abgerufen"
         }
     }
 
@@ -135,7 +135,7 @@ enum ProgressionSystem {
         return [
             WeeklyMissionProgress(
                 kind: .productiveDays,
-                title: "Drei echte Sprechtage",
+                title: "Drei aktive Lerntage",
                 detail: "An drei Tagen selbst formulieren",
                 systemImage: "calendar.badge.checkmark",
                 current: productiveDays,
@@ -180,12 +180,12 @@ enum ProgressionSystem {
             ),
             LearningMilestone(
                 id: "three-scenarios", title: "Alltagsentdecker:in",
-                detail: "Drei Situationen auf Anwenden bringen",
+                detail: "Wortschatz aus drei Situationen abrufen",
                 systemImage: "map.fill", isEarned: appliedScenarios >= 3
             ),
             LearningMilestone(
-                id: "conversation-ready", title: "Gesprächsbereit",
-                detail: "Eine Situation bis Gesprächsbereit entwickeln",
+                id: "conversation-ready", title: "Breiter Wortschatz",
+                detail: "Mindestens 80 % einer Situation einmal richtig abrufen – kein Gesprächsnachweis",
                 systemImage: "person.2.wave.2.fill",
                 isEarned: capabilities.contains { $0.level == .fluent }
             ),

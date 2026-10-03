@@ -3,6 +3,7 @@ import SwiftData
 
 struct ConversationView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
     @Query private var settings: [AppSettings]
 
     @StateObject private var speech = SpeechRecognitionService()
@@ -15,6 +16,7 @@ struct ConversationView: View {
     @State private var draft = ""
     @State private var isThinking = false
     @State private var errorMessage: String?
+    @State private var activityID = UUID()
     @FocusState private var isDraftFocused: Bool
 
     private var languageCode: String { settings.first?.activeLanguageCode ?? "ru" }
@@ -50,6 +52,7 @@ struct ConversationView: View {
             .onAppear {
                 speech.setLocale(pack.speechLocale)
             }
+            .modifier(ExposureBoundary(mode: "conversation", sessionID: activityID))
             .onDisappear {
                 speech.stop()
                 TTSService.shared.stop()
@@ -331,6 +334,13 @@ struct ConversationView: View {
               )
         else { return }
         if speech.isRecording { speech.stop() }
+        let support: String
+        switch progress.support {
+        case .independent: support = "authoredMatch"
+        case .close: support = "closeToModel"
+        case .model: support = "model"
+        }
+        recordActivity("conversation_turn", support: support)
         turns.append(.init(speaker: .learner, text: text))
         draft = ""
         isThinking = true
@@ -348,16 +358,18 @@ struct ConversationView: View {
         stepIndex += 1
         isComplete = progress.isComplete
         isThinking = false
-        if isComplete { CompletionFeedbackService.shared.playCompletion() }
+        if isComplete { recordActivity("conversation_completed", support: "authoredScenario"); CompletionFeedbackService.shared.playCompletion() }
     }
 
     private func begin(_ roleplay: GuidedRoleplay) {
+        activityID = UUID()
         selectedScenario = roleplay
         stepIndex = 0
         independentTurns = 0
         coachingNote = nil
         isComplete = false
         turns = [.init(speaker: .coach, text: roleplay.openingText)]
+        recordActivity("conversation_started", support: "model")
         TTSService.shared.speak(roleplay.openingText, language: pack.ttsLocale)
     }
 
@@ -370,5 +382,12 @@ struct ConversationView: View {
         independentTurns = 0
         coachingNote = nil
         isComplete = false
+    }
+
+    private func recordActivity(_ name: String, support: String) {
+        do {
+            try LearningActivityRecorder.record(name, language: languageCode, session: activityID,
+                step: "\(selectedScenario?.id ?? "unknown"):\(stepIndex)", support: support, context: context)
+        } catch { context.rollback(); errorMessage = "Aktivität konnte nicht gespeichert werden. Dein Gespräch kann weitergehen." }
     }
 }

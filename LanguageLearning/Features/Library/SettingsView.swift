@@ -119,12 +119,7 @@ struct SettingsView: View {
                         .onChange(of: dailyReminderTime) { _, newTime in
                             saveReminderTime(newTime)
                             Task {
-                                let cal = Calendar.current
-                                let comps = cal.dateComponents([.hour, .minute], from: newTime)
-                                await NotificationService.shared.scheduleDailyReminder(
-                                    hour: comps.hour ?? 19,
-                                    minute: comps.minute ?? 0
-                                )
+                                await refreshLearningReminder()
                             }
                         }
                     }
@@ -264,12 +259,7 @@ struct SettingsView: View {
                 if granted {
                     reminderPermissionDenied = false
                     saveReminderEnabled(true)
-                    let cal = Calendar.current
-                    let comps = cal.dateComponents([.hour, .minute], from: dailyReminderTime)
-                    await NotificationService.shared.scheduleDailyReminder(
-                        hour: comps.hour ?? 19,
-                        minute: comps.minute ?? 0
-                    )
+                    await refreshLearningReminder()
                 } else {
                     reminderPermissionDenied = true
                     dailyReminderEnabled = false   // revert toggle since not authorised
@@ -303,6 +293,13 @@ struct SettingsView: View {
             )
             await NotificationService.shared.scheduleWeeklyRecap(summary)
         }
+    }
+
+    private func refreshLearningReminder() async {
+        do {
+            let row = ensureSettingsRow()
+            await NotificationService.shared.refreshLearningReminder(settings: row, experience: try row.readExperience())
+        } catch { saveErrorMessage = error.localizedDescription }
     }
 
     private func saveReminderEnabled(_ enabled: Bool) {

@@ -60,6 +60,7 @@ struct DifficultPractice {
 
         var evidence: [ContentID: (errors: Int, latest: Date)] = [:]
         for review in reviews where review.timestamp >= start && review.timestamp <= now {
+            guard review.evidence?.kind != "exposure" else { continue }
             guard review.rating <= 2 || review.autoGradeRating <= 2,
                   let card = review.card
             else { continue }

@@ -27,6 +27,7 @@ xcodebuild test \
   -scheme "$SCHEME" \
   -destination "$DESTINATION" \
   -parallel-testing-enabled "${PARALLEL_TESTING_ENABLED:-NO}" \
+  -collect-test-diagnostics "${COLLECT_TEST_DIAGNOSTICS:-on-failure}" \
   -resultBundlePath "$RESULT_BUNDLE"
 
 APP_COVERAGE=$(xcrun xccov view --report "$RESULT_BUNDLE" \

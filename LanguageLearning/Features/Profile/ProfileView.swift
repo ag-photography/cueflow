@@ -19,6 +19,8 @@ struct ProfileView: View {
     @State private var showingStories = false
     @State private var showingRecommendedPractice = false
     @State private var recommendedScope: PracticeScope = .recommended
+    @State private var delayedExamples: [String] = []
+    @State private var contextExampleCount = 0
 
     // Speaking-volume scoreboard — shared with Sprint via UserDefaults.
     @AppStorage("sprintBest") private var sprintBest: Int = 0
@@ -43,6 +45,7 @@ struct ProfileView: View {
                                     .frame(maxWidth: .infinity, alignment: .leading)
                                     .dsCard(elevation: 1, padding: DS.space.md)
                             }.buttonStyle(.plain).foregroundStyle(DS.accent)
+                            retentionEvidenceSection
                             speakingSection
                             capabilitySection
                             if !learningPatterns.isEmpty || leechCount > 0 { learningPatternSection }
@@ -88,7 +91,7 @@ struct ProfileView: View {
             .fullScreenCover(isPresented: $showingRecommendedPractice) {
                 PracticeView(sessionTarget: 10, isFocusedSession: true, scope: recommendedScope)
             }
-            .task(id: activeLanguageCode) { await loadDashboardIfNeeded() }
+            .task(id: "\(activeLanguageCode)|\(LearningDataCache.shared.revision)") { await loadDashboardIfNeeded() }
         }
     }
 
@@ -132,11 +135,37 @@ struct ProfileView: View {
         let result = await cache.snapshots(languageCode: activeLanguageCode)
         guard !Task.isCancelled else { return }
         dashboard = result.snapshots.dashboard
+        let events = cache.events(languageCode: activeLanguageCode)
+        var seen: Set<ContentID> = []
+        delayedExamples = events.sorted { $0.timestamp > $1.timestamp }.compactMap { event in
+            guard event.isVerifiedUnaidedRecall, let previous = event.evidence?.previousExposureAt,
+                  event.timestamp.timeIntervalSince(previous) >= 7 * 86_400,
+                  seen.insert(event.phraseID).inserted else { return nil }
+            return event.sourceText
+        }
+        contextExampleCount = Set(events.filter { $0.isVerifiedUnaidedRecall && $0.evidence?.kind == "transfer" }.map(\.phraseID)).count
         loadedRevision = result.revision
         loadedLanguageCode = activeLanguageCode
     }
 
     private var activeLanguageCode: String { settings.first?.activeLanguageCode ?? "ru" }
+    private var retentionEvidenceSection: some View {
+        VStack(alignment: .leading, spacing: DS.space.sm) {
+            Label("Erinnern mit Abstand", systemImage: "calendar.badge.checkmark").font(.headline)
+            if delayedExamples.isEmpty {
+                Text("Der erste richtige Abruf ist der Anfang. Spätere Checks zeigen dir, was nach einer Woche geblieben ist.")
+                    .font(.subheadline).foregroundStyle(DS.textSecondary)
+            } else {
+                Text("\(delayedExamples.count) Ausdrücke nach mindestens 7 Tagen ohne aufgezeichnete Zwischenübung abgerufen.")
+                    .font(.subheadline)
+                ForEach(Array(delayedExamples.prefix(3).enumerated()), id: \.offset) { _, text in
+                    Label(text, systemImage: "checkmark").font(.subheadline)
+                }
+            }
+            Text("\(contextExampleCount) Ausdrücke in veränderter Szene getroffen. Historische Nachweise, kein Zertifikat für freies Sprechen.")
+                .font(.caption).foregroundStyle(DS.textSecondary)
+        }.frame(maxWidth: .infinity, alignment: .leading).dsCard(elevation: 1, padding: DS.space.md)
+    }
     private var scenarioFractions: [String: Double] {
         dashboard?.scenarioFractions ?? [:]
     }

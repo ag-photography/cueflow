@@ -2,13 +2,27 @@ import Foundation
 
 /// Grading route describes how an answer was checked, never how well it was recalled.
 struct AttemptEvidence: Codable, Equatable, Sendable {
-    enum Support: String, Codable { case none, tiles, revealed, retry, selfReported }
+    enum Support: String, Codable { case none, recognition, tiles, revealed, retry, selfReported }
     let version: Int
     let id: UUID
     let support: Support
     let inputWasSpeech: Bool
     let assessedCorrect: Bool
     let gradingMethod: Int
+    var sessionID: UUID? = nil
+    var contentID: String? = nil
+    var contentVersion: Int? = nil
+    var promptID: String? = nil
+    var kind: String? = nil
+    var firstAnswer: String? = nil
+    var firstCorrect: Bool? = nil
+    var previousExposureAt: Date? = nil
+    var schedulingApplied: Bool? = nil
+    var spokenWordCount: Int? = nil
+    /// First input/ASR callback, not a measured articulatory speech onset.
+    var inputAvailableMs: Int? = nil
+    var gradingWaitMs: Int? = nil
+    var timingInterrupted: Bool? = nil
 
     init(support: Support, inputWasSpeech: Bool, assessedCorrect: Bool, gradingMethod: Int) {
         version = 1

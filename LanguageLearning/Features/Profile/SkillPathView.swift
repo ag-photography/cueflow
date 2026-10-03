@@ -14,6 +14,7 @@ struct SkillPathView: View {
     /// half a dozen times over.
     @State private var model = SkillPathModel()
     @State private var modelKey = ""
+    @State private var persistenceError: String?
 
     private var languageCode: String { settings.first?.activeLanguageCode ?? "ru" }
     private var capabilities: [CapabilityProgress] { model.capabilities }
@@ -37,17 +38,38 @@ struct SkillPathView: View {
         }
         guard !Task.isCancelled else { return }
         model = SkillPathModel(topics: topics, languageCode: languageCode, events: events)
+        do {
+            if let row = settings.first {
+                var data = try row.readExperience()
+                var earned = data.earnedMilestones ?? [:]
+                for milestone in model.milestones where milestone.isEarned {
+                    let id = languageCode + ":" + milestone.id
+                    if earned[id] == nil { earned[id] = .now }
+                }
+                model.milestones = model.milestones.map { item in
+                    .init(id: item.id, title: item.title, detail: item.detail, systemImage: item.systemImage,
+                          isEarned: item.isEarned || earned[languageCode + ":" + item.id] != nil)
+                }
+                if data.earnedMilestones != earned {
+                    data.earnedMilestones = earned
+                    try row.writeExperience(data)
+                    try context.save()
+                }
+                persistenceError = nil
+            }
+        } catch { context.rollback(); persistenceError = error.localizedDescription }
         modelKey = key
     }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: DS.space.lg) {
+                if let persistenceError { Text(persistenceError).font(.caption).foregroundStyle(DS.gradeHesitant) }
                 VStack(alignment: .leading, spacing: DS.space.xs) {
                     Text("Dein Weg ins Gespräch")
                         .font(.largeTitle.bold())
                         .foregroundStyle(DS.textPrimary)
-                    Text("Jeder Schritt wächst nur durch Antworten, die du selbst formulierst.")
+                    Text("Die Stufen zeigen bisher richtig abgerufenen Wortschatz, nicht freie Gesprächsfähigkeit. Erreichte Abzeichen bleiben erhalten, auch wenn eine Wiederholung nötig wird.")
                         .font(.subheadline)
                         .foregroundStyle(DS.textSecondary)
                 }

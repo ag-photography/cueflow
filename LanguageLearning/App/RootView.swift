@@ -3,7 +3,10 @@ import SwiftData
 
 /// Root gate: onboarding first, then the native primary navigation.
 struct RootView: View {
+    @Environment(\.modelContext) private var context
     @Query private var settings: [AppSettings]
+    @Query private var journalRecords: [LearningJournalRecord]
+    @State private var journalError: String?
     @State private var showingRecoveryDetails = false
     let storeRecoveryMessage: String?
 
@@ -35,6 +38,23 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut(duration: 0.4), value: hasOnboarded)
+        .task {
+            if let row = settings.first, let data = try? row.readExperience() {
+                await NotificationService.shared.refreshLearningReminder(settings: row, experience: data)
+            }
+        }
+        .task(id: "\(journalRecords.count)-\(settings.count)") {
+            do {
+                guard let row = settings.first else { return }
+                let merged = try LearningJournalStore.merged(row.readExperience(), records: journalRecords)
+                try row.writeExperience(merged)
+                try context.save()
+                journalError = nil
+            } catch { context.rollback(); journalError = error.localizedDescription }
+        }
+        .alert("Lernverlauf konnte nicht zusammengeführt werden", isPresented: Binding(get: { journalError != nil }, set: { if !$0 { journalError = nil } })) {
+            Button("OK") { journalError = nil }
+        } message: { Text(journalError ?? "") }
     }
 
     private func storeRecoveryBanner(_ message: String) -> some View {
@@ -142,6 +162,12 @@ private struct TodayView: View {
     @State private var selectedEpisode: LearningEpisode?
     @State private var showingEpisodes = false
     @State private var practiceScope: PracticeScope = .recommended
+    @State private var previewPlan: PracticePlan?
+    @State private var previewRemaining = 0
+    @State private var episodePreviewIDs: [String: UUID] = [:]
+    @State private var activitySaveError: String?
+    @State private var tutorDailyDemand: Int?
+    @State private var isReturning = false
 
     /// Everything below the fold is read from here. Deriving it in `body`
     /// meant recomputing it on every tab switch, for every tab.
@@ -170,8 +196,14 @@ private struct TodayView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? DS.space.sm : DS.space.lg) {
                     if verticalSizeClass != .compact { greeting }
-                    if let episode = suggestedEpisode { episodeCard(episode) }
-                    recommendedSession
+                    if let activitySaveError { Text(activitySaveError).font(.caption).foregroundStyle(DS.gradeHesitant) }
+                    if experience?.trial?.variant == "cards-first" && experience?.trial?.endedAt == nil {
+                        recommendedSession
+                        if let episode = suggestedEpisode { episodeCard(episode) }
+                    } else {
+                        if let episode = suggestedEpisode { episodeCard(episode) }
+                        recommendedSession
+                    }
                     if snapshot.difficultCount > 0 { difficultPracticeCard }
                     dailyQuestCard
                     exploreCard
@@ -200,12 +232,13 @@ private struct TodayView: View {
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
             .sheet(isPresented: $showingEpisodes) { EpisodeCollectionView() }
-            .fullScreenCover(item: $selectedEpisode) { EpisodeView(episode: $0) }
+            .fullScreenCover(item: $selectedEpisode) { EpisodeView(episode: $0, previewSessionID: episodePreviewIDs[$0.id]) }
             .fullScreenCover(isPresented: $showingPractice) {
                 PracticeView(
                     sessionTarget: practiceSessionTarget,
                     isFocusedSession: true,
-                    scope: practiceScope
+                    scope: practiceScope,
+                    suppliedPlan: practiceScope == .recommended ? previewPlan : nil
                 )
             }
             .fullScreenCover(isPresented: $showingSprint) { SprintView() }
@@ -215,10 +248,15 @@ private struct TodayView: View {
             .navigationDestination(isPresented: $showingSkillPath) { SkillPathView() }
             .onAppear { consumePendingAction() }
             .task(id: refreshKey) { await reloadSnapshot() }
+            .task(id: "\(refreshKey)-\(sessionTarget)") { preparePlan() }
             .task { await refreshWeeklyRecap() }
             .onOpenURL { url in
                 guard url.scheme == "cueflow" else { return }
                 switch url.host {
+                case "episode":
+                    if let episode = EpisodeLibrary.all.first(where: { $0.id == url.lastPathComponent && $0.language == activeLanguageCode }) {
+                        selectedEpisode = episode
+                    } else { showingEpisodes = true }
                 case "practice":
                     practiceScope = .recommended
                     showingPractice = true
@@ -286,6 +324,21 @@ private struct TodayView: View {
                 Button("Alle Geschichten") { showingEpisodes = true }.font(.caption.weight(.semibold))
             } }
         }.dsCard(elevation: 2, padding: verticalSizeClass == .compact ? DS.space.sm : DS.space.lg)
+            .onAppear { recordEpisodePreview(episode) }
+    }
+
+    private func recordEpisodePreview(_ episode: LearningEpisode) {
+        guard !isCovered, episodePreviewIDs[episode.id] == nil, let row = settings.first else { return }
+        do {
+            var data = try row.readExperience()
+            let id = UUID()
+            data.events.append(.init(name: "today_story_preview", language: episode.language,
+                sessionID: id, timestamp: .now, stepID: episode.id))
+            try row.writeExperience(data)
+            try context.save()
+            episodePreviewIDs[episode.id] = id
+            activitySaveError = nil
+        } catch { context.rollback(); activitySaveError = "Nutzungsereignis nicht gespeichert: \(error.localizedDescription)" }
     }
 
     private var exploreCard: some View {
@@ -474,7 +527,7 @@ private struct TodayView: View {
     /// they'd be recomputed after every answer.
     private var isCovered: Bool {
         showingPractice || showingSprint || showingListeningLab
-            || showingConversation || showingReading
+            || showingConversation || showingReading || selectedEpisode != nil || showingSettings || showingEpisodes
     }
 
     private var refreshKey: String {
@@ -547,23 +600,29 @@ private struct TodayView: View {
             Text("Gezielt wiederholen")
                 .font((verticalSizeClass == .compact ? Font.title3 : Font.title2).weight(.bold))
                 .foregroundStyle(DS.textPrimary)
-            Text("Bis zu \(sessionTarget) Ausdrücke · eine überschaubare Runde")
+            if isReturning {
+                Text("Schön, dass du wieder da bist. Kein Nachholen nötig – fünf Ausdrücke reichen für den Wiedereinstieg.")
+                    .font(.subheadline).foregroundStyle(DS.textSecondary)
+                Button("Mit einer Fünferrunde zurückkommen") { sessionTarget = 5 }
+                    .font(.subheadline.weight(.semibold))
+            }
+            Text(previewPlan != nil ? "\(previewRemaining) Ausdrücke · eine überschaubare Runde" : "Bis zu \(sessionTarget) Ausdrücke · eine überschaubare Runde")
                 .font(.subheadline)
                 .foregroundStyle(DS.textSecondary)
             if let tutorPacing = snapshot.pacing, tutorPacing.remainingNewCount > 0 {
                 Label(
-                    "Tutor-Fokus: heute \(tutorPacing.dailyNewTarget) neue · \(tutorPacing.daysUntilLesson) Tage verbleibend",
+                    "Tutor-Fokus: \(tutorDailyDemand ?? tutorPacing.dailyNewTarget) neue je Lerntag · \(tutorPacing.daysUntilLesson) Tage bis zur nächsten Stunde",
                     systemImage: "person.2.fill"
                 )
                 .font(.caption.weight(.medium))
                 .foregroundStyle(DS.accent)
-                if tutorPacing.dailyNewTarget > (settings.first?.dailyNewLimit ?? 10) {
+                if (tutorDailyDemand ?? tutorPacing.dailyNewTarget) > (settings.first?.dailyNewLimit ?? 10) {
                     Text("Das liegt über deinem Tageslimit. Dein Limit bleibt unverändert; passe bei Bedarf Termin oder Umfang in der Bibliothek an.")
                         .font(.caption).foregroundStyle(DS.textSecondary)
                 }
             }
             if verticalSizeClass != .compact {
-                Label("Etwa \(estimatedMinutes) Minuten", systemImage: "clock")
+                Label("Etwa \(previewPlan != nil ? max(1, Int(ceil(Double(previewRemaining * 33) / 60))) : estimatedMinutes) Minuten", systemImage: "clock")
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
             }
@@ -598,6 +657,35 @@ private struct TodayView: View {
         case .recommended:
             return sessionTarget
         }
+    }
+
+    private func preparePlan() {
+        guard !isCovered else { return }
+        let pool = cards.filter { $0.phrase?.language?.code == activeLanguageCode }
+        let latest = max(reviews.filter { $0.card?.phrase?.language?.code == activeLanguageCode }.map(\.timestamp).max() ?? .distantPast,
+                         experience?.runs.filter { $0.language == activeLanguageCode }.map(\.updatedAt).max() ?? .distantPast)
+        isReturning = latest != .distantPast && Date.now.timeIntervalSince(latest) >= 7 * 86_400
+        let introduced = Set(pool.filter(\.hasBeenIntroduced).compactMap { $0.phrase?.contentID })
+        var allocated: Set<ContentID> = []
+        var demand = 0
+        for topic in topics.filter({ $0.language?.code == activeLanguageCode && $0.isTutorFocusActive })
+            .sorted(by: { ($0.tutorNextLessonAt ?? .distantFuture) < ($1.tutorNextLessonAt ?? .distantFuture) }) {
+            let ids = Set((topic.phrases ?? []).map(\.contentID)).subtracting(allocated)
+            allocated.formUnion(ids)
+            demand += TutorStudyBudget.make(remaining: ids.subtracting(introduced).count, deadline: topic.tutorNextLessonAt,
+                weekdays: experience?.preference(for: activeLanguageCode).effectiveStudyWeekdays,
+                dailyLimit: settings.first?.dailyNewLimit ?? 10).requiredPerOpportunity
+        }
+        tutorDailyDemand = demand
+        if let saved = (experience?.practicePlans ?? []).last(where: {
+            $0.canResume(language: activeLanguageCode, scope: "recommended", mode: .speakDeToRu, budget: sessionTarget, endedIDs: experience?.endedPlanIDs ?? [])
+            && !$0.remaining(in: pool, reviews: reviews).isEmpty
+        }) { previewPlan = saved; previewRemaining = saved.remaining(in: pool, reviews: reviews).count; return }
+        previewPlan = PracticePlan.make(cards: pool, reviews: reviews, language: activeLanguageCode,
+            scope: "recommended", mode: .speakDeToRu, budget: sessionTarget,
+            dailyLimit: settings.first?.dailyNewLimit ?? 10,
+            tutorIDs: TutorPriority.phraseIDs(topics: topics, cards: cards))
+        previewRemaining = previewPlan?.items.count ?? 0
     }
 
     private var difficultPracticeCard: some View {

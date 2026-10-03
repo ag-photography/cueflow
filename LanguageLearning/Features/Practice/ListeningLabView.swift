@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ListeningLabView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var context
     @Query private var phrases: [Phrase]
     @Query private var settings: [AppSettings]
     private enum LabMode: Hashable { case meaning, dictation }
@@ -15,6 +16,8 @@ struct ListeningLabView: View {
     @State private var dictationChecked = false
     @FocusState private var dictationFocused: Bool
     @State private var completed = 0
+    @State private var activityID = UUID()
+    @State private var activityError: String?
     @State private var isShadowing = false
     @State private var hasShadowed = false
     @State private var shadowingTimeout: Task<Void, Never>?
@@ -89,6 +92,10 @@ struct ListeningLabView: View {
             }
         }
         .accessibilityIdentifier("listening-lab")
+        .modifier(ExposureBoundary(mode: "listening", sessionID: activityID))
+        .onChange(of: hasShadowed) { _, value in if value { recordActivity("listening_shadowed", support: "selfReported") } }
+        .onChange(of: speech.lastError) { _, message in if message != nil { recordActivity("recognition_failed", support: "systemFailure") } }
+        .safeAreaInset(edge: .bottom) { if let activityError { Text(activityError).font(.caption).padding() } }
     }
 
     private var progressHeader: some View {
@@ -126,6 +133,7 @@ struct ListeningLabView: View {
                     Button {
                         guard selected == nil else { return }
                         selected = option
+                        recordActivity("listening_answer", support: "recognition", matched: option == challenge.correctMeaning)
                         if option == challenge.correctMeaning {
                             CompletionFeedbackService.shared.playStepSuccess()
                         }
@@ -242,6 +250,7 @@ struct ListeningLabView: View {
         guard !dictation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         dictationFocused = false
         dictationChecked = true
+        recordActivity("listening_dictation", support: "audio", matched: dictationMatches)
         if dictationMatches { CompletionFeedbackService.shared.playStepSuccess() }
     }
 
@@ -278,6 +287,7 @@ struct ListeningLabView: View {
                 Button(completed >= 4 ? "Hörstudio abschließen" : "Nächster Ausdruck") {
                     completed += 1
                     if completed >= 5 {
+                        recordActivity("listening_completed", support: "shadowing")
                         CompletionFeedbackService.shared.playCompletion()
                         dismiss()
                     } else {
@@ -291,6 +301,7 @@ struct ListeningLabView: View {
     }
 
     private func play(_ challenge: ListeningChallenge, slow: Bool) {
+        recordActivity("listening_audio", support: "audio")
         ReferenceAudioService.shared.play(
             text: challenge.spokenText,
             locale: challenge.locale,
@@ -306,6 +317,7 @@ struct ListeningLabView: View {
             shadowingTimeout?.cancel()
             speech.stop()
             hasShadowed = true
+            recordActivity("listening_shadowed", support: "selfReported")
             return
         }
         Task {
@@ -330,6 +342,14 @@ struct ListeningLabView: View {
                 hasShadowed = true
             }
         }
+    }
+
+    private func recordActivity(_ name: String, support: String, matched: Bool? = nil) {
+        do {
+            try LearningActivityRecorder.record(name, language: languageCode, session: activityID,
+                step: String(completed), support: support, matched: matched, context: context)
+            activityError = nil
+        } catch { context.rollback(); activityError = "Aktivität konnte nicht gespeichert werden." }
     }
 
     private func loadNext() {

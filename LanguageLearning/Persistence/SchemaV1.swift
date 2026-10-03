@@ -372,9 +372,15 @@ enum SchemaV2: VersionedSchema {
     }
 }
 
+enum SchemaV3: VersionedSchema {
+    static var versionIdentifier: Schema.Version { Schema.Version(3, 0, 0) }
+    static var models: [any PersistentModel.Type] { SchemaV2.models + [LearningJournalRecord.self] }
+}
+
 enum LanguageLearningMigrationPlan: SchemaMigrationPlan {
-    static var schemas: [any VersionedSchema.Type] { [SchemaV1.self, SchemaV2.self] }
+    static var schemas: [any VersionedSchema.Type] { [SchemaV1.self, SchemaV2.self, SchemaV3.self] }
     static var stages: [MigrationStage] {
-        [.lightweight(fromVersion: SchemaV1.self, toVersion: SchemaV2.self)]
+        [.lightweight(fromVersion: SchemaV1.self, toVersion: SchemaV2.self),
+         .lightweight(fromVersion: SchemaV2.self, toVersion: SchemaV3.self)]
     }
 }
