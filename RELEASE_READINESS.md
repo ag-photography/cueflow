@@ -2,6 +2,26 @@
 
 This file separates work the repository can verify from work that requires a physical device, native speakers, an Apple account, or real learners.
 
+## Discovery before recognition — 4 October 2026
+
+First P3 slice uses canonical lesson vocabulary, not generated substitute phrases. New recognition opportunities now present the meaning/formulation before selection. Exposure is saved using the existing revealed checkpoint before rendering; discovery consumes no opportunity, reward or FSRS update. Interrupted exposure resumes supported study. Recognition remains recognition evidence, not productive mastery. Existing quiet practice is preserved. Known-equivalent translations/accepted alternatives, empty candidates, normalized duplicates and other languages are excluded from choice sets; no distractor means ordinary input, not an automatic correct choice. This conservative filter is not a language expert or a complete semantic validator.
+
+Initial `/tmp/cueflow-discovery-check.xcresult` passed **66 XCTest + 159 Swift Testing + 2 UI journeys = 227 checks**. The new journey covers RU/AR discovery and unchanged opportunity count; the existing tutor import/quick-round/resume journey also passed. Subsequent changes refine discovery styling/playback and extend the UI test to verify supported resumption after exposure.
+
+Final complete quality gate `/tmp/cueflow-discovery-full.xcresult` passed **66 XCTest + 159 Swift Testing + 19 UI journeys = 244 checks**, zero failures, **54.34% app line coverage**, on iPhone 17 / iOS 26.5 simulator. Log: `/tmp/cueflow-discovery-full.log`. This includes the earlier practice-shell changes, quiet feedback at maximum Arabic Dynamic Type, tutor import/resume, tab switching, typed Russian and interrupted discovery. Final RU dark / AR light discovery and recognition screenshots under `/tmp/cueflow-discovery-full-images/` were visually inspected. Physical audio/VoiceOver, linguistic content review and real-user engagement/learning outcomes remain unverified. No commit, push or TestFlight upload performed.
+
+Magnific discovery found no matching plugin in this environment. No connection, account access, paid generation or tutor-document transfer occurred. Optional offline media production and review requirements are recorded in specification §19/P3; reviewed visual choice and high-quality prerecorded speech are still pending, not implemented by this text/audio slice.
+
+## Focused practice shell — 4 October 2026
+
+Local P2 continuation: shared semantic background/card surfaces, one task instruction with tutor context, language-aware choice typography, scrollable recognition/construction/production stages, compact feedback and a persistent Continue action. Speech-recognition notes remain optional. Quiet mode now also suppresses recognition autoplay; reveal autoplay reads once. Press/progress feedback respects Reduce Motion. Grading, scheduling, checkpoints, retry evidence and recognition dwell times are unchanged.
+
+Verification: the complete run `/tmp/cueflow-practice-shell-final.xcresult` passed **219 unit/domain tests and 16 of 18 UI journeys**. The new quiet-practice test needed explicit scrolling to reach preferences at maximum Dynamic Type; an existing typed-story test missed its second model transition. The harness now scrolls to the actual control and waits for the model state rather than issuing consecutive taps. Earlier quiet-test debugging also corrected the switch hit target, not preference persistence.
+
+Screenshot review found clipped symbols and an unnecessarily narrow feedback column at maximum text size. Fixed with stable-size symbols, a vertical accessibility layout, and an opaque Continue footer. Final `/tmp/cueflow-practice-accessibility-final.xcresult` passed **66 XCTest + 153 Swift Testing + 2 targeted UI journeys = 221 checks**, zero failures. The UI journeys cover quiet RU dark/default size, quiet AR light/maximum accessibility size, persisted quiet preference, feedback/Continue reachability and typed Russian situational recall. Final screenshots under `/tmp/cueflow-practice-accessibility-final-images/` were inspected. The full 18-journey suite was **not** rerun after these final layout/harness changes; this is not a fully green whole-suite claim.
+
+No physical-device audio, VoiceOver, retention benefit or speed benchmark certification. No commit, push or TestFlight upload performed for this slice. Broader P2 work and subsequent tutor-connected visual activities remain in the roadmap.
+
 ## One-action Today — 4 October 2026
 
 Today contains one contextual invitation with “Jetzt üben”/“Weiterüben”, plus “Andere Übung wählen”. Existing eligible rounds take precedence, then tutor focus, then general practice/situations. Topic/scenario/difficult speaking plans can resume under their existing scope and budget. Statistics, goals and the collection no longer compete on Today; alternative routes remain in the menu and existing Library/Progress screens. Trial story-first preference affects only the general fallback; this changed layout must not be pooled with the earlier layout as a causal experiment.

@@ -1,6 +1,73 @@
 import XCTest
 
 final class LanguageLearningUITests: XCTestCase {
+    func testNewExpressionHasAnUnscoredDiscoveryStep() {
+        for language in ["ru", "ar"] {
+            let app = launch(language: language, appearance: language == "ru" ? "Dark" : "Light")
+            app.buttons["today-primary-start"].tap()
+            let discover = app.buttons["practice-discovery-next"]
+            XCTAssertTrue(discover.waitForExistence(timeout: 8))
+            let preview = XCTAttachment(screenshot: app.screenshot())
+            preview.name = "Discovery — \(language)"; preview.lifetime = .keepAlways; add(preview)
+            discover.tap()
+            XCTAssertTrue(app.descendants(matching: .any)["practice-instruction"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["1 von 10"].exists, "Discovery must not consume an opportunity")
+            XCTAssertFalse(discover.exists)
+            let choices = XCTAttachment(screenshot: app.screenshot())
+            choices.name = "Recognition — \(language)"; choices.lifetime = .keepAlways; add(choices)
+            app.buttons["practice-close"].tap()
+            app.buttons["today-primary-start"].tap()
+            XCTAssertTrue(app.staticTexts["Schau dir die Formulierung an und probiere sie aus."].waitForExistence(timeout: 5),
+                          "An interrupted model exposure must resume with support, not unaided recall")
+            XCTAssertFalse(discover.exists)
+            app.terminate()
+        }
+    }
+
+    func testQuietPracticeKeepsFeedbackAndContinueReachable() {
+        for language in ["ru", "ar"] {
+            let app = launch(language: language,
+                contentSize: language == "ar" ? "UICTContentSizeCategoryAccessibilityXXXL" : nil,
+                appearance: language == "ru" ? "Dark" : "Light")
+            app.buttons["today-settings"].tap()
+            let rhythm = app.buttons["Mein Lernrhythmus"]
+            for _ in 0..<5 where !rhythm.isHittable { app.swipeUp() }
+            XCTAssertTrue(rhythm.waitForExistence(timeout: 5))
+            rhythm.tap()
+            let quiet = app.switches["Leise starten"]
+            for _ in 0..<5 where !quiet.isHittable { app.swipeUp() }
+            XCTAssertTrue(quiet.waitForExistence(timeout: 5))
+            if quiet.value as? String == "0" {
+                // SwiftUI exposes the whole Form row as a switch; its centre
+                // can be the label rather than the trailing toggle control.
+                quiet.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+            }
+            let enabled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == '1'"), object: quiet)
+            XCTAssertEqual(XCTWaiter.wait(for: [enabled], timeout: 3), .completed)
+            app.navigationBars["Mein Lernrhythmus"].buttons.firstMatch.tap()
+            app.buttons["Mein Lernrhythmus"].tap()
+            XCTAssertTrue(app.switches["Leise starten"].waitForExistence(timeout: 5))
+            XCTAssertEqual(app.switches["Leise starten"].value as? String, "1")
+            app.navigationBars["Mein Lernrhythmus"].buttons.firstMatch.tap()
+            app.buttons["Fertig"].tap()
+            let start = app.buttons["today-primary-start"]
+            XCTAssertTrue(start.waitForExistence(timeout: 5))
+            start.tap()
+            let input = app.textFields.firstMatch
+            XCTAssertTrue(input.waitForExistence(timeout: 8))
+            input.tap()
+            input.typeText("xyz\n")
+            let next = app.buttons["practice-continue"]
+            XCTAssertTrue(next.waitForExistence(timeout: 15))
+            XCTAssertTrue(next.isHittable)
+            let feedback = XCTAttachment(screenshot: app.screenshot())
+            feedback.name = "Practice feedback — \(language)"; feedback.lifetime = .keepAlways; add(feedback)
+            next.tap()
+            XCTAssertFalse(next.waitForExistence(timeout: 1))
+            app.terminate()
+        }
+    }
+
     func testIllustratedTodayAndPassportInBothAppearances() {
         for appearance in ["Light", "Dark"] {
             let app = launch(appearance: appearance)
@@ -51,8 +118,10 @@ final class LanguageLearningUITests: XCTestCase {
         let next = app.buttons["episode-next"]
         XCTAssertTrue(next.waitForExistence(timeout: 5))
         next.tap()
+        XCTAssertTrue(app.staticTexts["Eine zweite Möglichkeit"].waitForExistence(timeout: 5))
         next.tap()
         let quiet = app.switches["Leise üben"]
+        XCTAssertTrue(quiet.waitForExistence(timeout: 5))
         if quiet.value as? String == "0" { quiet.tap() }
         let answer = app.descendants(matching: .any).matching(identifier: "episode-answer").firstMatch
         XCTAssertTrue(answer.waitForExistence(timeout: 5))

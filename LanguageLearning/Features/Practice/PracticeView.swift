@@ -53,6 +53,7 @@ struct PracticeInteractionGate {
 /// prompt card, distinct reveal layout, modern semantic rating buttons.
 struct PracticeView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
@@ -104,6 +105,7 @@ struct PracticeView: View {
     // "Wählen" (multiple-choice) mode: the four options for the current card and
     // the option the user tapped (nil until they answer).
     @State private var choiceOptions: [String] = []
+    @State private var choiceModelAcknowledged = false
     @State private var choiceChosen: String? = nil
     @State private var tileOptions: [WordTile] = []
     @State private var selectedTileIDs: [Int] = []
@@ -227,12 +229,6 @@ struct PracticeView: View {
             sessionProgressBar
             if isFocusedSession {
                 focusedSessionHeader
-                if let contextTitle {
-                    Label(contextTitle, systemImage: "person.text.rectangle")
-                        .font(.subheadline.weight(.semibold)).foregroundStyle(DS.accentText)
-                        .padding(.horizontal, DS.space.md).padding(.bottom, DS.space.sm)
-                        .accessibilityIdentifier("practice-tutor-context")
-                }
             } else {
                 headerBar
             }
@@ -253,16 +249,7 @@ struct PracticeView: View {
         }
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
-        .background(
-            // Subtle top-to-bottom warmth so the prompt card floats on depth
-            // rather than flat cream. Header sits on the surface0 top stop, so
-            // there's no seam.
-            LinearGradient(
-                colors: [DS.surface0, DS.surface2.opacity(0.55)],
-                startPoint: .top, endPoint: .bottom
-            )
-            .ignoresSafeArea()
-        )
+        .background(DS.pageBackground.ignoresSafeArea())
         .sheet(isPresented: $showingLibrary, onDismiss: { advance() }) {
             LibraryView()
         }
@@ -347,17 +334,24 @@ struct PracticeView: View {
                 }
             } label: {
                 Image(systemName: "xmark")
-                    .font(.headline)
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(DS.textSecondary)
                     .frame(width: 44, height: 44)
             }
             .accessibilityLabel("Einheit schließen")
             .accessibilityIdentifier("practice-close")
 
-            Text("\(min(sessionCount + 1, plannedOpportunityCount)) von \(plannedOpportunityCount)")
-                .font(.subheadline.weight(.semibold).monospacedDigit())
-                .foregroundStyle(DS.textSecondary)
-                .frame(maxWidth: .infinity)
+            VStack(spacing: 2) {
+                if let contextTitle {
+                    Text(contextTitle).font(.subheadline.weight(.semibold))
+                        .foregroundStyle(DS.textPrimary)
+                        .accessibilityIdentifier("practice-tutor-context")
+                }
+                Text(plannedOpportunityCount > 0 ? "\(min(sessionCount + 1, plannedOpportunityCount)) von \(plannedOpportunityCount)" : "Runde wird vorbereitet")
+                    .font(.caption.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(DS.textSecondary)
+            }.frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
 
             Button {
                 if isSessionPaused {
@@ -369,7 +363,7 @@ struct PracticeView: View {
                 }
             } label: {
                 Image(systemName: isSessionPaused ? "play.fill" : "pause.fill")
-                    .font(.headline)
+                    .font(.system(size: 20, weight: .semibold))
                     .foregroundStyle(DS.textSecondary)
                     .frame(width: 44, height: 44)
             }
@@ -420,7 +414,7 @@ struct PracticeView: View {
                 Rectangle()
                     .fill(DS.accent)
                     .frame(width: geo.size.width * progressFraction)
-                    .animation(.easeOut(duration: 0.3), value: sessionCount)
+                    .animation(reduceMotion ? nil : .easeOut(duration: 0.2), value: sessionCount)
             }
         }
         .frame(height: 4)
@@ -628,6 +622,7 @@ struct PracticeView: View {
         case .loading:
             loadingView.task { advance() }
         case .prompt(let card):
+            PracticeStage {
             if mode == .flipDeToRu {
                 flipCardScreen(card: card)
             } else if presentAsTiles(card) {
@@ -638,8 +633,9 @@ struct PracticeView: View {
             } else {
                 promptContent(card: card, revealed: false)
             }
+            }
         case .study(let card):
-            promptContent(card: card, revealed: true)
+            PracticeStage { promptContent(card: card, revealed: true) }
         case .reveal(let card, let result, let answer, let elapsedMs):
             revealContent(card: card, result: result, userAnswer: answer, responseTimeMs: elapsedMs)
         case .speakSentence(let card):
@@ -831,15 +827,32 @@ struct PracticeView: View {
     // MARK: - Choose (multiple-choice) mode
 
     private func chooseCardScreen(card: StudyCard) -> some View {
-        VStack(spacing: DS.space.lg) {
+        let introducing = !card.hasBeenIntroduced && !choiceModelAcknowledged
+        return VStack(spacing: DS.space.lg) {
             if let praise = surprisePraiseBanner { surpriseBanner(praise) }
             if mode == .speakDeToRu && speechMuted { resumeSpeakingBanner }
-            topicChips(card: card)
+            if introducing {
+                Text("Erst kennenlernen")
+                    .font(.subheadline.weight(.semibold)).foregroundStyle(DS.accentText)
+                    .accessibilityIdentifier("practice-discovery")
+            } else { topicChips(card: card) }
             heroPrompt(card: card)
-            Spacer(minLength: 0)
-            VStack(spacing: DS.space.sm) {
-                ForEach(choiceOptions, id: \.self) { option in
-                    choiceButton(card: card, option: option)
+            if introducing {
+                headwordAnswerCard(card: card, discovery: true)
+                Text("Schau dir die Formulierung an. Danach wählst du sie selbst aus.")
+                    .font(.subheadline).foregroundStyle(DS.textSecondary)
+                primaryButton(title: "Jetzt auswählen", disabled: false) {
+                    tts.stop()
+                    choiceModelAcknowledged = true
+                    promptStart = .now
+                }
+                .accessibilityIdentifier("practice-discovery-next")
+            } else {
+                Spacer(minLength: 0)
+                VStack(spacing: DS.space.sm) {
+                    ForEach(choiceOptions, id: \.self) { option in
+                        choiceButton(card: card, option: option)
+                    }
                 }
             }
         }
@@ -899,10 +912,9 @@ struct PracticeView: View {
         } label: {
             HStack(spacing: DS.space.sm) {
                 Text(option)
-                    .font(.system(.title3, design: .rounded, weight: .medium))
+                    .font(LearningTypography.display(.title3, weight: .medium, languageCode: card.phrase?.language?.code))
                     .foregroundStyle(fg)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
+                    .fixedSize(horizontal: false, vertical: true)
                     .multilineTextAlignment(isRTL ? .trailing : .leading)
                     .frame(maxWidth: .infinity, alignment: isRTL ? .trailing : .leading)
                 if answered && isCorrect {
@@ -934,14 +946,16 @@ struct PracticeView: View {
         else { return }
         let elapsedMs = Int((promptStart.map { Date.now.timeIntervalSince($0) } ?? 0) * 1000)
         let correct = card.phrase?.targetText == option
-        withAnimation(.easeOut(duration: 0.2)) { choiceChosen = option }
+        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { choiceChosen = option }
         if correct {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
         } else {
             UINotificationFeedbackGenerator().notificationOccurred(.error)
         }
-        tts.speak(card.phrase?.targetText ?? "",
-                  language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1)
+        if !speechMuted {
+            tts.speak(card.phrase?.targetText ?? "",
+                      language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1)
+        }
 
         // Brief feedback dwell — longer when wrong so the correct answer registers.
         let dwell: UInt64 = correct ? 850_000_000 : 1_700_000_000
@@ -1017,28 +1031,18 @@ struct PracticeView: View {
         }
     }
 
-    /// Builds 4 options for a choose card: the correct answer plus three
-    /// distractors sampled from the active-language pool. Samples (rather than
-    /// scanning every card and faulting its topics) so it stays fast even with
-    /// thousands of cards.
+    /// Bounded sampling of canonical lesson vocabulary, filtering known
+    /// alternative answers and overlapping translations before presentation.
     private func makeChoiceOptions(for card: StudyCard, pool: [StudyCard]) -> [String] {
         guard let phrase = card.phrase else { return [] }
-        let correct = phrase.targetText
-        let phraseID = phrase.persistentModelID
-        var candidates: [String] = []
-        var seen: Set<String> = [correct]
-        var attempts = 0
-        while candidates.count < 10 && attempts < 50 {
-            attempts += 1
-            guard let c = pool.randomElement(),
-                  let p = c.phrase, p.persistentModelID != phraseID else { continue }
-            let target = p.targetText
-            if !target.isEmpty, !seen.contains(target) {
-                seen.insert(target)
-                candidates.append(target)
-            }
+        func item(_ phrase: Phrase) -> MultipleChoice.Item {
+            .init(source: phrase.sourceText, target: phrase.targetText,
+                  language: phrase.language?.code ?? "", alternatives: phrase.acceptedAlternatives)
         }
-        return MultipleChoice.options(correct: correct, from: candidates, distractors: 3)
+        // Bound relationship reads; omitting a choice task is safer than filling
+        // it with unrelated or known-equivalent answers.
+        return MultipleChoice.options(correct: item(phrase),
+            from: pool.shuffled().prefix(50).compactMap { $0.phrase }.map(item))
     }
 
     private var loadingView: some View {
@@ -1096,20 +1100,23 @@ struct PracticeView: View {
     }
 
     private func topicChips(card: StudyCard) -> some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 6) {
-                ForEach(card.phrase?.topics ?? []) { topic in
-                    Text(topic.name)
-                        .font(.caption.weight(.medium))
-                        .foregroundStyle(DS.textSecondary)
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(DS.surface1)
-                        .clipShape(Capsule())
-                }
+        VStack(alignment: .leading, spacing: DS.space.xs) {
+            if contextTitle == nil, let topic = card.phrase?.topics?.first {
+                Text(topic.name).font(.caption).foregroundStyle(DS.textSecondary)
             }
+            Text(practiceInstruction(card))
+                .font(.subheadline.weight(.medium)).foregroundStyle(DS.accentText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityIdentifier("practice-instruction")
+    }
+
+    private func practiceInstruction(_ card: StudyCard) -> String {
+        if case .study = phase { return "Schau dir die Formulierung an und probiere sie aus." }
+        if presentAsChoice(card) { return "Wähle die passende Formulierung." }
+        if presentAsTiles(card) { return "Baue die passende Formulierung." }
+        if mode == .clozeDeToRu { return "Ergänze die Formulierung." }
+        return "Wie sagst du das auf \(card.phrase?.language?.germanLabel ?? "Russisch")?"
     }
 
     @ViewBuilder
@@ -1179,6 +1186,7 @@ struct PracticeView: View {
             .padding(.horizontal, DS.space.lg)
             .padding(.vertical, DS.space.xxl)
             .dsFlashcardSurface()
+            .accessibilityIdentifier("practice-prompt")
     }
 
     @ViewBuilder
@@ -1241,12 +1249,13 @@ struct PracticeView: View {
         }
     }
 
-    private func headwordAnswerCard(card: StudyCard) -> some View {
-        VStack(spacing: 6) {
+    private func headwordAnswerCard(card: StudyCard, discovery: Bool = false) -> some View {
+        let tint = discovery ? DS.accentText : DS.gradePerfect
+        return VStack(spacing: 6) {
             HStack {
-                Text("Antwort")
+                Text(discovery ? "Formulierung" : "Antwort")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(DS.gradePerfect)
+                    .foregroundStyle(tint)
                     .textCase(.uppercase)
                     .tracking(0.5)
                 Spacer()
@@ -1254,8 +1263,9 @@ struct PracticeView: View {
                     tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2)
                 } label: {
                     Image(systemName: "speaker.wave.2.fill")
-                        .font(.callout)
-                        .foregroundStyle(DS.gradePerfect)
+                        .font(.system(size: 20))
+                        .foregroundStyle(tint)
+                        .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Antwort vorlesen")
@@ -1277,9 +1287,9 @@ struct PracticeView: View {
             }
         }
         .padding(DS.space.md)
-        .background(DS.gradePerfect.opacity(0.10))
+        .background(tint.opacity(0.10))
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
-        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) } }
+        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: discovery ? 1 : 2) } }
     }
 
     @ViewBuilder
@@ -1295,7 +1305,9 @@ struct PracticeView: View {
             }
         case .clozeDeToRu:
             typingInputSection(revealed: revealed)
-        case .flipDeToRu, .chooseDeToRu:
+        case .chooseDeToRu:
+            typingInputSection(revealed: revealed) // No safe choice set: real recall.
+        case .flipDeToRu:
             // These modes render their own full screen (FlipCardView /
             // chooseCardScreen), so there's no shared input area.
             EmptyView()
@@ -1378,7 +1390,7 @@ struct PracticeView: View {
                     y: 4
                 )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PracticePressStyle())
         .disabled(disabled)
     }
 
@@ -1491,8 +1503,11 @@ struct PracticeView: View {
             VStack(spacing: DS.space.md) {
                 revealHero(card: card, result: result)
                 revealAnswerCard(card: card, result: result)
+                revealActions(card: card, result: result, userAnswer: userAnswer, responseTimeMs: responseTimeMs)
                 if lastSubmissionWasSpeech, !userAnswer.isEmpty {
-                    spokenRecallCard(card: card, userAnswer: userAnswer)
+                    DisclosureGroup("Hinweise zur Spracherkennung") {
+                        spokenRecallCard(card: card, userAnswer: userAnswer)
+                    }.tint(DS.accentText)
                 }
                 if shouldShowTransliteration, let translit = card.phrase?.transliteration {
                     Text(translit)
@@ -1501,11 +1516,19 @@ struct PracticeView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 detailsDisclosure(card: card, result: result)
-                revealActions(card: card, result: result, userAnswer: userAnswer, responseTimeMs: responseTimeMs)
             }
             .padding(.vertical, DS.space.md)
         }
-        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2) } }
+        .safeAreaInset(edge: .bottom) {
+            primaryButton(title: "Weiter", disabled: interactionGate.isBusy) {
+                confirm(rating: result.autoGrade.suggestedRating, card: card, result: result,
+                        userAnswer: userAnswer, responseTimeMs: responseTimeMs)
+            }
+            .accessibilityIdentifier("practice-continue")
+            .padding(.vertical, DS.space.sm)
+            .background(DS.surface0)
+        }
+        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1) } }
     }
 
     private func spokenRecallCard(card: StudyCard, userAnswer: String) -> some View {
@@ -1550,32 +1573,33 @@ struct PracticeView: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// Big grade-themed hero panel — animates in with a spring on appear so
-    /// the result lands with more punch than the old small chip. Tinted by
-    /// grade colour, large icon + label, speaker control on the right.
+    /// Compact result summary. The answer, not an oversized grade, is central.
     private func revealHero(card: StudyCard, result: GradeResult) -> some View {
         let color = gradeColor(for: result.autoGrade)
-        return HStack(spacing: DS.space.md) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.space.sm))
+            : AnyLayout(HStackLayout(spacing: DS.space.md))
+        return layout {
             Image(systemName: gradeIcon(for: result.autoGrade))
-                .font(.system(size: 36, weight: .semibold))
+                .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(color)
-                .frame(width: 56, height: 56)
+                .frame(width: 44, height: 44)
                 .background(color.opacity(0.18))
                 .clipShape(Circle())
             VStack(alignment: .leading, spacing: 2) {
                 Text(result.autoGrade.label)
-                    .font(LearningTypography.display(size: 26, weight: .bold))
+                    .font(.title3.bold())
                     .foregroundStyle(DS.textPrimary)
                 Text(revealSubtitle(for: result.autoGrade))
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
             }
-            Spacer()
+            if !dynamicTypeSize.isAccessibilitySize { Spacer() }
             Button {
                 tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2)
             } label: {
                 Image(systemName: "speaker.wave.2.fill")
-                    .font(.title3)
+                    .font(.system(size: 22))
                     .foregroundStyle(DS.accent)
                     .frame(width: 44, height: 44)
                     .background(DS.accentSoft)
@@ -1591,10 +1615,10 @@ struct PracticeView: View {
             RoundedRectangle(cornerRadius: DS.radius.lg)
                 .stroke(color.opacity(0.25), lineWidth: 1)
         )
-        .id(result.autoGrade)   // re-runs the appear-animation on grade change
-        .transition(reduceMotion ? .opacity : .scale(scale: 0.85).combined(with: .opacity))
+        .id(result.autoGrade)
+        .transition(.opacity)
         .animation(
-            reduceMotion ? .easeInOut(duration: 0.2) : .spring(response: 0.45, dampingFraction: 0.7),
+            reduceMotion ? nil : .easeOut(duration: 0.16),
             value: result.autoGrade
         )
     }
@@ -1880,10 +1904,6 @@ struct PracticeView: View {
                 .buttonStyle(.bordered)
                 .tint(DS.accent)
                 .disabled(interactionGate.isBusy)
-            }
-            primaryButton(title: "Weiter", disabled: false) {
-                confirm(rating: suggested, card: card, result: result,
-                        userAnswer: userAnswer, responseTimeMs: responseTimeMs)
             }
             // Contextual override: if it counted you right, let you mark it
             // shaky (sooner); if it counted you wrong, let you claim it — which
@@ -2736,10 +2756,20 @@ struct PracticeView: View {
         }
         if let next {
             if restoreAttemptCheckpoint(for: next) { return }
+            choiceOptions = []
+            choiceModelAcknowledged = false
             if presentAsTiles(next) {
                 tileOptions = makeTileOptions(for: next)
-            } else if presentAsChoice(next) {
+            } else if requestsChoice(next) {
                 choiceOptions = makeChoiceOptions(for: next, pool: pool)
+                if choiceOptions.isEmpty && mode == .chooseDeToRu { reviewModeOverride = .typeDeToRu }
+                if !choiceOptions.isEmpty && !next.hasBeenIntroduced {
+                    // Record exposure before showing the model. Interruption
+                    // resumes as supported study, never as unaided recall.
+                    guard saveAttemptCheckpoint(card: next, result: nil, answer: "", elapsed: 0,
+                                                support: .revealed) else { return }
+                    answerWasRevealed = true
+                }
             }
             phase = .prompt(next)
         } else {
@@ -2838,6 +2868,10 @@ struct PracticeView: View {
     /// (speakDeToRu) for brand-new cards — a gentle recognition step before we
     /// ask the user to *speak* a word they've just met.
     private func presentAsChoice(_ card: StudyCard) -> Bool {
+        requestsChoice(card) && choiceOptions.count >= 2
+    }
+
+    private func requestsChoice(_ card: StudyCard) -> Bool {
         mode == .chooseDeToRu || (mode == .speakDeToRu && smartPresentation(for: card) == .choice)
     }
 

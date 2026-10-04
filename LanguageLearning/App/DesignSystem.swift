@@ -144,28 +144,43 @@ extension View {
             .modifier(DS.Elevation(level: 2))
     }
 
-    /// The premium "flashcard" surface shared by the practice prompt and the
-    /// flip-card faces: continuous corners, a subtle top highlight (lit-from-
-    /// above), and a layered shadow — a soft teal-tinted ambient glow plus a
-    /// tighter contact shadow. One definition so all three modes read identically.
+    /// One restrained card surface for practice and flip-card faces, using
+    /// semantic colour and the same elevation system as the main screens.
     func dsFlashcardSurface() -> some View {
         self
             .background(
                 RoundedRectangle(cornerRadius: 26, style: .continuous)
                     .fill(DS.surface1)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: 26, style: .continuous)
-                    .stroke(
-                        LinearGradient(
-                            colors: [Color.white.opacity(0.45), Color.white.opacity(0)],
-                            startPoint: .top, endPoint: .bottom
-                        ),
-                        lineWidth: 1
-                    )
-            )
-            .shadow(color: DS.accent.opacity(0.10), radius: 22, x: 0, y: 12)
-            .shadow(color: .black.opacity(0.05), radius: 5, x: 0, y: 2)
+            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous)
+                .stroke(DS.textSecondary.opacity(0.10), lineWidth: 1))
+            .modifier(DS.Elevation(level: 1))
+    }
+}
+
+/// One scrollable stage for recognition, construction and production. Short
+/// prompts keep the full viewport; long text and the keyboard never clip input.
+struct PracticeStage<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        GeometryReader { geometry in
+            ScrollView {
+                content().frame(maxWidth: .infinity)
+                    .frame(minHeight: geometry.size.height, alignment: .top)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+}
+
+/// Immediate tactile acknowledgement, not success feedback or a timed gate.
+struct PracticePressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
     }
 }
 
