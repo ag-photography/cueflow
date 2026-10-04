@@ -26,11 +26,20 @@ struct PracticePlan: Codable, Equatable, Identifiable {
         // Portable across backup restore. Do not persist store-local object IDs.
         return [phrase.language?.code ?? "", Phrase.normalize(phrase.sourceText), Phrase.normalize(phrase.targetText)].joined(separator: "\u{1F}")
     }
-    func remaining(in cards: [StudyCard], reviews: [Review]) -> [StudyCard] {
+    func remaining(in cards: [StudyCard], reviews: [Review], dailyNewLimit: Int = .max, now: Date = .now) -> [StudyCard] {
         let done = Set(reviews.filter { $0.evidence?.sessionID == id && $0.evidence?.kind != "exposure" }
             .compactMap { $0.card.map(Self.key) })
         let grouped = Dictionary(grouping: cards, by: Self.key)
-        return items.filter { !done.contains($0.key) }.compactMap { grouped[$0.key]?.first }
+        let introduced = Set(reviews.compactMap { $0.card?.contentID })
+        let newToday = Set(reviews.filter { $0.wasNew && Calendar.current.isDate($0.timestamp, inSameDayAs: now) }
+            .compactMap { $0.card?.contentID }).count
+        var allowance = max(0, dailyNewLimit - newToday)
+        return items.filter { !done.contains($0.key) }.compactMap { grouped[$0.key]?.first }.filter { card in
+            guard card.state == .new && !introduced.contains(card.contentID) else { return true }
+            guard allowance > 0 else { return false }
+            allowance -= 1
+            return true
+        }
     }
     static func make(cards: [StudyCard], reviews: [Review], language: String, scope: String,
                      mode: CardDirection, budget: Int, dailyLimit: Int, tutorIDs: Set<ContentID>) -> Self {

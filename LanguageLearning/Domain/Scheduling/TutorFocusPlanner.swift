@@ -1,5 +1,21 @@
 import Foundation
 
+/// One invitation, with continuation ahead of new work. Dates represent actual
+/// saved rounds, not a newly computed preview. No scheduling or trial mutation.
+enum TodayPracticeRecommendation: Equatable {
+    case tutor, practice, situation
+
+    static func choose(tutorResume: Date?, practiceResume: Date?, situationResume: Date?,
+                       hasTutor: Bool, hasPractice: Bool, hasSituation: Bool) -> Self? {
+        let resumable: [(Self, Date?)] = [(.tutor, tutorResume), (.practice, practiceResume), (.situation, situationResume)]
+        if let saved = resumable.compactMap({ kind, date in date.map { (kind, $0) } })
+            .max(by: { $0.1 < $1.1 }) { return saved.0 }
+        if hasTutor { return .tutor }
+        if hasPractice { return .practice }
+        return hasSituation ? .situation : nil
+    }
+}
+
 struct TutorFocusPacing: Equatable, Sendable {
     let focusedTopicCount: Int
     let totalPhraseCount: Int
@@ -15,6 +31,39 @@ struct TutorFocusPacing: Equatable, Sendable {
 }
 
 enum TutorFocusPlanner {
+    /// Builds bounded entry points from the actual lesson vocabulary. No title
+    /// matching, generated substitutes, extra schedules or daily-limit bypass.
+    struct QuickRound: Identifiable {
+        var id: UUID { plan.id }
+        let topic: Topic
+        let plan: PracticePlan
+        let remainingCount: Int
+    }
+
+    static func quickRounds(topics: [Topic], cards: [StudyCard], reviews: [Review],
+                            language: String, dailyLimit: Int,
+                            savedPlans: [PracticePlan] = [], endedIDs: [UUID] = []) -> [QuickRound] {
+        topics.filter { $0.language?.code == language && $0.isTutorFocusActive }
+            .sorted {
+                let left = $0.tutorNextLessonAt ?? .distantFuture
+                let right = $1.tutorNextLessonAt ?? .distantFuture
+                return left == right ? $0.name.localizedStandardCompare($1.name) == .orderedAscending : left < right
+            }.map { topic in
+                let scope = PracticeScope.topic(id: topic.persistentModelID)
+                let pool = cards.filter { $0.phrase?.language?.code == language && scope.includes($0) }
+                let saved = savedPlans.last {
+                    $0.canResume(language: language, scope: scope.planKey, mode: .speakDeToRu,
+                                 budget: 3, endedIDs: endedIDs)
+                    && !$0.remaining(in: pool, reviews: reviews).isEmpty
+                }
+                let plan = saved ?? PracticePlan.make(cards: pool, reviews: reviews, language: language,
+                    scope: scope.planKey, mode: .speakDeToRu, budget: 3, dailyLimit: dailyLimit,
+                    tutorIDs: Set(pool.compactMap { $0.phrase?.contentID }))
+                return QuickRound(topic: topic, plan: plan,
+                    remainingCount: plan.remaining(in: pool, reviews: reviews, dailyNewLimit: dailyLimit).count)
+            }
+    }
+
     /// A focused topic reduced to the values pacing actually needs. Lets the
     /// dashboard snapshots be built off the main actor, away from `@Model`.
     struct TopicInput: Sendable {

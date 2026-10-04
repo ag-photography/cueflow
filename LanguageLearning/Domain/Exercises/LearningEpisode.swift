@@ -68,7 +68,7 @@ struct LearningEpisode: Identifiable, Codable, Equatable, Sendable {
     }
 
     func consequence(for step: Step, correct: Bool) -> String {
-        guard correct else { return "Ihr schaut euch die Formulierung gemeinsam an. Danach geht die Geschichte weiter – ohne Punktverlust." }
+        guard correct else { return "Ihr schaut euch die Formulierung gemeinsam an. Danach geht die Übung weiter." }
         switch interest {
         case "Beruf": return "Dein Gegenüber wiederholt die Auskunft langsamer. Du kannst dem Gespräch wieder folgen."
         default:

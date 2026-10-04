@@ -4,14 +4,18 @@ final class LanguageLearningUITests: XCTestCase {
     func testIllustratedTodayAndPassportInBothAppearances() {
         for appearance in ["Light", "Dark"] {
             let app = launch(appearance: appearance)
-            XCTAssertTrue(app.buttons["episode-start"].waitForExistence(timeout: 15))
-            XCTAssertTrue(app.buttons["episode-start"].isHittable)
+            XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 15))
+            XCTAssertTrue(app.buttons["today-primary-start"].isHittable)
+            XCTAssertFalse(app.buttons["story-passport-open"].exists)
+            XCTAssertFalse(app.buttons["sprint-start"].exists)
+            XCTAssertFalse(app.buttons["Deine Ziele & Lernmomente"].exists)
             let home = XCTAttachment(screenshot: app.screenshot())
             home.name = "Illustrated Today — \(appearance)"; home.lifetime = .keepAlways; add(home)
-            let collection = app.buttons["Alle Geschichten"]
+            openOtherPractice(in: app)
+        let collection = app.buttons["Alle Situationen"]
             collection.tap()
-            XCTAssertTrue(app.navigationBars["Geschichtenpass"].waitForExistence(timeout: 5))
-            XCTAssertTrue(app.staticTexts["0 von 6 Postkarten"].exists)
+            XCTAssertTrue(app.navigationBars["Deine Situationen"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["0 von 6 Situationen geübt"].exists)
             let passport = XCTAttachment(screenshot: app.screenshot())
             passport.name = "Story passport — \(appearance)"; passport.lifetime = .keepAlways; add(passport)
             app.buttons["Fertig"].tap()
@@ -36,10 +40,11 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testStoryAcceptsUnaidedTypedRussianAnswer() {
         let app = launch()
-        let collection = app.buttons["Alle Geschichten"]
+        openOtherPractice(in: app)
+        let collection = app.buttons["Alle Situationen"]
         XCTAssertTrue(collection.waitForExistence(timeout: 15))
         collection.tap()
-        XCTAssertTrue(app.navigationBars["Geschichtenpass"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["Deine Situationen"].waitForExistence(timeout: 5))
         let episode = app.buttons["episode-ru-seasons-1"]
         XCTAssertTrue(episode.waitForExistence(timeout: 5))
         episode.tap()
@@ -61,12 +66,14 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testStoryResumesAtSavedStepAndCompletesWithoutMicrophone() {
         let app = launch()
+        openOtherPractice(in: app)
         let start = app.buttons["episode-start"]
         XCTAssertTrue(start.waitForExistence(timeout: 15))
         start.tap()
         let next = app.buttons["episode-next"]
         XCTAssertTrue(next.waitForExistence(timeout: 5))
         next.tap()
+        XCTAssertTrue(app.staticTexts["Eine zweite Möglichkeit"].waitForExistence(timeout: 5))
         next.tap()
         let quiet = app.switches["Leise üben"]
         XCTAssertTrue(quiet.waitForExistence(timeout: 3))
@@ -76,6 +83,7 @@ final class LanguageLearningUITests: XCTestCase {
         skip.tap()
         next.tap()
         app.buttons["episode-close"].tap()
+        openOtherPractice(in: app)
         XCTAssertTrue(start.waitForExistence(timeout: 5))
         start.tap()
         XCTAssertTrue(app.buttons["episode-check"].waitForExistence(timeout: 5))
@@ -87,20 +95,22 @@ final class LanguageLearningUITests: XCTestCase {
         }
         let finish = app.buttons["episode-finish"]
         XCTAssertTrue(finish.waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Eine neue Postkarte für dich"].exists)
+        XCTAssertTrue(app.staticTexts["Eine weitere Situation geübt"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "Story completion — quiet, supported answers"
         screenshot.lifetime = .keepAlways
         add(screenshot)
         finish.tap()
+        openOtherPractice(in: app)
         XCTAssertTrue(start.waitForExistence(timeout: 5))
-        app.buttons["Alle Geschichten"].tap()
-        XCTAssertTrue(app.staticTexts["1 von 6 Postkarten"].waitForExistence(timeout: 5))
+        app.buttons["Alle Situationen"].tap()
+        XCTAssertTrue(app.staticTexts["1 von 6 Situationen geübt"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["0 ohne Hilfe · 0 nach mindestens 7 Tagen abgerufen"].exists)
     }
 
     func testArabicStorySupportsLargeText() {
         let app = launch(language: "ar", contentSize: "UICTContentSizeCategoryAccessibilityXXXL")
+        openOtherPractice(in: app)
         let start = app.buttons["episode-start"]
         XCTAssertTrue(start.waitForExistence(timeout: 15))
         // Native accessibility scrolling brings the exact button into view;
@@ -152,21 +162,22 @@ final class LanguageLearningUITests: XCTestCase {
         maxScrolls: Int = 8
     ) -> XCUIElement {
         XCTAssertTrue(
-            app.buttons["recommended-session-start"].waitForExistence(timeout: 15),
+            app.buttons["today-primary-start"].waitForExistence(timeout: 15),
             "Heute never finished loading, so there is nothing to scroll"
         )
-        let tile = app.buttons[identifier]
-        var scrolls = 0
-        while !tile.isHittable, scrolls < maxScrolls {
-            app.scrollViews.firstMatch.swipeUp()
-            scrolls += 1
-        }
-        return tile
+        openOtherPractice(in: app)
+        return app.buttons[identifier]
+    }
+
+    private func openOtherPractice(in app: XCUIApplication) {
+        let other = app.buttons["today-other-practice"]
+        XCTAssertTrue(other.waitForExistence(timeout: 15))
+        other.tap()
     }
 
     func testPrimaryJourneyStartsAndClosesCleanly() {
         let app = launch()
-        let start = app.buttons["recommended-session-start"]
+        let start = app.buttons["today-primary-start"]
         XCTAssertTrue(start.waitForExistence(timeout: 8))
         start.tap()
 
@@ -231,8 +242,23 @@ final class LanguageLearningUITests: XCTestCase {
         XCTAssertTrue(close.waitForExistence(timeout: 5))
         close.tap()
 
-        XCTAssertTrue(addFocus.waitForExistence(timeout: 4))
-        addFocus.tap()
+        app.tabBars.buttons["Heute"].tap()
+        let quickRound = app.buttons["today-primary-start"]
+        for _ in 0..<5 where !quickRound.isHittable { app.swipeUp() }
+        XCTAssertTrue(quickRound.waitForExistence(timeout: 5))
+        let invitation = XCTAttachment(screenshot: app.screenshot())
+        invitation.name = "Tutor quick round invitation"; invitation.lifetime = .keepAlways; add(invitation)
+        quickRound.tap()
+        XCTAssertTrue(app.buttons["practice-close"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["practice-tutor-context"].exists)
+        let tutorRound = XCTAttachment(screenshot: app.screenshot())
+        tutorRound.name = "Tutor quick round from Today"; tutorRound.lifetime = .keepAlways; add(tutorRound)
+        app.buttons["practice-close"].tap()
+        openOtherPractice(in: app)
+        let manage = app.buttons["Unterricht verwalten"]
+        XCTAssertTrue(manage.waitForExistence(timeout: 4))
+        for _ in 0..<3 where !manage.isHittable { app.swipeUp() }
+        manage.tap()
         let editDate = app.buttons["Termin bearbeiten"].firstMatch
         XCTAssertTrue(editDate.waitForExistence(timeout: 3))
         editDate.tap()
@@ -241,7 +267,7 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testAccessibilityTextSizeKeepsPrimaryActionReachable() {
         let app = launch(contentSize: "UICTContentSizeCategoryAccessibilityExtraExtraExtraLarge")
-        XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["today-settings"].exists)
     }
 
@@ -258,7 +284,7 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testArabicConfigurationLoadsWithoutBreakingNavigation() {
         let app = launch(language: "ar")
-        XCTAssertTrue(app.buttons["recommended-session-start"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 8))
         app.buttons["today-settings"].tap()
         XCTAssertTrue(app.otherElements["active-language-picker"].waitForExistence(timeout: 4)
             || app.buttons["active-language-picker"].waitForExistence(timeout: 1))
@@ -280,10 +306,10 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testLandscapeKeepsPrimaryActionReachable() {
         let app = launch()
-        XCTAssertTrue(app.buttons["episode-start"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 8))
         XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(app.buttons["episode-start"].waitForExistence(timeout: 4))
-        XCTAssertTrue(app.buttons["episode-start"].isHittable)
+        XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.buttons["today-primary-start"].isHittable)
         XCUIDevice.shared.orientation = .portrait
     }
 

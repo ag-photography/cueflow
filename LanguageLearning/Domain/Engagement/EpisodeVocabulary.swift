@@ -34,7 +34,7 @@ enum EpisodeVocabulary {
         phrase.acceptedAlternatives = step.alternatives
         phrase.qualityStatus = .unreviewed
         phrase.level = .a1
-        phrase.notes = "Entwurf aus Mini-Geschichte \(episode.id), Version \(episode.version). Muttersprachliche Prüfung ausstehend."
+        phrase.notes = "Entwurf aus Situation \(episode.id), Version \(episode.version). Muttersprachliche Prüfung ausstehend."
         context.insert(phrase)
         let card = StudyCard(phrase: phrase)
         context.insert(card)

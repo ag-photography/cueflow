@@ -138,6 +138,7 @@ struct PracticeView: View {
     let isFocusedSession: Bool
     let scope: PracticeScope
     let suppliedPlan: PracticePlan?
+    let contextTitle: String?
     private let transliterationGracePeriod = 200
     private let speakHesitantStartDelaySec: Double = 4.0
     private let speakHesitantPauseSec: Double = 1.5
@@ -152,12 +153,14 @@ struct PracticeView: View {
         sessionTarget: Int = 10,
         isFocusedSession: Bool = false,
         scope: PracticeScope = .recommended,
-        suppliedPlan: PracticePlan? = nil
+        suppliedPlan: PracticePlan? = nil,
+        contextTitle: String? = nil
     ) {
         self.sessionTarget = max(1, sessionTarget)
         self.isFocusedSession = isFocusedSession
         self.scope = scope
         self.suppliedPlan = suppliedPlan
+        self.contextTitle = contextTitle
     }
 
     enum Phase {
@@ -224,6 +227,12 @@ struct PracticeView: View {
             sessionProgressBar
             if isFocusedSession {
                 focusedSessionHeader
+                if let contextTitle {
+                    Label(contextTitle, systemImage: "person.text.rectangle")
+                        .font(.subheadline.weight(.semibold)).foregroundStyle(DS.accentText)
+                        .padding(.horizontal, DS.space.md).padding(.bottom, DS.space.sm)
+                        .accessibilityIdentifier("practice-tutor-context")
+                }
             } else {
                 headerBar
             }
@@ -421,7 +430,10 @@ struct PracticeView: View {
         guard plannedOpportunityCount > 0 else { return 0 }
         return CGFloat(min(sessionCount, plannedOpportunityCount)) / CGFloat(plannedOpportunityCount)
     }
-    private var plannedOpportunityCount: Int { persistedPlan?.items.count ?? sessionTarget }
+    private var plannedOpportunityCount: Int {
+        guard let plannedCardIDs else { return sessionTarget }
+        return sessionCount + plannedCardIDs.filter { !reviewedCardIDs.contains($0) }.count
+    }
 
     private var headerBar: some View {
         VStack(spacing: DS.space.sm) {
@@ -2706,7 +2718,7 @@ struct PracticeView: View {
                         try context.save()
                     }
                     persistedPlan = plan
-                    let remaining = plan.remaining(in: pool, reviews: reviews)
+                    let remaining = plan.remaining(in: pool, reviews: reviews, dailyNewLimit: effectiveDailyLimit)
                     plannedCardIDs = remaining.map(\.contentID)
                     let prior = reviews.filter { $0.evidence?.sessionID == plan.id }
                     sessionCount = prior.count

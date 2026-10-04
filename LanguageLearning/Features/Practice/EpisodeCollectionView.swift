@@ -12,13 +12,13 @@ struct EpisodeCollectionView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.space.md) {
-                    Text("Eine kleine Welt. Deine Geschichten.").font(.system(.title2, design: .rounded, weight: .bold))
-                    Text("Jede abgeschlossene Szene wird zu einer Postkarte. Alle Szenen sind frei wählbar – auch mit Hilfe sammelst du Erinnerungen.")
+                    Text("Sprache für deinen Alltag.").font(.system(.title2, design: .rounded, weight: .bold))
+                    Text("Übe Situationen, die für dich relevant sind. Du kannst frei wählen und bei Bedarf Hilfe nutzen.")
                         .font(.subheadline).foregroundStyle(DS.textSecondary)
                     if let data = experience {
                         let passport = StoryPassport(language: language, experience: data)
                         VStack(alignment: .leading, spacing: DS.space.sm) {
-                            Text("\(passport.collectedCount) von \(passport.episodes.count) Postkarten").font(.headline)
+                            Text("\(passport.collectedCount) von \(passport.episodes.count) Situationen geübt").font(.headline)
                             ProgressView(value: Double(passport.collectedCount), total: Double(max(1, passport.episodes.count))).tint(DS.accent)
                             Text("\(passport.recalledCount) ohne Hilfe · \(passport.rememberedCount) nach mindestens 7 Tagen abgerufen")
                                 .font(.caption).foregroundStyle(DS.textSecondary)
@@ -40,12 +40,12 @@ struct EpisodeCollectionView: View {
                             }.buttonStyle(.plain).accessibilityIdentifier("episode-\(episode.id)")
                         }
                     } else { Text("Der Lernverlauf konnte nicht gelesen werden. Deine Daten werden nicht überschrieben.") }
-                    Text("Entdeckt heißt abgeschlossen, nicht beherrscht. Abruf-Marken beziehen sich auf alle Kursantworten einer Runde, nicht auf freies Sprechen. Inhalte sind noch nicht muttersprachlich geprüft; Arabisch verwendet Hocharabisch.")
+                    Text("Geübt heißt abgeschlossen, nicht beherrscht. Die Abrufnachweise beziehen sich auf alle Kursantworten einer Runde, nicht auf freies Sprechen. Inhalte sind noch nicht muttersprachlich geprüft; Arabisch verwendet Hocharabisch.")
                         .font(.footnote).foregroundStyle(DS.textSecondary)
                 }.padding(DS.space.md).frame(maxWidth: DS.mainContentWidth).frame(maxWidth: .infinity)
             }
             .background(DS.pageBackground.ignoresSafeArea())
-            .navigationTitle("Geschichtenpass").navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Deine Situationen").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Fertig") { dismiss() } } }
             .fullScreenCover(item: $selection) { EpisodeView(episode: $0) }
         }

@@ -53,7 +53,7 @@ struct EpisodeView: View {
                 .frame(maxWidth: .infinity)
             }
             .background(DS.pageBackground.ignoresSafeArea())
-            .navigationTitle("Mini-Geschichte")
+            .navigationTitle("Situation üben")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -86,9 +86,9 @@ struct EpisodeView: View {
         .fullScreenCover(item: $nextEpisode) { EpisodeView(episode: $0) }
         .alert("Dein Tageslimit für neue Ausdrücke", isPresented: Binding(get: { newLimitWarning != nil }, set: { if !$0 { newLimitWarning = nil } })) {
             Button("Für heute bei Wiederholungen bleiben", role: .cancel) { dismiss() }
-            Button("Diese Geschichte trotzdem beginnen") { allowExtraIntroductions = true; newLimitWarning = nil; load() }
+            Button("Diese Situation trotzdem üben") { allowExtraIntroductions = true; newLimitWarning = nil; load() }
         } message: {
-            Text("Diese Geschichte führt \(newLimitWarning ?? 0) neue Ausdrücke ein und würde dein Tageslimit überschreiten. Du entscheidest, ob du heute mehr lernen möchtest.")
+            Text("Diese Situation führt \(newLimitWarning ?? 0) neue Ausdrücke ein und würde dein Tageslimit überschreiten. Du entscheidest, ob du heute mehr lernen möchtest.")
         }
     }
 
@@ -211,14 +211,14 @@ struct EpisodeView: View {
         var previous = data
         previous.runs.removeAll { $0.id == run.id }
         let oldStamp = StoryPassport(language: episode.language, experience: previous).stamp(for: episode)
-        let reward = run.calibration == true ? "Dein Startpunkt ist gefunden" : !oldStamp.collected ? "Eine neue Postkarte für dich" : !oldStamp.remembered && stamp.remembered ? "Deine 7-Tage-Marke ist da" : !oldStamp.recalled && stamp.recalled ? "Jetzt auch ohne Hilfe abgerufen" : "Schön, wieder hier zu sein"
+        let reward = run.calibration == true ? "Dein Startpunkt ist gefunden" : !oldStamp.collected ? "Eine weitere Situation geübt" : !oldStamp.remembered && stamp.remembered ? "Nach mindestens 7 Tagen wieder abgerufen" : !oldStamp.recalled && stamp.recalled ? "Jetzt auch ohne Hilfe abgerufen" : "Erneut geübt"
         return VStack(alignment: .leading, spacing: DS.space.md) {
-            Text(run.calibration == true ? "Startcheck geschafft" : "Geschichte geschafft").font(.title.bold())
+            Text(run.calibration == true ? "Startcheck geschafft" : "Situation geschafft").font(.title.bold())
             Label(reward, systemImage: "checkmark.seal.fill")
                 .font(.headline).foregroundStyle(DS.accentText).accessibilityIdentifier("episode-reward")
             if run.calibration != true {
                 StoryStampRow(stamp: stamp)
-                Text("Deine Postkarte feiert die abgeschlossene Szene, nicht Sprachbeherrschung.")
+                Text("Abgeschlossen heißt geübt. Wie viel du ohne Hilfe abrufen konntest, siehst du hier.")
                     .font(.caption).foregroundStyle(DS.textSecondary)
             }
             Text("\(run.independentCount) von \(run.attempts.count) Antworten ohne eingeblendete Hilfe getroffen.")
@@ -227,12 +227,12 @@ struct EpisodeView: View {
                 .accessibilityIdentifier("episode-finish")
             if let next = EpisodeLibrary.all.first(where: { $0.language == episode.language && $0.id != episode.id &&
                 !((try? settings.first?.readExperience().completed(in: episode.language)) ?? []).contains($0.id) }) {
-                Button("Noch eine Geschichte: \(next.title)") {
+                Button("Nächste Situation: \(next.title)") {
                     if save(run, event: "next_episode_selected") { nextEpisode = next }
                 }.buttonStyle(.bordered).accessibilityIdentifier("episode-optional-next")
                 Text("Eine neue Runde, nur wenn du möchtest. Für heute bist du fertig.").font(.caption).foregroundStyle(DS.textSecondary)
             }
-            DisclosureGroup("Was zeigen die Abruf-Marken?") {
+            DisclosureGroup("Was zeigen die Abrufnachweise?") {
                 Text("Abgerufen heißt: alle Kursantworten einer Runde ohne eingeblendete Hilfe getroffen. Die 7-Tage-Marke benötigt zusätzlich eine spätere Prüfung nach mindestens sieben Tagen ohne erfasste erneute Begegnung. Das ist kein Nachweis für freies Sprechen. Andere richtige Formulierungen sind möglich. Eine neue Prüfung erscheint, wenn der Abstand zu deiner letzten Übung passt.")
                     .font(.footnote).foregroundStyle(DS.textSecondary).padding(.top, DS.space.sm)
             }.font(.subheadline).tint(DS.accentText)
@@ -241,7 +241,7 @@ struct EpisodeView: View {
     private func load() {
         do {
             guard episode.validationErrors.isEmpty else {
-                error = "Diese Inhaltsversion kann nicht sicher gestartet werden. Bitte wähle eine andere Geschichte; dein Verlauf bleibt erhalten."
+                error = "Diese Inhaltsversion kann nicht sicher gestartet werden. Bitte wähle eine andere Situation; dein Verlauf bleibt erhalten."
                 return
             }
             guard let row = settings.first else { error = "Einstellungen werden noch geladen. Bitte versuche es erneut."; return }
@@ -258,7 +258,7 @@ struct EpisodeView: View {
                 if needed > max(0, row.dailyNewLimit - introducedToday) { newLimitWarning = needed; return }
             }
             if let existing, !existing.isValid(for: episode) {
-                error = "Diese gespeicherte Geschichte kann nicht fortgesetzt werden. Dein Verlauf bleibt erhalten; bitte sichere ihn unter Einstellungen → Sicherung & Export."
+                error = "Diese gespeicherte Situation kann nicht fortgesetzt werden. Dein Verlauf bleibt erhalten; bitte sichere ihn unter Einstellungen → Sicherung & Export."
                 return
             }
             var candidate = existing ?? EpisodeRun(episodeID: episode.id, contentVersion: episode.version, language: episode.language)

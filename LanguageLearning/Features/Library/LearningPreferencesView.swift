@@ -35,14 +35,14 @@ struct LearningPreferencesView: View {
                     .font(.footnote).foregroundStyle(DS.textSecondary)
             }
             Section {
-                Text("Dein Ziel beeinflusst die Geschichten auf Heute. Aktive Unterrichtsthemen werden bevorzugt. Du kannst jederzeit eine andere Geschichte wählen. Eine Pause kostet keine Punkte.")
+                Text("Dein Ziel beeinflusst die Situationen auf Heute. Aktive Unterrichtsthemen werden bevorzugt. Du kannst jederzeit eine andere Situation wählen. Eine Pause kostet keine Punkte.")
             }
             Section("Freiwilliger Startcheck") {
                 Text("Drei Antworten ohne Vorlage helfen dir einzuschätzen, ob du zuerst mit Beispielen üben möchtest. Das ist keine Prüfung und kein Nachweis für langfristiges Können.")
                     .font(.footnote)
                 if let correct = preference.calibrationCorrect {
                     Text("Letzter Check: \(correct) von 3 ohne Hilfe getroffen.")
-                    Text(correct >= 2 ? "Du kannst direkt kurze Abrufrunden probieren." : "Starte gern mit den Beispielen einer Geschichte.")
+                    Text(correct >= 2 ? "Du kannst direkt kurze Abrufrunden probieren." : "Starte gern mit den Beispielen einer Situation.")
                 }
                 Button(preference.calibrationAt == nil ? "Startcheck ausprobieren" : "Startcheck wiederholen") {
                     calibrationEpisode = EpisodeLibrary.recommendation(language: language, purpose: preference.purpose, focusNames: [], completed: [])
@@ -50,17 +50,17 @@ struct LearningPreferencesView: View {
             }
             if let data = experience {
                 Section("Freiwilliger lokaler Lerntest") {
-                    Text("Vergleiche über mehrere Wochen eine Geschichte zuerst mit einer Kartenrunde zuerst. Die Variante wird einmal zufällig gewählt; keine Daten werden automatisch geteilt. Alle Varianten behalten dieselben Korrekturen und Lernregeln.")
+                    Text("Vergleiche über mehrere Wochen eine Situation zuerst mit einer Kartenrunde zuerst. Die Variante wird einmal zufällig gewählt; keine Daten werden automatisch geteilt. Alle Varianten behalten dieselben Korrekturen und Lernregeln.")
                         .font(.footnote)
                     if let trial = data.trial {
-                        Text("Variante: \(trial.variant == "stories-first" ? "Geschichte zuerst" : "Karten zuerst") · seit \(trial.startedAt.formatted(date: .abbreviated, time: .omitted))")
+                        Text("Variante: \(trial.variant == "stories-first" ? "Situation zuerst" : "Karten zuerst") · seit \(trial.startedAt.formatted(date: .abbreviated, time: .omitted))")
                         if trial.endedAt == nil { Button("Lerntest beenden") { setTrial(active: false) } }
                         else { Text("Beendet · bisherige Ergebnisse bleiben erhalten.").font(.caption) }
                     } else { Button("Freiwillig teilnehmen") { setTrial(active: true) } }
                 }
                 Section("Diese Woche") {
                     LabeledContent("Tage mit Lernaktivität", value: "\(data.learningDays(language: language))")
-                    LabeledContent("Geschichten ausprobiert", value: "\(data.completed(in: language).count)")
+                    LabeledContent("Situationen geübt", value: "\(data.completed(in: language).count)")
                 }
                 Section {
                     ShareLink("Anonyme Zusammenfassung teilen", item: LearningAnalysis(experience: data, language: language).report

@@ -54,7 +54,7 @@ final class NotificationService: NSObject, UNUserNotificationCenterDelegate {
             let content = UNMutableNotificationContent()
             content.title = "CueFlow"
             // Future/offline reminders never assert that something is still due.
-            content.body = episode.map { "Zeit für eine kleine Geschichte? \($0.title)" } ?? "Zeit für eine kleine Sprachpause? Eine kurze Runde reicht."
+            content.body = episode.map { "Zeit für eine kurze Alltagssituation? \($0.title)" } ?? "Zeit für eine kleine Sprachpause? Eine kurze Runde reicht."
             content.userInfo = ["route": episode.map { "cueflow://episode/\($0.id)" } ?? "cueflow://practice"]
             content.sound = .default
             let components = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)

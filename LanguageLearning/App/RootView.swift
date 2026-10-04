@@ -163,11 +163,20 @@ private struct TodayView: View {
     @State private var showingEpisodes = false
     @State private var practiceScope: PracticeScope = .recommended
     @State private var previewPlan: PracticePlan?
+    @State private var continuationPlan: PracticePlan?
+    @State private var continuationRemaining = 0
+    @State private var continuationTitle: String?
+    @State private var continuationScope: PracticeScope = .recommended
+    @State private var launchedPlan: PracticePlan?
     @State private var previewRemaining = 0
     @State private var episodePreviewIDs: [String: UUID] = [:]
     @State private var showingDailyDetails = false
     @State private var activitySaveError: String?
     @State private var tutorDailyDemand: Int?
+    @State private var tutorRounds: [TutorFocusPlanner.QuickRound] = []
+    @State private var selectedTutorTopicID: PersistentIdentifier?
+    @State private var activeTutorRound: TutorFocusPlanner.QuickRound?
+    @State private var showingTutorFocus = false
     @State private var isReturning = false
 
     /// Everything below the fold is read from here. Deriving it in `body`
@@ -196,29 +205,9 @@ private struct TodayView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? DS.space.sm : DS.space.lg) {
-                    if verticalSizeClass != .compact { greeting }
                     if let activitySaveError { Text(activitySaveError).font(.caption).foregroundStyle(DS.gradeHesitant) }
-                    if experience?.trial?.variant == "cards-first" && experience?.trial?.endedAt == nil {
-                        recommendedSession
-                        if let episode = suggestedEpisode { episodeCard(episode) }
-                    } else {
-                        if let episode = suggestedEpisode { episodeCard(episode) }
-                        if suggestedEpisode == nil || isReturning { recommendedSession }
-                        else { revisionShortcut }
-                    }
-                    if let experience {
-                        StoryPassportLink(passport: .init(language: activeLanguageCode, experience: experience)) { showingEpisodes = true }
-                    }
-                    exploreCard
-                    DisclosureGroup("Deine Ziele & Lernmomente", isExpanded: $showingDailyDetails) {
-                        VStack(spacing: DS.space.md) {
-                            if snapshot.difficultCount > 0 { difficultPracticeCard }
-                            dailyQuestCard
-                            if snapshot.fastestRecall != nil || snapshot.recentImprovement != nil { achievementCard }
-                            missionCard
-                        }.padding(.top, DS.space.md)
-                    }
-                    .tint(DS.accentText)
+                    practiceInvitation
+                    otherPracticeMenu
                 }
                 .padding(.horizontal, DS.space.md)
                 .padding(.top, DS.space.sm)
@@ -239,14 +228,21 @@ private struct TodayView: View {
                 }
             }
             .sheet(isPresented: $showingSettings) { SettingsView() }
+            .sheet(isPresented: $showingTutorFocus, onDismiss: { preparePlan() }) { TutorFocusView() }
+            .fullScreenCover(item: $activeTutorRound, onDismiss: { preparePlan() }) { round in
+                PracticeView(sessionTarget: 3, isFocusedSession: true,
+                    scope: .topic(id: round.topic.persistentModelID), suppliedPlan: round.plan,
+                    contextTitle: round.topic.name)
+            }
             .sheet(isPresented: $showingEpisodes) { EpisodeCollectionView() }
             .fullScreenCover(item: $selectedEpisode) { EpisodeView(episode: $0, previewSessionID: episodePreviewIDs[$0.id]) }
-            .fullScreenCover(isPresented: $showingPractice) {
+            .fullScreenCover(isPresented: $showingPractice, onDismiss: { launchedPlan = nil }) {
                 PracticeView(
-                    sessionTarget: practiceSessionTarget,
+                    sessionTarget: launchedPlan?.budget ?? practiceSessionTarget,
                     isFocusedSession: true,
                     scope: practiceScope,
-                    suppliedPlan: practiceScope == .recommended ? previewPlan : nil
+                    suppliedPlan: launchedPlan ?? (practiceScope == .recommended ? previewPlan : nil),
+                    contextTitle: launchedPlan == nil ? nil : continuationTitle
                 )
             }
             .fullScreenCover(isPresented: $showingSprint) { SprintView() }
@@ -293,9 +289,103 @@ private struct TodayView: View {
     }
 
     private var experience: LearningExperience? { try? settings.first?.readExperience() }
+
+    private var primaryTutorRound: TutorFocusPlanner.QuickRound? {
+        let eligible = tutorRounds.filter { $0.remainingCount > 0 }
+        let saved = Set((experience?.practicePlans ?? []).map(\.id))
+        return eligible.filter { saved.contains($0.plan.id) }.max { $0.plan.createdAt < $1.plan.createdAt }
+            ?? eligible.first { $0.topic.persistentModelID == selectedTutorTopicID } ?? eligible.first
+    }
+
+    private var recommendation: TodayPracticeRecommendation? {
+        let data = experience
+        let tutor = primaryTutorRound
+        let saved = Set((data?.practicePlans ?? []).map(\.id))
+        return TodayPracticeRecommendation.choose(
+            tutorResume: tutor.flatMap { saved.contains($0.plan.id) ? $0.plan.createdAt : nil },
+            practiceResume: continuationPlan?.createdAt,
+            situationResume: data?.runs.filter { run in run.language == activeLanguageCode && run.isOpen &&
+                EpisodeLibrary.all.contains(where: { episode in episode.id == run.episodeID && episode.version == run.contentVersion }) }
+                .map(\.updatedAt).max(),
+            hasTutor: tutor != nil,
+            hasPractice: previewRemaining > 0 && !(data?.trial?.variant == "stories-first" && data?.trial?.endedAt == nil && suggestedEpisode != nil),
+            hasSituation: suggestedEpisode != nil)
+    }
+
+    private var practiceInvitation: some View {
+        let choice = recommendation
+        let tutor = primaryTutorRound
+        let episode = suggestedEpisode
+        let saved = Set((experience?.practicePlans ?? []).map(\.id))
+        let resuming: Bool = switch choice {
+        case .tutor: tutor.map { saved.contains($0.plan.id) } ?? false
+        case .practice: continuationPlan != nil
+        case .situation: experience?.runs.contains { $0.isOpen && $0.language == activeLanguageCode && $0.episodeID == episode?.id } ?? false
+        case nil: false
+        }
+        return VStack(alignment: .leading, spacing: DS.space.md) {
+            Label(resuming ? "Deine Runde wartet" : choice == .tutor ? "Für deinen nächsten Unterricht" : "Deine kurze Sprachpause",
+                  systemImage: choice == .tutor ? "person.text.rectangle" : "bubble.left.and.text.bubble.right")
+                .font(.subheadline.weight(.semibold)).foregroundStyle(DS.accentText)
+            Text(choice == .tutor ? tutor?.topic.name ?? "Unterricht" : choice == .situation ? episode?.title ?? "Im Alltag" : resuming ? continuationTitle ?? "Deine Runde fortsetzen" : "Kurz üben. Weiterkommen.")
+                .font(.title.bold()).fixedSize(horizontal: false, vertical: true)
+            Text(choice == .tutor ? "\(tutor?.remainingCount ?? 0) Ausdrücke · ohne Zeitdruck" :
+                 choice == .practice ? "\(continuationPlan == nil ? previewRemaining : continuationRemaining) Ausdrücke · eine überschaubare Runde" :
+                 choice == .situation ? "\(episode?.uniqueExpressions ?? 0) Ausdrücke · etwa 2 Minuten" : "Gerade ist keine Runde verfügbar. Wähle ein Thema oder füge Unterrichtsvokabeln hinzu.")
+                .font(.subheadline).foregroundStyle(DS.textSecondary)
+            if choice != nil {
+                Button {
+                    switch choice {
+                    case .tutor: activeTutorRound = tutor
+                    case .practice:
+                        launchedPlan = continuationPlan
+                        practiceScope = continuationPlan == nil ? .recommended : continuationScope
+                        showingPractice = true
+                    case .situation: selectedEpisode = episode
+                    case nil: break
+                    }
+                } label: {
+                    Label(resuming ? "Weiterüben" : "Jetzt üben", systemImage: "play.fill")
+                        .font(.headline).frame(maxWidth: .infinity, minHeight: 48)
+                }.buttonStyle(.borderedProminent).tint(DS.accent)
+                    .accessibilityIdentifier("today-primary-start")
+            }
+        }.dsCard(elevation: 1, padding: DS.space.lg)
+            .task(id: "\(String(describing: choice))-\(episode?.id ?? "")-\(isCovered)") {
+                if choice == .situation, let episode { recordEpisodePreview(episode) }
+            }
+    }
+
+    private var otherPracticeMenu: some View {
+        Menu {
+            Button("Wiederholen") { practiceScope = .recommended; showingPractice = true }
+                .accessibilityIdentifier("recommended-session-start")
+            if let episode = suggestedEpisode {
+                Button("Situation üben") { selectedEpisode = episode }.accessibilityIdentifier("episode-start")
+            }
+            Button("Alle Situationen") { showingEpisodes = true }
+            if !tutorRounds.isEmpty {
+                Menu("Aus deinem Unterricht") {
+                    ForEach(tutorRounds.filter { $0.remainingCount > 0 }) { round in
+                        Button(round.topic.name) { activeTutorRound = round }
+                    }
+                }
+            }
+            Button("Unterricht verwalten") { showingTutorFocus = true }
+            Divider()
+            Button("Lernweg") { showingSkillPath = true }.accessibilityIdentifier("skill-path-start")
+            Button("Sprint") { showingSprint = true }.accessibilityIdentifier("sprint-start")
+            Button("Hörstudio") { showingListeningLab = true }.accessibilityIdentifier("listening-lab-start")
+            Button("Lesen") { showingReading = true }.accessibilityIdentifier("reading-start")
+            Button("Gespräch") { showingConversation = true }.accessibilityIdentifier("conversation-start")
+        } label: {
+            Label("Andere Übung wählen", systemImage: "slider.horizontal.3")
+                .frame(maxWidth: .infinity, minHeight: 44)
+        }.tint(DS.accentText).accessibilityIdentifier("today-other-practice")
+    }
     private var suggestedEpisode: LearningEpisode? {
         guard let experience else { return nil }
-        if let open = experience.runs.last(where: { $0.language == activeLanguageCode && $0.isOpen }),
+        if let open = experience.runs.filter({ $0.language == activeLanguageCode && $0.isOpen }).max(by: { $0.updatedAt < $1.updatedAt }),
            let episode = EpisodeLibrary.all.first(where: { $0.id == open.episodeID && $0.version == open.contentVersion }) { return episode }
         if let due = experience.dueEpisode(language: activeLanguageCode) { return due }
         return EpisodeLibrary.recommendation(
@@ -315,7 +405,7 @@ private struct TodayView: View {
                     .frame(maxHeight: 150)
             }
             HStack {
-                Label(checking ? "Was ist hängen geblieben?" : "DEIN KLEINES ABENTEUER", systemImage: episode.symbol)
+                Label(checking ? "Was ist hängen geblieben?" : "IM ALLTAG", systemImage: episode.symbol)
                     .font(.caption.weight(.bold)).foregroundStyle(DS.accentText)
                 Spacer()
                 Text("Vorschau").font(.caption2).foregroundStyle(DS.textSecondary)
@@ -327,7 +417,7 @@ private struct TodayView: View {
             Text(checking ? "3 kurze Antworten · ohne Vorlage" : "\(episode.uniqueExpressions) Ausdrücke · \(episode.steps.count) Schritte · etwa 2 Minuten")
                 .font(.caption).foregroundStyle(DS.textSecondary)
             Button { selectedEpisode = episode } label: {
-                Label(resuming ? "Geschichte fortsetzen" : checking ? "Kurz erinnern" : "Geschichte starten", systemImage: "play.fill")
+                Label(resuming ? "Situation fortsetzen" : checking ? "Kurz erinnern" : "Situation üben", systemImage: "play.fill")
                     .frame(maxWidth: .infinity).padding(.vertical, verticalSizeClass == .compact ? 0 : 8)
             }.buttonStyle(.borderedProminent).tint(DS.accent).accessibilityIdentifier("episode-start")
             if verticalSizeClass != .compact { HStack {
@@ -335,7 +425,7 @@ private struct TodayView: View {
                     .font(.caption).foregroundStyle(DS.textSecondary)
                 Spacer()
                 Button { showingEpisodes = true } label: {
-                    Text("Alle Geschichten").font(.caption.weight(.semibold))
+                    Text("Alle Situationen").font(.caption.weight(.semibold))
                         .frame(minHeight: 44).contentShape(Rectangle())
                 }.buttonStyle(.plain).foregroundStyle(DS.accentText)
             } }
@@ -371,6 +461,51 @@ private struct TodayView: View {
                     .font(.caption).foregroundStyle(DS.textSecondary)
             }
         }.padding(.horizontal, DS.space.sm)
+    }
+
+    private var tutorQuickRoundCard: some View {
+        let round = tutorRounds.first { $0.topic.persistentModelID == selectedTutorTopicID }
+            ?? tutorRounds.first { $0.remainingCount > 0 } ?? tutorRounds[0]
+        return VStack(alignment: .leading, spacing: DS.space.sm) {
+            Label("AUS DEINEM UNTERRICHT", systemImage: "person.text.rectangle")
+                .font(.caption.weight(.bold)).foregroundStyle(DS.accentText)
+            Text(round.topic.name).font(.title3.bold())
+            if let date = round.topic.tutorNextLessonAt {
+                Text("Nächste Stunde: \(date.formatted(date: .abbreviated, time: .omitted))")
+                    .font(.caption).foregroundStyle(DS.textSecondary)
+            }
+            Text(round.remainingCount > 0
+                 ? "\(round.remainingCount) Ausdrücke aus deiner Liste · ohne Zeitdruck"
+                 : "Für diese Einheit ist gerade keine weitere Runde geplant. Dein Tageslimit und die Wiederholungstermine bleiben erhalten.")
+                .font(.subheadline).foregroundStyle(DS.textSecondary)
+            if round.remainingCount > 0 {
+                Button { activeTutorRound = round } label: {
+                    Label("Kleine Unterrichtsrunde", systemImage: "play.fill")
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }.buttonStyle(.borderedProminent).tint(DS.accent)
+                    .accessibilityIdentifier("tutor-quick-round-start")
+            }
+            ViewThatFits(in: .horizontal) {
+                HStack { tutorTopicMenu; Spacer(); tutorManageButton }
+                VStack(alignment: .leading) { tutorTopicMenu; tutorManageButton }
+            }
+        }.dsCard(elevation: 1, padding: DS.space.md)
+    }
+
+    private var tutorTopicMenu: some View {
+        Menu {
+            ForEach(tutorRounds) { round in
+                Button(round.topic.name) { selectedTutorTopicID = round.topic.persistentModelID }
+            }
+        } label: {
+            Label("Einheit wählen", systemImage: "arrow.left.arrow.right")
+                .font(.caption.weight(.semibold)).frame(minHeight: 44)
+        }.tint(DS.accentText).accessibilityIdentifier("tutor-quick-round-topics")
+    }
+
+    private var tutorManageButton: some View {
+        Button("Unterricht verwalten") { showingTutorFocus = true }
+            .font(.caption.weight(.semibold)).frame(minHeight: 44).foregroundStyle(DS.accentText)
     }
 
     private func recordEpisodePreview(_ episode: LearningEpisode) {
@@ -574,6 +709,7 @@ private struct TodayView: View {
     private var isCovered: Bool {
         showingPractice || showingSprint || showingListeningLab
             || showingConversation || showingReading || selectedEpisode != nil || showingSettings || showingEpisodes
+            || activeTutorRound != nil || showingTutorFocus
     }
 
     private var refreshKey: String {
@@ -707,7 +843,29 @@ private struct TodayView: View {
 
     private func preparePlan() {
         guard !isCovered else { return }
+        tutorRounds = TutorFocusPlanner.quickRounds(topics: topics, cards: cards, reviews: reviews,
+            language: activeLanguageCode, dailyLimit: settings.first?.dailyNewLimit ?? 10,
+            savedPlans: experience?.practicePlans ?? [], endedIDs: experience?.endedPlanIDs ?? [])
         let pool = cards.filter { $0.phrase?.language?.code == activeLanguageCode }
+        let scopes: [PracticeScope] = [.recommended, .difficultThisWeek]
+            + topics.filter { $0.language?.code == activeLanguageCode }.map { .topic(id: $0.persistentModelID) }
+            + ScenarioDefinition.defaults.map { .scenario(id: $0.id) }
+        continuationPlan = nil
+        continuationRemaining = 0
+        continuationTitle = nil
+        for plan in (experience?.practicePlans ?? []).sorted(by: { $0.createdAt > $1.createdAt }) {
+            guard let scope = scopes.first(where: { $0.planKey == plan.scope }),
+                  plan.canResume(language: activeLanguageCode, scope: scope.planKey, mode: .speakDeToRu,
+                                 budget: plan.budget, endedIDs: experience?.endedPlanIDs ?? []),
+                  !plan.remaining(in: pool.filter(scope.includes), reviews: reviews,
+                                  dailyNewLimit: settings.first?.dailyNewLimit ?? 10).isEmpty else { continue }
+            continuationPlan = plan
+            continuationRemaining = plan.remaining(in: pool.filter(scope.includes), reviews: reviews,
+                dailyNewLimit: settings.first?.dailyNewLimit ?? 10).count
+            continuationScope = scope
+            continuationTitle = topics.first { scope == .topic(id: $0.persistentModelID) }?.name
+            break
+        }
         let latest = max(reviews.filter { $0.card?.phrase?.language?.code == activeLanguageCode }.map(\.timestamp).max() ?? .distantPast,
                          experience?.runs.filter { $0.language == activeLanguageCode }.map(\.updatedAt).max() ?? .distantPast)
         isReturning = latest != .distantPast && Date.now.timeIntervalSince(latest) >= 7 * 86_400

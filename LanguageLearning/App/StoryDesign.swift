@@ -177,8 +177,8 @@ struct StoryPassportLink: View {
                 Image(systemName: "rectangle.stack.fill").font(.title2).foregroundStyle(DS.accentText)
                     .frame(width: 48, height: 48).background(DS.accentSoft, in: RoundedRectangle(cornerRadius: 14))
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Dein Geschichtenpass").font(.headline).foregroundStyle(DS.textPrimary)
-                    Text("\(passport.collectedCount) von \(passport.episodes.count) Postkarten entdeckt")
+                    Text("Deine Situationen").font(.headline).foregroundStyle(DS.textPrimary)
+                    Text("\(passport.collectedCount) von \(passport.episodes.count) Situationen geübt")
                         .font(.subheadline).foregroundStyle(DS.textSecondary)
                 }
                 Spacer(minLength: 0)

@@ -11,8 +11,8 @@ struct StoryPassport {
         var label: String {
             if remembered { return "Nach 7 Tagen abgerufen" }
             if recalled { return "Ohne Hilfe abgerufen" }
-            if collected { return "Postkarte gesammelt" }
-            return "Noch zu entdecken"
+            if collected { return "Situation geübt" }
+            return "Noch nicht geübt"
         }
     }
 

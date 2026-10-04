@@ -2,6 +2,22 @@
 
 This file separates work the repository can verify from work that requires a physical device, native speakers, an Apple account, or real learners.
 
+## One-action Today — 4 October 2026
+
+Today contains one contextual invitation with “Jetzt üben”/“Weiterüben”, plus “Andere Übung wählen”. Existing eligible rounds take precedence, then tutor focus, then general practice/situations. Topic/scenario/difficult speaking plans can resume under their existing scope and budget. Statistics, goals and the collection no longer compete on Today; alternative routes remain in the menu and existing Library/Progress screens. Trial story-first preference affects only the general fallback; this changed layout must not be pooled with the earlier layout as a causal experiment.
+
+Verification: initial smoke passed 10 domain tests and 2 UI journeys. The broader run `/tmp/cueflow-simple-today-full.xcresult` passed **219 unit/domain checks and 16 of 17 UI journeys**; its tutor test caught a missing context heading when resuming a Library plan through the new primary action. Fixed by passing the continuation's topic title into practice. Final `/tmp/cueflow-simple-today-final.xcresult` passed **219 unit/domain checks + 3 targeted UI journeys**, zero failures (light/dark Today and collection, primary start/close, tutor import/resume/management). The whole 17-journey suite was not rerun after that fix and the final preview-event hook. Screenshots exported under `/tmp/cueflow-simple-today-final-images/`; no real-device or speed benchmark claim. No commit, push or upload performed.
+
+## Tutor-connected practice — first roadmap slice, 3 October 2026
+
+Adult-tone copy follow-up: collection, entry points, completion, reminders and preferences now use situations/practice rather than passports/postcards. Internal IDs and legacy saved topic names are unchanged. Fresh targeted verification: **218 unit/domain tests + 2 UI journeys passed** (light/dark collection and supported completion/resume), result `/tmp/cueflow-adult-copy.xcresult`. This is a targeted follow-up, not a new run of all 17 UI journeys.
+
+Local continuation of Build 56, not uploaded: Today offers a bounded round from actual active tutor vocabulary, concurrent-topic selection and direct lesson management. Reuses canonical cards, persistent plans and existing evidence; resumed plans recheck the current new-word allowance. No schema migration or new asset/content pack.
+
+Full quality gate: **66 XCTest + 152 Swift Testing + 17 UI = 235 checks**, zero failures, **52.45% app line coverage**. Result `/tmp/cueflow-playful-roadmap-releasecheck.xcresult`, log `/tmp/cueflow-playful-roadmap-releasecheck.log`; iPhone 17 / iOS 26.5 simulator. The tutor import → Library practice → Today quick round → management journey passed. Tutor invitation and practice screenshots were visually inspected. The recovery banner is deliberate isolated-test configuration, not a production store failure.
+
+An earlier targeted UI run failed on a post-dismissal tab tap; the expanded tutor test now exercises the direct management route. An earlier complete run missed the second story-model transition; the test now waits for that state before the next tap. The final complete run above passed. No physical-device performance, accessibility/audio, content-review or learning-effectiveness certification is implied. Full next-phase contract: [specification §19](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#19-tutor-connected-playful-practice-roadmap).
+
 ## October story-preview gate
 
 The new episode loop is a development preview. See [connected-learning status and limitations](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#16-build-55-roadmap-implementation) and the [Build 56 visual gamification contract](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#18-build-56--illustrated-story-loop-and-evidence-safe-gamification). Earlier checked gates below describe prior builds and must not be read as fresh certification of these new features. Before public rollout, review RU/AR content, microphone/audio behavior, migration on physical stores, and simultaneous-device journal edits. Build 55 adds independent immutable journal fragments and merge tests; this removes the single-field overwrite design for run history, but does not certify real CloudKit concurrency or simultaneous scheduling of the same card.

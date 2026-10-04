@@ -6,6 +6,27 @@ The [October learning experience specification](LEARNING_EXPERIENCE_IMPLEMENTATI
 
 **Current train:** 1.0, build 56 development preview (not uploaded)
 
+## Next delivery: tutor-connected playful practice
+
+The implementation contract, dependencies, acceptance criteria and measurement plan are in
+[section 19 of the learning specification](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#19-tutor-connected-playful-practice-roadmap).
+This is an incremental roadmap, not a claim that the following phases are shipped.
+
+| Order | Delivery | Status |
+|---|---|---|
+| P0 | Establish correctness/performance baseline and protect shared learning evidence | Existing foundation; physical baseline outstanding |
+| P1 | Three-expression tutor rounds on Today, concurrent-topic choice, existing vocabulary and plan resume | First implementation in this change; validation recorded in the specification |
+| P2 | Shared playful practice shell, accessible interaction rhythm and finite progress | One-action Today entry implemented 4 October; practice shell still planned |
+| P3 | Visual discovery → recognition → unaided production using tutor vocabulary | Planned |
+| P4 | Fair alternative-answer handling and useful corrective feedback | Planned |
+| P5 | Tutor-aligned contextual speaking and connected story sequences | Planned |
+| P6 | Evidence-led rewards, personal progress and welcoming return | Existing passport/goals; further work planned |
+| P7 | Tutor import/review workflow and lesson preparation summary | Existing imports/pacing; further work planned |
+| P8 | Real-device release gates, reviewed content and prospective learner pilot | Outstanding |
+
+Sequence: P0/P1 → P2 → P3/P4 → P5 → P6/P7 → P8. Content review and device checks start early and gate release, not basic local implementation. Build small vertical slices and verify each; do not implement every game mechanism before testing the core experience.
+
+
 Build 56 adds an illustrated Today → story → completion loop, a shared story passport, distinct participation/unaided/delayed-recall markers, scene palettes and a quieter home hierarchy. Research rationale, reward rules and evaluation boundaries are documented in [the visual gamification contract](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#18-build-56--illustrated-story-loop-and-evidence-safe-gamification). Engagement improvements remain hypotheses to test with learners.
 
 Build 55 connects stories to canonical vocabulary/FSRS, persists bounded card plans and unconfirmed attempts, adds independent journal records, optional calibration, selected study days, tutor shortfalls, evidence-led Progress, permanent earned badges, contextual reminders, and an opt-in local comparison. See the [current acceptance ledger](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#16-build-55-roadmap-implementation) for exact boundaries; this is not a claim that every research/release criterion is complete.

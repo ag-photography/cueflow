@@ -82,7 +82,7 @@ struct ReadingView: View {
             Text(beginner ? "Einfache Alltagsszenen" : "Vermutlich vertraute Wörter")
                 .font(.title3.weight(.bold))
                 .foregroundStyle(DS.textPrimary)
-            Text(beginner ? "Kurze Formulierungen aus den Geschichten. Erst lesen, dann bei Bedarf die Übersetzung zeigen. Entwurf: muttersprachliche Prüfung ausstehend." : "Der Wiederholungsplan schätzt fast alle Wörter als vertraut ein. Grammatik und Verständnis werden damit nicht geprüft. Erst lesen, dann die Übersetzung aufdecken.")
+            Text(beginner ? "Kurze Formulierungen aus den Situationen. Erst lesen, dann bei Bedarf die Übersetzung zeigen. Entwurf: muttersprachliche Prüfung ausstehend." : "Der Wiederholungsplan schätzt fast alle Wörter als vertraut ein. Grammatik und Verständnis werden damit nicht geprüft. Erst lesen, dann die Übersetzung aufdecken.")
                 .font(.subheadline)
                 .foregroundStyle(DS.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)

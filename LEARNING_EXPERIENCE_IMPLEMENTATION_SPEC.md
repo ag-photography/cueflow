@@ -511,3 +511,134 @@ The objective is willing return plus useful language learning, not compulsive ti
 Automated checks cover reward deduplication, support boundaries, known delayed intervals, version/language separation, malformed attempts, calibration/paused rounds, history preservation and JSON round trip. UI checks cover the hero, passport entry, supported completion and collection increment, both appearances, Arabic accessibility size, landscape and existing navigation journeys. Record final results and visual QA in `RELEASE_READINESS.md` before release.
 
 In the four-week pilot, ask whether the scenes are enjoyable and whether users voluntarily return. Inspect meaningful learning days, early exits, supported-answer use, optional continuation and delayed recall separately. A collection completion spike alone is not success. Physical accessibility/audio checks, native content review, expanded scene art/content and learner validation remain open; no claim of proven addictiveness or faster learning is made.
+
+## 19. Tutor-connected playful practice roadmap
+
+Requested 3 October 2026. Goal: make a small amount of genuinely useful practice inviting enough to choose voluntarily. Borrow tactile clarity and short commitments from Drops, contextual purpose from story games, and relevance from the learner's real tutor. Do not optimise for compulsive time spent or describe recognition as speaking ability.
+
+### Product contract and research boundaries
+
+**Adult tone of voice (3 October 2026):** playful interaction, adult language. User-facing collection is “Deine Situationen”; Today uses “Im Alltag”, “Situation üben” and “Alle Situationen”; completion uses “Situation geschafft”. Describe completed practice and recall evidence rather than postcards, passports, little adventures or collectible marks. Keep illustration, optional sound and finite progress. Internal StoryPassport/episode identifiers, trial values and legacy stored topic names remain stable; copy changes must not reset history or create duplicate learning records. Apply this terminology to every later phase below, including older references to postcards/collections. This supersedes the user-facing terminology in section 18, not its evidence rules.
+
+- The tutor supplies real topics, vocabulary and sometimes phrases, examples, dates or corrections. Existing lessons may already be underway, overlap, lack dates or contain mixed levels. They must work without starting a new course.
+- Existing `Phrase`/`StudyCard`/`Review` identities, FSRS and durable attempt evidence remain authoritative. A new presentation must not create a parallel vocabulary collection or scheduler. Tutor completion ends special priority, not long-term review.
+- Tutor import is provenance, not certification. Never invent an image, translation, accepted alternative, dialect or example and silently label it tutor-approved. Record source/review state for enrichment; original input stays recoverable.
+- All currently active tutor lessons remain selectable. Deadlines inform preparation, but daily limits and selected study days are not silently overridden. No fixed 14-day expiry for an ongoing lesson.
+- Generic imported words work with a text/audio fallback. Images are optional semantic aids, not an admission requirement. Abstract words, polysemy and Arabic morphology must not receive misleading visual matches.
+- Separate discovery/exposure, recognition, supported production, unaided production and transfer. An answer just shown cannot immediately earn unaided memory credit; retry cannot erase the original attempt.
+- A short round has a visible end. No hearts, random loot, streak-loss threats, mandatory speed, auto-start next lesson or reward farming. Sound and motion remain optional and accessible.
+
+References: [Drops packs](https://support.languagedrops.com/hc/en-us/articles/33378843218845-Packs) describes five-minute sessions, visual associations and learner choice; [Duolingo Adventures](https://blog.duolingo.com/adventures/) illustrates situation-based interaction; [Memrise](https://explore.memrise.com/new-experience) connects native-speaker material and production. These first-party descriptions are design references, not causal evidence for CueFlow. [Spacing/retrieval review](https://www.nature.com/articles/s44159-022-00089-1) informs learning structure. Section 18 records gamification evidence and limits. The user's enjoyment of Drops is a preference signal to test, not a universal design law.
+
+### P0 — Baseline and invariants
+
+Owner surface: `PracticeView`, `PracticePlan`, `SessionPlanner`, attempt checkpoints and UI tests.
+
+1. Capture current import → Today → practice → pause/resume → completion in RU/AR, light/dark, largest text and silent mode. Keep representative real/fixture libraries small, medium and large (100/1,000/10,000 cards).
+2. Record cold/warm launch, tab tap-to-visible-content and answer-to-feedback latency on physical hardware. Proposed targets: warm tab p95 under 150 ms and local input acknowledgement under 100 ms; report measured distributions separately from ASR/network latency. Existing three-second UI assertions prove availability, not fluidity.
+3. Keep regression tests for daily cap, duplicate callbacks, supported answers, failed save, interruption, migration and plan resume. Raise coverage floors only after a reproducible full run; target changed logic, not vanity percentages.
+
+Gate: no data-loss or grading regression; measurements recorded with device/OS/library size. Physical performance is outstanding, not inferable from simulator results.
+
+### P1 — Real tutor vocabulary in one small round
+
+Owner surface: `TutorFocusPlanner.quickRounds`, Today, existing `PracticeView`.
+
+- Build a cached list of lesson-specific plans outside SwiftUI `body`, ordered by next lesson date, with learner choice among concurrent active lessons.
+- Offer up to three eligible expressions from the selected topic, not a guessed themed story. Show the actual remaining count and topic; do not claim a fixed duration or readiness for the lesson.
+- Reuse existing topic scope, new-word allowance, production follow-ups and persistent plan resume. No unrelated filler when a topic is exhausted; explain that scheduling/limits are preserved and allow managing the lesson.
+- Keep the existing story/cards comparison ordering intact. This entry is initially secondary; a new primary-home experiment requires a versioned policy rather than silently changing the existing cohort definition.
+- Keep lesson name visible during practice; preserve quiet/typed fallback. Closing and reopening must resume without duplicate scheduling.
+
+Acceptance: exact topic/language membership, max three, cap=0/1, concurrent deadlines, completed focus exclusion, saved/ended plans, future-due exclusion; UI import → Today round → contextual practice → return. Include legacy tutor imports in existing recognition tests. No storage migration required.
+
+Status: first slice implemented in this change. It uses the existing practice interactions; it is not yet the visual mini-game described in P2/P3. Topic choice is view-local, not a cross-device preference. Empty plans do not offer premature review. Future voluntary extra practice needs explicit non-scheduling evidence semantics before introduction.
+
+Implementation detail: resumed practice rechecks the current daily allowance when loading its remaining cards, including plans created before the allowance changed. The original persisted items remain intact; the displayed round count uses the loaded opportunities rather than the old plan size. This is a local-session safeguard, not cross-device reservation of a global introduction budget.
+
+### P2 — One coherent, enjoyable practice surface
+
+**4 October 2026 — Today entry implemented ahead of the practice-shell refactor:** Today now contains one invitation and one “Andere Übung wählen” menu, without greeting, passport, exploration grid or goal cards. The primary action continues an eligible saved speaking/card plan (including topic/scenario/difficult scopes) or open situation before suggesting tutor material, then general practice, then a situation. Saved plans are eligible within the existing 24-hour policy; paused situations retain their existing version checks. When multiple continuations exist, compare plan creation/run update dates, not an inferred last interaction time. Plan counts are prepared outside `body`. Tutor lessons remain selectable from the menu, along with situation collection, practice and other modes. Library/Progress retain their existing collection/progress entry points. This supersedes P1's secondary-home placement, not its scheduling/evidence contract.
+
+Active story-first trial assignment still influences the general fallback; it never displaces an ongoing round or eligible tutor focus. The simplified layout is a new presentation policy: do not pool pre/post-change outcomes as a causal comparison of the old two-card ordering. No cohort assignment/history is rewritten. At this stage the menu supplies alternative modes; the practice-shell changes below remain planned.
+
+Owner surface: extract shared practice chrome/prompt/feedback components from `PracticeView`, retain its state and persistence boundaries.
+
+- One dominant prompt, one primary action and a short finite progress path; detailed scoring moves behind disclosure. Topic label supplies purpose without repeating instructions on every item.
+- Reuse DS backgrounds, Cyrillic/Arabic system typography and topic accents. Colour supports grouping, never serves as the only grading signal. Avoid unbounded animations or rebuilding charts/artwork on tab switches.
+- Immediate local press feedback; saved outcome triggers existing sound/haptic once. Do not play success before save or hide errors behind celebrations. Transitions cannot trap focus or delay the next available action.
+- Tap equivalents for every gesture; >=44-point targets; multiline labels, VoiceOver ordering, Reduce Motion and quiet mode. Drag/swipe is optional enrichment, not required navigation.
+
+Acceptance: unchanged domain results; snapshot attachments for RU/AR, portrait/landscape, light/dark and accessibility sizes; interruption/back/retry/rapid-tap tests. Review actual screens before calling the shell finished.
+
+### P3 — Learn → recognise → retrieve, without fake mastery
+
+Owner surface: a small deterministic exercise-presentation policy and reusable prompt components, not another scheduler.
+
+- Select presentation using previous support/evidence and available reviewed media. Introduce an unfamiliar expression with meaning and optional audio, then use recognition sparingly; bring it back without a visible model in a later eligible retrieval opportunity.
+- Provide visual choice only for explicitly mapped, unambiguous reviewed concepts. Store asset ID, phrase/sense binding, accessible description, rights/source and review version. Never derive correctness from emoji or topic-name matching.
+- For arbitrary tutor vocabulary, use polished text/audio prompts. If a safe distractor set cannot be made, omit matching rather than fabricate bad alternatives. Same-meaning alternatives cannot be marked wrong distractors.
+- Distinguish UI step progress from unique expressions and recall success. Extra discovery/recognition steps must not multiply FSRS updates, new-word counts or reward points.
+
+Acceptance: seeded policy tests; unknown/abstract word fallback; duplicate translations, Arabic RTL and inflected Russian cases; recognition cannot clear a pending production task; interrupted discovery does not become unaided recall. First reviewed content vertical slice: seasons/weather in RU and AR, independently reviewed by language/register.
+
+### P4 — Feedback that respects valid language
+
+Owner surface: `GraderService`, language-pack normalisation, accepted alternatives and correction UI.
+
+- Expand explicit accepted alternatives through an editorial/tutor correction flow; retain canonical form and provenance. Keep normalisation conservative: removing meaningful distinctions is not a substitute for linguistic judgement.
+- Separate known accepted response, known mismatch and uncertain assessment. Let users report a valid alternative; do not silently schedule an uncertain response as successful recall.
+- Show one useful correction first, with optional explanation/example. Do not call speech-transcription errors pronunciation mistakes. Where no evidence supports a naturalness judgement, do not invent one.
+- Save proposed corrections for review; changes to content version must not retroactively fabricate mastery.
+
+Acceptance: RU inflection/word-order and AR orthography/dialect fixtures reviewed by speakers; typed/ASR uncertainty paths; original attempt preserved after retry; save failure and duplicate-report handling. Content review is a human dependency, not an automated certification.
+
+### P5 — Turn tutor vocabulary into usable speech
+
+Owner surface: `EpisodeVocabulary`, episode definitions, scenario editor/enrichment pipeline.
+
+- Offer an explicit lesson-to-scenario mapping using exact canonical phrases. Shared topic names alone do not prove that an authored scene covers a tutor's vocabulary.
+- Start with reviewed seasonal exchanges: weather, favourite season, plans. Recur across a short story sequence, with a changed-context prompt after appropriate exposure separation.
+- Distinguish the tutor's supplied word from a newly introduced sentence/inflection. The sentence may need its own canonical learning item and daily-cap confirmation. Never claim knowing a noun proves sentence production.
+- Add context through authored templates first. Optional generated drafts must be previewable, editable and labelled; missing generation/network support must leave normal tutor practice available.
+- Give choices meaningful consequences without hidden required phrases or trapping the user. Count completed authored interactions, not open-ended conversational fluency.
+
+Acceptance: exact tutor-phrase mapping; unsupported-enrichment fallback; duplicate canonical vocabulary; daily-cap confirmation; draft labelling; pause/resume at each branch; separate transfer evidence with known support. Human review before public content rollout.
+
+### P6 — Reward actual progress and welcome return
+
+Owner surface: `StoryPassport`, goals, completion, Progress.
+
+- Retain cosmetic participation postcards, separate unaided and delayed markers. Add personal comparison only when prompt/content, support and modality are genuinely comparable.
+- Completion emphasises a concrete achievement and a clear Finish action. Offer one named optional next activity, never automatic continuation. When a user returns after a gap, offer a small achievable round without debt language.
+- Test topic journeys and recurring-character continuity before adding currencies or leagues. Replaying a familiar item cannot farm new mastery or collections.
+- Keep participation, introduced vocabulary, seven-day evidence and contextual use separate in tutor readiness summaries. Missing evidence is unknown, not failure or mastery.
+
+Acceptance: reward idempotence, content-version changes, deletion/restore, pause, repeat farming, mixed support and late return; no comparison of typing speed with speaking speed.
+
+### P7 — Make ongoing tutoring easy to maintain
+
+Owner surface: `TutorFocusView`, PDF/paste import, topic detail and export.
+
+- Preview import additions/duplicates/possible corrections before saving. Add to an existing ongoing lesson without resetting prior learning or creating duplicate cards. Do not merge homonyms merely by target spelling.
+- Make dates, multiple current lessons, selected study days and budget shortfall understandable. Let the learner adjust scope/date deliberately; keep long-term review after completion.
+- Offer an explicitly requested, previewable tutor summary: what was introduced, what was independently recalled, what needs help. Share no recordings/answer text by default and never send automatically.
+- Support editing/deleting a phrase already in a saved round, language switching, duplicate imports and backup restore with a clear stale-plan fallback.
+
+Acceptance: overlapping lessons, same expression with distinct senses, late/undated lesson, import retry, failed save and zero allowable new items. Existing PDF/paste/manual workflows remain usable throughout.
+
+### P8 — Release and evaluate, not just build
+
+Dependencies: reviewed RU/AR content and P0 physical-device checks; no automated substitute for these gates.
+
+- Run full unit/UI suite and inspect visual attachments. Validate microphone permissions, interruption/Bluetooth, offline models, haptics, VoiceOver, old physical stores, backup and two-device CloudKit conflicts.
+- Freeze build/content/acceptance/policy versions before the four-week protocol in section 17. The current experiment compares ordering, not the causal effect of new illustrations or tutor mini-rounds.
+- Measure meaningful practice days, voluntary continuation, early exits, supported-answer use, D7/D28 return, eligible/completed delayed probes and unaided recall separately, by language and tutoring status. Use existing local events/aggregate export; no answer-text analytics or cross-app surveillance.
+- Ask whether learners enjoyed practice, used it before tutoring and willingly chose it instead of scrolling. Do not infer Instagram substitution from launch counts. Small beta cohorts provide descriptive feedback, not reliable significance claims.
+- Keep/revise/stop decisions: retain mechanics only if enjoyment/return improves without worse recall, accessibility or pressure. Pre-register quantitative thresholds after baseline, before examining experiment outcomes.
+
+### Delivery discipline and current verification
+
+Each phase is a reviewable slice: domain invariants → UI integration → tests → visual inspection → release ledger. Update this section with actual outcomes rather than checking off a phase when only its happy path compiles. No automatic push, upload, analytics service, paid asset purchase or external tutor messaging is implied by this roadmap.
+
+P1 verification, 3 October 2026: full quality gate passed, **66 XCTest + 152 Swift Testing + 17 UI tests = 235 checks**, zero failures, **52.45% app line coverage**. Result: `/tmp/cueflow-playful-roadmap-releasecheck.xcresult`; log: `/tmp/cueflow-playful-roadmap-releasecheck.log`. Command: `COLLECT_TEST_DIAGNOSTICS=never RESULT_BUNDLE=<fresh-path>.xcresult ./ci_scripts/run_quality_gate.sh` on iPhone 17 / iOS 26.5 simulator. Six new domain tests cover the tutor quick-round policy; the existing tutor UI test now covers Today, contextual practice and management. Invitation/practice screenshots were visually inspected. One earlier full run missed a story-step transition; the test now waits for the second model's actual label before tapping Next again, and the final complete run passed. Physical device and native-content gates remain open. This change is local, not a TestFlight release.

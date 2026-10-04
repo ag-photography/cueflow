@@ -27,7 +27,7 @@ struct StoryPassportTests {
         #expect(book.collectedCount == 1)
         #expect(book.recalledCount == 0)
         #expect(book.rememberedCount == 0)
-        #expect(book.stamp(for: episode).label == "Postkarte gesammelt")
+        #expect(book.stamp(for: episode).label == "Situation geübt")
     }
 
     @Test func repeatedRunsCannotFarmCollectionRewards() {
