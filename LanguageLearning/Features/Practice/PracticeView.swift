@@ -115,6 +115,8 @@ struct PracticeView: View {
     // "Sag es im Satz" screen (after scoring, young cards only): flips true once
     // the user has recorded the sentence at least once, which reveals "Weiter".
     @State private var sentenceSpoken = false
+    /// The learner asked to see the sentence before speaking it (opt-in reading).
+    @State private var sentencePeek = false
     @State private var interactionGate = PracticeInteractionGate()
     @State private var gradingTask: Task<Void, Never>?
     @State private var choiceDelayTask: Task<Void, Never>?
@@ -1661,9 +1663,9 @@ struct PracticeView: View {
     }
 
     /// The contextual sentence that *uses* the just-learned word, presented as a
-    /// "now say it out loud" reinforcement: the target sentence big, an optional
-    /// pronunciation line and the German translation, plus a speaker button to
-    /// hear it modelled. Tinted with the accent so it reads as an action ("do
+    /// shadowing step: the German meaning and the audio, the target text hidden
+    /// until the learner has said it (or asks for it) — repeating from the ear,
+    /// never reading aloud. An optional pronunciation line follows the text. Tinted with the accent so it reads as an action ("do
     /// this"), not just more reference text. More spoken output, concentrated on
     /// the words that aren't solid yet.
     @ViewBuilder
@@ -1675,7 +1677,7 @@ struct PracticeView: View {
             HStack(spacing: 6) {
                 Image(systemName: "text.quote")
                     .font(.caption.weight(.bold))
-                Text("Sag es im Satz")
+                Text("Hör zu und sprich nach")
                     .font(.caption.weight(.bold))
                     .textCase(.uppercase)
                 Spacer()
@@ -1694,19 +1696,27 @@ struct PracticeView: View {
             }
             .foregroundStyle(DS.accentText)
 
-            Text(sentence)
-                .font(LearningTypography.display(
-                    .title3, weight: .semibold,
-                    languageCode: phrase?.language?.code
-                ))
-                .foregroundStyle(DS.textPrimary)
-                .fixedSize(horizontal: false, vertical: true)
+            if sentenceSpoken || sentencePeek {
+                Text(sentence)
+                    .font(LearningTypography.display(
+                        .title3, weight: .semibold,
+                        languageCode: phrase?.language?.code
+                    ))
+                    .foregroundStyle(DS.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            if shouldShowTransliteration,
-               let translit = phrase?.exampleSentenceTransliteration, !translit.isEmpty {
-                Text(translit)
-                    .font(.footnote)
-                    .foregroundStyle(DS.textTertiary)
+                if shouldShowTransliteration,
+                   let translit = phrase?.exampleSentenceTransliteration, !translit.isEmpty {
+                    Text(translit)
+                        .font(.footnote)
+                        .foregroundStyle(DS.textTertiary)
+                }
+            } else {
+                Button("Satz zeigen") { sentencePeek = true }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(DS.accentText)
+                    .frame(minHeight: 44)
+                    .accessibilityIdentifier("practice-sentence-peek")
             }
 
             if let translation = phrase?.exampleSentenceTranslation, !translation.isEmpty {
@@ -1741,10 +1751,10 @@ struct PracticeView: View {
                     .frame(width: 64, height: 64)
                     .background(DS.accentSoft)
                     .clipShape(Circle())
-                Text("Jetzt du – sprich den Satz")
+                Text("Jetzt du – sprich den Satz nach")
                     .font(LearningTypography.display(.title3, weight: .bold))
                     .foregroundStyle(DS.textPrimary)
-                Text("Laut nachsprechen. Wird nicht bewertet – einfach sagen.")
+                Text("Nach dem Hören, ohne Vorlage. Wird nicht bewertet.")
                     .font(.caption)
                     .foregroundStyle(DS.textSecondary)
                     .multilineTextAlignment(.center)
@@ -1828,6 +1838,7 @@ struct PracticeView: View {
         .padding(.vertical, DS.space.md)
         .onAppear {
             sentenceSpoken = false
+            sentencePeek = false
             speech.clearTranscription()
             speechErrorMessage = nil
             tts.speak(sentence, language: locale, times: 1)

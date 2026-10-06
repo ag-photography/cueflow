@@ -20,6 +20,9 @@ struct ListeningLabView: View {
     @State private var activityError: String?
     @State private var isShadowing = false
     @State private var hasShadowed = false
+    /// Shadowing is ear-to-mouth: the text stays hidden until after the attempt
+    /// unless the learner asks for it.
+    @State private var shadowPeek = false
     @State private var shadowingTimeout: Task<Void, Never>?
     @StateObject private var speech = SpeechRecognitionService()
 
@@ -260,11 +263,22 @@ struct ListeningLabView: View {
                 .font(.title2.bold())
                 .foregroundStyle(DS.textPrimary)
                 .multilineTextAlignment(.center)
-            Text(challenge.spokenText)
-                .font(.system(size: 32, weight: .semibold, design: .rounded))
-                .multilineTextAlignment(.center)
-                .environment(\.layoutDirection, pack.isRTL ? .rightToLeft : .leftToRight)
+            if hasShadowed || shadowPeek {
+                Text(challenge.spokenText)
+                    .font(.system(size: 32, weight: .semibold, design: .rounded))
+                    .multilineTextAlignment(.center)
+                    .environment(\.layoutDirection, pack.isRTL ? .rightToLeft : .leftToRight)
+            } else {
+                Button("Text zeigen") { shadowPeek = true }
+                    .frame(minHeight: 44)
+                    .foregroundStyle(DS.accentText)
+                    .accessibilityIdentifier("listening-shadow-peek")
+            }
             HStack(spacing: DS.space.md) {
+                Button { play(challenge, slow: false) } label: {
+                    Label("Anhören", systemImage: "speaker.wave.2.fill")
+                }
+                .buttonStyle(.bordered)
                 Button { play(challenge, slow: true) } label: {
                     Label("Langsam", systemImage: "tortoise.fill")
                 }
@@ -359,6 +373,7 @@ struct ListeningLabView: View {
         selected = nil
         isShadowing = false
         hasShadowed = false
+        shadowPeek = false
         dictation = ""
         dictationChecked = false
         let pool = eligible
