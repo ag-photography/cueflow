@@ -16,7 +16,7 @@ This is an incremental roadmap, not a claim that the following phases are shippe
 |---|---|---|
 | P0 | Establish correctness/performance baseline and protect shared learning evidence | Existing foundation; physical baseline outstanding |
 | P1 | Three-expression tutor rounds on Today, concurrent-topic choice, existing vocabulary and plan resume | First implementation in this change; validation recorded in the specification |
-| P2 | Shared playful practice shell, accessible interaction rhythm and finite progress | One-action Today and first shared practice-stage/feedback slice implemented; verification in release ledger |
+| P2 | Shared playful practice shell, accessible interaction rhythm and finite progress | One-action Today (Weiterlernen + Frei üben), one primary button style, shared help/quit wording and completion screens implemented; a full SessionShell component is still open (docs/coherence.md) |
 | P3 | Visual discovery → recognition → unaided production using tutor vocabulary | Text/audio discovery + known-ambiguity filtering implemented; reviewed visual assets still pending |
 | P4 | Fair alternative-answer handling and useful corrective feedback | Planned |
 | P5 | Tutor-aligned contextual speaking and connected story sequences | Planned |

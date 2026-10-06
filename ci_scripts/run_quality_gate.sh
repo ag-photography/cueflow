@@ -16,6 +16,9 @@ if [[ ! -d "$PROJECT" ]]; then
   xcodegen generate
 fi
 
+# Fail fast on coherence drift (docs/coherence.md) before the long test run.
+"$(dirname "$0")/coherence_ratchet.sh"
+
 if [[ -e "$RESULT_BUNDLE" ]]; then
   echo "Refusing to overwrite existing result bundle: $RESULT_BUNDLE"
   exit 4

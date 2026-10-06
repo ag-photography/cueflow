@@ -7,11 +7,10 @@ CueFlow is a privacy-first native iOS language coach for German speakers learnin
 - adaptive FSRS-6 sessions that progress from recognition to tiles, unaided production, and speech;
 - a preview collection of six Russian and three Modern Standard Arabic mini-stories, with saved position, optional quiet typing, and next-day/later recall checks;
 - a reading pass that selects bundled sentences at *i+1* from the learner's own FSRS state — at most one unfamiliar word — plus dictation in the listening studio;
-- a gap-fill ("Lücken") mode built from the bundled example sentences, which asks for the inflected form a sentence actually needs rather than the dictionary form the flashcard taught;
 - on-device Russian and Arabic speech recognition, speech synthesis, grading, and optional Apple Intelligence assistance;
 - focused 3/7/15-minute sessions, difficult-this-week practice, a 60-second spoken Sprint, and guided Russian/Arabic role-plays on every supported device;
 - honest speech-recognition evidence, slow reference playback, immediate retry, adaptive scaffolding, curriculum recommendations, and recurring learning-pattern insights;
-- an evidence-based capability path with unlocks, weekly missions, collectible milestones, and no artificial currency or practice gates;
+- an evidence-based capability path with unlocks, weekly goals, collectible milestones, and no artificial currency or practice gates;
 - a five-item listening and shadowing studio with normal/slow playback, bounded recording, and explicit non-diagnostic feedback;
 - six Russian and six Arabic guided situations, including longer shopping, hotel, and pharmacy drafts with authored response branches;
 - practical topic journeys, curated starters, tutor imports, phrase metadata, and an editorial/native-speaker review queue;
@@ -24,25 +23,17 @@ CueFlow has no account system, ads, third-party tracking, server-side analytics,
 
 The October story loop is a **development preview**, not proof of better retention or free-speaking proficiency. Build 55 connects stories to canonical vocabulary and its FSRS schedule, preserves card-round/attempt checkpoints, and saves independent journal fragments. Optional calibration, study-day pacing, delayed-recall examples, and a local opt-in comparison are available. Build 56 adds native illustrated scenes and a story passport: participation collects a postcard, while unaided and seven-day retrieval have separate evidence-based markers. No streak-loss penalties or practice locks are introduced. Content review, physical-device checks, multi-device behavior, and remaining acceptance work are tracked in [the implementation specification](LEARNING_EXPERIENCE_IMPLEMENTATION_SPEC.md#16-build-55-roadmap-implementation).
 
-## Current engagement pass
+## How the app fits together
 
-Today opens as a vocabulary arcade with five games:
+The product rules every feature is checked against live in [docs/coherence.md](docs/coherence.md): one core loop, one glossary, one interaction grammar, one success signal.
 
-- **Word Snap:** match four pairs by tapping or dragging.
-- **Sound Hunt:** hear a word, then choose its meaning; replay and visible-word help are available.
-- **Swipe Match:** swipe left/right toward a meaning, or tap the equivalent accessible controls.
-- **Phrase Builder:** arrange words into a short expression; remove tiles to undo or drag tiles into the answer area.
-- **Quick Recall:** type the target expression without answer choices, with an optional reveal.
+**Heute** shows one action, **Weiterlernen**, with an estimate and the reason it is next (due Ausdrücke, tutor material, or a Situation). Everything else sits in one collapsed **Frei üben** list, one name per activity: Sprint, Gespräch, Hörstudio, Lesen, Situationen, the games, tutor rounds and the Lernweg.
 
-**Spiele-Mix** is a bounded sequence of four pairs followed by one listening, swipe, phrase-building, and recall challenge (roughly two to three minutes). Recall revisits a word from the initial matching board. Every game can also be played separately. Results show first-try performance and the best series within that round; help and corrections cannot earn first-try credit.
+**Spiele** (Spiele-Mix, Paare finden, Hör hin, Wisch & triff, Satzbau, Aus dem Kopf) are presentations of the learner's own Ausdrücke. Paare finden and Wisch & triff are recognition warm-ups. Spoken steps only appear where speaking is recall or shadowing: Hör hin repeats what was heard with the spelling hidden, Satzbau is said without the tiles, and Aus dem Kopf is answered aloud first (typing is the fallback).
 
-Games draw from active topics in the selected language, prioritizing due vocabulary, current tutor material, and introduced words. Duplicate translations and known alternative-answer conflicts are removed. Matching modes require four distinct pairs. Phrase Builder requires real expressions of 2–8 words and is explicitly omitted from a mix if none are available. Quick Recall accepts the stored target and alternatives, ignoring punctuation, case, stress marks, and optional Arabic vowel marks; it does not claim to judge every valid translation.
+**One memory.** An unsupported answer from memory — in Üben, Situationen, Sprint or Aus dem Kopf — writes to the same FSRS schedule (introduced, due cards; once per card per round; `ActivityRecall`). Helped, revealed, tapped or shadowed attempts count as practice and spoken volume, never as a grade.
 
-All arcade games record participation and exposure, **not scheduled FSRS assessments**. Completed rounds count as learning days but do not postpone due reviews or claim long-term mastery. Pausing preserves an open game's in-memory state; closing a round starts fresh next time.
-
-Recommended/resumable recall practice remains on Today. Stories and their postcard collection are optional through “Andere Übung wählen” → “Alle Situationen”.
-
-Dark mode uses midnight-blue surfaces, a mint play button, amber/violet/cyan activity identities, and bright accent text. Finishing a game shows a bounded confetti celebration; Reduce Motion uses a static version. Audio effects respect the sound-effects setting. Leaving or backgrounding the game stops reference playback.
+**One success signal.** Fortschritt leads with Ausdrücke *aus dem Kopf gesprochen* this week and Ausdrücke that *sitzen* (stability ≥ 21 days); the day count is a quiet fact, never a countdown.
 
 ## Stack
 
