@@ -30,7 +30,7 @@ struct TopicEditorView: View {
                 Section {
                     Toggle("Aktiv", isOn: $isActive)
                 } footer: {
-                    Text("Aktive Themen liefern neue Karten. Wiederholungen kommen aus allen Themen.")
+                    Text("Aktive Themen liefern neue Ausdrücke. Wiederholungen kommen aus allen Themen.")
                 }
             }
             .navigationTitle(topic == nil ? "Neues Thema" : "Thema bearbeiten")

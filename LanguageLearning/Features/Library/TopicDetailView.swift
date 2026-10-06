@@ -62,7 +62,6 @@ struct TopicDetailView: View {
         .fullScreenCover(isPresented: $showingPractice) {
             PracticeView(
                 sessionTarget: min(10, max(1, total)),
-                isFocusedSession: true,
                 scope: .topic(id: topic.persistentModelID)
             )
         }
@@ -94,7 +93,7 @@ struct TopicDetailView: View {
                 }
             }
             .tint(DS.accent)
-            Text("Aktive Themen liefern neue Karten. Wiederholungen kommen weiter aus allen Themen.")
+            Text("Aktive Themen liefern neue Ausdrücke. Wiederholungen kommen weiter aus allen Themen.")
                 .font(.caption)
                 .foregroundStyle(DS.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -169,7 +168,7 @@ struct TopicDetailView: View {
                     stateBar(label: "Nachlernen", count: relearningCount, color: DS.gradeWrong)
                 }
             }
-            Text("\(practisedCount) von \(total) Phrasen mindestens einmal geübt")
+            Text("\(practisedCount) von \(total) Ausdrücken mindestens einmal geübt")
                 .font(.caption)
                 .foregroundStyle(DS.textTertiary)
         }
@@ -203,13 +202,13 @@ struct TopicDetailView: View {
 
     private var phrasesCard: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            Text("Phrasen")
+            Text("Ausdrücke")
                 .font(.footnote.weight(.semibold))
                 .foregroundStyle(DS.textSecondary)
                 .textCase(.uppercase)
                 .tracking(0.5)
             if sortedPhrases.isEmpty {
-                Text("Noch keine Phrasen in diesem Thema.")
+                Text("Noch keine Ausdrücke in diesem Thema.")
                     .font(.subheadline)
                     .foregroundStyle(DS.textSecondary)
                     .padding(.vertical, DS.space.sm)

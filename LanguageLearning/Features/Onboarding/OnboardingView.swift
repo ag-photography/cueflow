@@ -195,7 +195,7 @@ struct OnboardingView: View {
                     withAnimation { index += 1 }
                 }
             } label: {
-                Text(isLastPage ? "Erste Einheit starten" : "Weiter")
+                Text(isLastPage ? "Erste Runde starten" : "Weiter")
                     .font(.headline.weight(.bold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -567,7 +567,7 @@ struct OnboardingView: View {
             .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(option.limit) neue Karten, \(option.title)")
+        .accessibilityLabel("\(option.limit) neue Ausdrücke, \(option.title)")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
@@ -626,7 +626,7 @@ struct OnboardingView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(topic.name), \(topic.phrases?.count ?? 0) Phrasen")
+        .accessibilityLabel("\(topic.name), \(topic.phrases?.count ?? 0) Ausdrücke")
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 

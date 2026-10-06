@@ -139,7 +139,6 @@ struct PracticeView: View {
     @ScaledMetric(relativeTo: .largeTitle) private var heroTypeScale: CGFloat = 1
 
     let sessionTarget: Int
-    let isFocusedSession: Bool
     let scope: PracticeScope
     let suppliedPlan: PracticePlan?
     let contextTitle: String?
@@ -155,13 +154,11 @@ struct PracticeView: View {
 
     init(
         sessionTarget: Int = 10,
-        isFocusedSession: Bool = false,
         scope: PracticeScope = .recommended,
         suppliedPlan: PracticePlan? = nil,
         contextTitle: String? = nil
     ) {
         self.sessionTarget = max(1, sessionTarget)
-        self.isFocusedSession = isFocusedSession
         self.scope = scope
         self.suppliedPlan = suppliedPlan
         self.contextTitle = contextTitle
@@ -227,13 +224,13 @@ struct PracticeView: View {
     // MARK: - Body
 
     var body: some View {
+        // The round summary renders inside this cover rather than as a sheet
+        // stacked on top of it (HIG: one modal at a time).
+        Group {
+        if showingSessionSummary { sessionSummarySheet } else {
         VStack(spacing: 0) {
             sessionProgressBar
-            if isFocusedSession {
-                focusedSessionHeader
-            } else {
-                headerBar
-            }
+            focusedSessionHeader
             if let persistenceErrorMessage {
                 persistenceErrorBanner(persistenceErrorMessage)
                     .padding(.horizontal, DS.space.md)
@@ -249,6 +246,8 @@ struct PracticeView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(.horizontal, DS.space.md)
         }
+        }
+        }
         .frame(maxWidth: 760)
         .frame(maxWidth: .infinity)
         .background(DS.pageBackground.ignoresSafeArea())
@@ -260,9 +259,6 @@ struct PracticeView: View {
         }
         .fullScreenCover(isPresented: $showingSprint) {
             SprintView()
-        }
-        .sheet(isPresented: $showingSessionSummary) {
-            sessionSummarySheet
         }
         .onChange(of: mode) { _, _ in
             // Switching modes resets the current card — keep state coherent.
@@ -313,11 +309,11 @@ struct PracticeView: View {
         .onDisappear { recordLifecycle("session_paused"); invalidateInteraction() }
         .modifier(ExposureBoundary())
         .confirmationDialog(
-            "Einheit beenden?",
+            "Runde beenden?",
             isPresented: $showingExitConfirmation,
             titleVisibility: .visible
         ) {
-            Button("Einheit beenden", role: .destructive) { if recordLifecycle("session_ended") { dismiss() } }
+            Button("Runde beenden", role: .destructive) { if recordLifecycle("session_ended") { dismiss() } }
             Button("Weiter üben", role: .cancel) {}
         } message: {
             Text("Dein bereits gespeicherter Fortschritt bleibt erhalten.")
@@ -340,7 +336,7 @@ struct PracticeView: View {
                     .foregroundStyle(DS.textSecondary)
                     .frame(width: 44, height: 44)
             }
-            .accessibilityLabel("Einheit schließen")
+            .accessibilityLabel("Runde schließen")
             .accessibilityIdentifier("practice-close")
 
             VStack(spacing: 2) {
@@ -369,7 +365,7 @@ struct PracticeView: View {
                     .foregroundStyle(DS.textSecondary)
                     .frame(width: 44, height: 44)
             }
-            .accessibilityLabel(isSessionPaused ? "Einheit fortsetzen" : "Einheit pausieren")
+            .accessibilityLabel(isSessionPaused ? "Runde fortsetzen" : "Runde pausieren")
         }
         .padding(.horizontal, DS.space.sm)
         .background(DS.surface0)
@@ -381,7 +377,7 @@ struct PracticeView: View {
             Image(systemName: "pause.circle.fill")
                 .font(.system(size: 64))
                 .foregroundStyle(DS.accentText)
-            Text("Einheit pausiert")
+            Text("Runde pausiert")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(DS.textPrimary)
             Text("Atme kurz durch. Deine aktuelle Stelle bleibt erhalten.")
@@ -429,48 +425,6 @@ struct PracticeView: View {
     private var plannedOpportunityCount: Int {
         guard let plannedCardIDs else { return sessionTarget }
         return sessionCount + plannedCardIDs.filter { !reviewedCardIDs.contains($0) }.count
-    }
-
-    private var headerBar: some View {
-        VStack(spacing: DS.space.sm) {
-            HStack(spacing: DS.space.sm) {
-                Spacer()
-                if currentStreak > 0 {
-                    streakChip
-                }
-                sprintHeaderButton
-                headerIconButton(systemName: "chart.bar.fill", label: "Fortschritt") { showingProfile = true }
-                headerIconButton(systemName: "books.vertical", label: "Bibliothek") { showingLibrary = true }
-            }
-            // Own full-width row so all four exercise modes fit comfortably.
-            modePicker
-        }
-        .padding(.horizontal, DS.space.md)
-        .padding(.vertical, DS.space.sm)
-        .background(DS.surface0)
-    }
-
-    /// Streak chip — internal trigger (Hook Model): "don't break the chain".
-    /// Small, restrained — no panicking-owl energy.
-    private var streakChip: some View {
-        Button {
-            showingProfile = true
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "flame.fill")
-                    .font(.caption)
-                Text("\(currentStreak)")
-                    .font(.caption.weight(.bold).monospacedDigit())
-            }
-            .foregroundStyle(DS.accentText)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
-            .background(DS.accentSoft)
-            .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Serie: \(currentStreak) Tage")
-        .accessibilityHint("Öffnet den Fortschritt")
     }
 
     /// If today's streak is a milestone (3, 7, 14, 30, 100, 365) AND we
@@ -522,7 +476,7 @@ struct PracticeView: View {
     private func milestoneSubtitle(days: Int) -> String {
         switch days {
         case 3: return "Drei Tage am Stück — Routine setzt sich."
-        case 7: return "Eine Woche. Das ist schon Habit."
+        case 7: return "Eine Woche am Stück."
         case 14: return "Zwei Wochen — solide."
         case 30: return "Ein Monat. Beeindruckend."
         case 100: return "Hundert Tage. Außergewöhnlich."
@@ -531,89 +485,24 @@ struct PracticeView: View {
         }
     }
 
-    /// Days in a row with at least one review, counting back from today.
-    /// Today only counts if there's been a review today (strict — no grace).
+    /// Days in a row with at least one review *in this language* — the same
+    /// definition as Fortschritt (`LearningDataCache.streak`).
     private var currentStreak: Int {
+        let code = settings.first?.activeLanguageCode ?? ""
         let cal = Calendar.current
         var day = cal.startOfDay(for: .now)
         var streak = 0
         while true {
             let next = cal.date(byAdding: .day, value: 1, to: day) ?? day
-            if !reviews.contains(where: { $0.timestamp >= day && $0.timestamp < next }) {
+            if !reviews.contains(where: {
+                $0.timestamp >= day && $0.timestamp < next && $0.card?.phrase?.language?.code == code
+            }) {
                 break
             }
             streak += 1
             day = cal.date(byAdding: .day, value: -1, to: day) ?? day
         }
         return streak
-    }
-
-    /// Sprint entry — accent-tinted so it reads as a distinct "fun" action, not
-    /// just another grey nav icon. (Placement provisional: a session-summary
-    /// "want a fast round?" entry may suit it better than the busy header.)
-    private var sprintHeaderButton: some View {
-        Button { showingSprint = true } label: {
-            Image(systemName: "bolt.fill")
-                .font(.callout)
-                .foregroundStyle(DS.accentText)
-                .frame(width: 36, height: 36)
-                .background(DS.accentSoft)
-                .clipShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Sprint")
-        .accessibilityHint("60-Sekunden-Sprechrunde")
-    }
-
-    private func headerIconButton(systemName: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(.callout)
-                .foregroundStyle(DS.textPrimary)
-                .frame(width: 36, height: 36)
-                .background(DS.surface1)
-                .clipShape(Circle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-    }
-
-    private var modePicker: some View {
-        HStack(spacing: 2) {
-            ForEach(CardDirection.allCases, id: \.self) { direction in
-                modePickerButton(direction: direction)
-            }
-        }
-        .padding(4)
-        .background(DS.surface1)
-        .clipShape(Capsule())
-        // Compact 5-way control (tab-bar-like): cap growth so the segments keep
-        // fitting at accessibility sizes. The reading content scales fully.
-        // Adding a sixth mode would need a different control — at five, each
-        // segment is already relying on minimumScaleFactor on a small screen.
-        .dynamicTypeSize(...DynamicTypeSize.xLarge)
-    }
-
-    private func modePickerButton(direction: CardDirection) -> some View {
-        let selected = mode == direction
-        let fg: Color = selected ? .white : DS.textSecondary
-        let bg: Color = selected ? DS.accent : .clear
-        return Button {
-            withAnimation(.easeInOut(duration: 0.2)) { mode = direction }
-        } label: {
-            Text(direction.displayName)
-                .font(.caption.weight(.semibold))
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .foregroundStyle(fg)
-                .background(bg)
-                .clipShape(Capsule())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(direction.displayName)
-        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     // MARK: - Phase content
@@ -873,7 +762,7 @@ struct PracticeView: View {
         } label: {
             HStack(spacing: DS.space.sm) {
                 Image(systemName: "mic.slash.fill")
-                Text("Sprechen pausiert").font(.caption.weight(.medium))
+                Text("Leise üben").font(.caption.weight(.medium))
                 Spacer()
                 Text("Wieder sprechen").font(.caption.weight(.semibold))
                 Image(systemName: "chevron.right").font(.caption2)
@@ -885,7 +774,7 @@ struct PracticeView: View {
             .clipShape(Capsule())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Sprechen pausiert. Tippen, um wieder zu sprechen.")
+        .accessibilityLabel("Leise üben. Tippen, um wieder zu sprechen.")
     }
 
     private func choiceButton(card: StudyCard, option: String) -> some View {
@@ -1086,7 +975,7 @@ struct PracticeView: View {
                 Button {
                     showStudyMode()
                 } label: {
-                    Text("Ich weiß es nicht")
+                    Text("Antwort zeigen")
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(DS.textSecondary)
                         .underline()
@@ -1348,7 +1237,7 @@ struct PracticeView: View {
                             Button {
                                 showStudyMode()
                             } label: {
-                                Text("Ich weiß es nicht")
+                                Text("Antwort zeigen")
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(DS.accentText)
                             }
@@ -1378,22 +1267,8 @@ struct PracticeView: View {
             action()
         } label: {
             Text(title)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(disabled ? DS.disabledText : .white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-                .background(
-                    Capsule()
-                        .fill(disabled ? DS.disabled : DS.accent)
-                )
-                .shadow(
-                    color: disabled ? .clear : DS.accent.opacity(0.30),
-                    radius: 8,
-                    x: 0,
-                    y: 4
-                )
         }
-        .buttonStyle(PracticePressStyle())
+        .buttonStyle(.dsPrimary)
         .disabled(disabled)
     }
 
@@ -1865,7 +1740,7 @@ struct PracticeView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     detailRow("Erwartet", result.normalizedExpected)
                     detailRow("Eingabe", result.normalizedActual)
-                    detailRow("Tier", "\(result.tier)")
+                    detailRow("Bewertungsstufe", "\(result.tier)")
                     if result.editedWords > 0 {
                         detailRow("Wörter mit Abweichung", "\(result.editedWords)")
                         detailRow("Zeichenänderungen", "\(result.totalEdits)")
@@ -1954,21 +1829,6 @@ struct PracticeView: View {
         phase = .prompt(card)
     }
 
-    private func gradeChip(for grade: AutoGrade) -> some View {
-        let color = gradeColor(for: grade)
-        return HStack(spacing: 6) {
-            Image(systemName: gradeIcon(for: grade))
-                .font(.callout)
-            Text(grade.label)
-                .font(.subheadline.weight(.semibold))
-        }
-        .padding(.horizontal, DS.space.md)
-        .padding(.vertical, 8)
-        .foregroundStyle(.white)
-        .background(color)
-        .clipShape(Capsule())
-    }
-
     private func gradeColor(for grade: AutoGrade) -> Color {
         switch grade {
         case .perfect: return DS.gradePerfect
@@ -2010,7 +1870,7 @@ struct PracticeView: View {
                 .foregroundStyle(DS.accentText)
             Text("Tagesziel erreicht")
                 .font(.title2.weight(.semibold))
-            Text("Du hast heute \(newCardsDoneToday) neue Karten gelernt. Es warten noch \(availableNewCount) in deinen aktiven Themen.")
+            Text("Du hast heute \(newCardsDoneToday) neue Ausdrücke gelernt. Es warten noch \(availableNewCount) in deinen aktiven Themen.")
                 .font(.subheadline)
                 .foregroundStyle(DS.textSecondary)
                 .multilineTextAlignment(.center)
@@ -2030,7 +1890,7 @@ struct PracticeView: View {
                     .shadow(color: DS.accent.opacity(0.3), radius: 8, y: 4)
             }
             .buttonStyle(.plain)
-            Text("Das Tageslimit kannst du in den Einstellungen ändern (Üben → Neue Karten pro Tag).")
+            Text("Das Tageslimit kannst du in den Einstellungen ändern (Üben → Neue Ausdrücke pro Tag).")
                 .font(.caption)
                 .foregroundStyle(DS.textTertiary)
                 .multilineTextAlignment(.center)
@@ -2133,7 +1993,7 @@ struct PracticeView: View {
             if let sessionCompletedMission {
                 recapRow(
                     icon: "checkmark.seal.fill",
-                    title: "Mission gesprächsbereit",
+                    title: "Thema gesprächsbereit",
                     detail: sessionCompletedMission,
                     color: DS.gradePerfect
                 )
@@ -2162,14 +2022,10 @@ struct PracticeView: View {
             }
             .buttonStyle(.plain)
             .padding(.horizontal)
-            Button(isFocusedSession ? "Fertig" : "Pause") {
+            Button("Fertig") {
                 resetSession()
                 showingSessionSummary = false
-                if isFocusedSession {
-                    dismiss()
-                } else {
-                    phase = .empty
-                }
+                dismiss()
             }
             .foregroundStyle(DS.textSecondary)
             .padding(.bottom)
@@ -2177,7 +2033,6 @@ struct PracticeView: View {
         .padding()
         }
         .background(DS.pageBackground)
-        .presentationDetents([.large])
         .onAppear {
             if !playedSummarySound && sessionCount > 0 && persistenceErrorMessage == nil { CompletionFeedbackService.shared.playCompletion(sound: !speechMuted) }
             playedSummarySound = true
@@ -2202,44 +2057,15 @@ struct PracticeView: View {
         .padding(.horizontal, DS.space.md)
     }
 
+    /// Informational, not a slot machine: one plain message per band.
     private var sessionAccuracyMessage: String {
-        // Variable reward (Hook Model): rotating messages within each accuracy
-        // band so the same outcome doesn't always read identical. Pick by
-        // session count modulo the bucket size — deterministic per session
-        // but cycles through.
         let pct = sessionCount == 0 ? 0 : Int((Double(sessionCorrect) / Double(sessionCount)) * 100)
-        let candidates: [String]
         switch pct {
-        case 90...:
-            candidates = [
-                "Großartig!",
-                "Auf Flammen heute.",
-                "Sauber durch.",
-                "Das saß."
-            ]
-        case 70...:
-            candidates = [
-                "Solide Runde.",
-                "Gute Arbeit.",
-                "Stetiger Fortschritt.",
-                "Macht sich bezahlt."
-            ]
-        case 50...:
-            candidates = [
-                "Weiter dran bleiben.",
-                "Knapp die Hälfte — passt schon.",
-                "Schwierige Wörter brauchen Zeit.",
-                "Morgen probierst du wieder."
-            ]
-        default:
-            candidates = [
-                "Schwierige Runde — Wiederholung hilft.",
-                "Die kommen bald wieder, dann besser.",
-                "Knapp, aber dranbleiben.",
-                "SRS sorgt dafür, dass du sie nicht vergisst."
-            ]
+        case 90...: return "Fast alles gewusst."
+        case 70...: return "Solide Runde."
+        case 50...: return "Die schwierigen kommen bald wieder."
+        default: return "Schwierige Runde – die Ausdrücke kommen bald wieder."
         }
-        return candidates[abs(sessionCount.hashValue) % candidates.count]
     }
 
     // MARK: - Deterministic lifecycle
@@ -2928,13 +2754,6 @@ struct PracticeView: View {
 
     private var savedQuietPreference: Bool {
         (try? settings.first?.readExperience().preference(for: activeLanguage?.code ?? "ru").quiet) ?? false
-    }
-
-    private var tutorPacing: TutorFocusPacing? {
-        TutorFocusPlanner.pacing(
-            topics: topics.filter { $0.language?.code == activeLanguage?.code },
-            cards: cardsForActiveLanguage
-        )
     }
 
     /// New cards still available to introduce in the current mode (active

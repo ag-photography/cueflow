@@ -36,6 +36,11 @@ struct ProgressDashboardSnapshot: Equatable, Sendable {
     /// Items that keep slipping across their whole history — worth rewording
     /// rather than drilling again.
     let leechCount: Int
+    /// The headline number: correct answers said aloud from memory, unaided,
+    /// in the last 7 days — the product's core act, from any activity.
+    var spokenFromMemoryThisWeek: Int = 0
+    /// Ausdrücke that sit: FSRS stability of at least 21 days.
+    var durableCount: Int = 0
 
     static let empty = ProgressDashboardSnapshot(
         scenarioFractions: [:], learningPatterns: [], fastestRecall: nil,
@@ -91,6 +96,7 @@ private struct ProgressCardRecord: Sendable {
     let introduced: Bool
     let dueDate: Date
     let lapses: Int
+    var stability: Double = 0
     /// Stored rather than pre-evaluated: the boost expires on a clock, so a
     /// cached boolean would freeze at whatever it was when the record was built.
     let isPriority: Bool
@@ -274,6 +280,7 @@ final class LearningDataCache {
                 introduced: card.state.isIntroduced || introducedCardIDs.contains(cardID),
                 dueDate: card.dueDate,
                 lapses: card.lapses,
+                stability: card.stability,
                 isPriority: identity.isPriority,
                 priorityUntil: identity.priorityUntil
             ))
@@ -528,7 +535,11 @@ final class LearningDataCache {
             fluencyLabel: fluency,
             reviewsByLanguage: reviews.reduce(into: [:]) { $0[$1.languageCode, default: 0] += 1 },
             topics: topicStats,
-            leechCount: languageCards.count { $0.lapses >= DifficultPractice.leechLapseThreshold }
+            leechCount: languageCards.count { $0.lapses >= DifficultPractice.leechLapseThreshold },
+            spokenFromMemoryThisWeek: spoken.count {
+                $0.event.timestamp >= thisWeekStart && $0.event.isStrongProductiveRecall
+            },
+            durableCount: languageCards.count { $0.introduced && $0.stability >= 21 }
         )
     }
 

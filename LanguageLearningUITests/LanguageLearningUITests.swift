@@ -72,7 +72,9 @@ final class LanguageLearningUITests: XCTestCase {
         for appearance in ["Light", "Dark"] {
             let app = launch(appearance: appearance)
             XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 15))
-            XCTAssertTrue(app.buttons["arcade-mix-start"].isHittable)
+            // One next thing: the free-practice list stays collapsed.
+            XCTAssertTrue(app.staticTexts["today-why-now"].exists || app.descendants(matching: .any)["today-why-now"].exists)
+            XCTAssertFalse(app.buttons["arcade-mix-start"].exists)
             XCTAssertFalse(app.buttons["story-passport-open"].exists)
             XCTAssertFalse(app.buttons["sprint-start"].exists)
             XCTAssertFalse(app.buttons["Deine Ziele & Lernmomente"].exists)
@@ -91,6 +93,7 @@ final class LanguageLearningUITests: XCTestCase {
     }
     func testWordSnapSupportsWrongMatchesDragAndCompletion() {
         let app = launch(appearance: "Dark")
+        openOtherPractice(in: app)
         let entry = app.buttons["arcade-snap-start"]
         XCTAssertTrue(entry.waitForExistence(timeout: 15))
         for _ in 0..<5 where !entry.isHittable { app.swipeUp() }
@@ -132,7 +135,8 @@ final class LanguageLearningUITests: XCTestCase {
     func testFiveGameMixCompletesWithTypedRecallInBothLanguages() {
         for language in ["ru", "ar"] {
             let app = launch(language: language, appearance: "Dark")
-            app.buttons["arcade-mix-start"].tap()
+            openOtherPractice(in: app)
+            tapArcade("arcade-mix-start", in: app)
             let sources = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "arcade-source-"))
             XCTAssertTrue(sources.firstMatch.waitForExistence(timeout: 8))
             let firstID = String(sources.firstMatch.identifier.dropFirst("arcade-source-".count))
@@ -186,6 +190,7 @@ final class LanguageLearningUITests: XCTestCase {
     func testBuilderAndRecallCanBeChosenAndFinishedWithHelp() {
         for game in ["builder", "recall", "swipe"] {
             let app = launch()
+            openOtherPractice(in: app)
             tapArcade("arcade-\(game)-start", in: app)
             let count = game == "swipe" ? 8 : 4
             for _ in 0..<count {
@@ -197,7 +202,6 @@ final class LanguageLearningUITests: XCTestCase {
             app.buttons["arcade-replay"].tap()
             XCTAssertFalse(app.buttons["arcade-answer-next"].exists)
             XCTAssertTrue(app.staticTexts["0 / \(count)"].exists)
-            app.buttons["arcade-close"].tap()
             app.terminate()
         }
     }
@@ -211,13 +215,14 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testSoundHuntSupportsArabicLargeTextAndRevealedAnswers() {
         let app = launch(language: "ar", contentSize: "UICTContentSizeCategoryAccessibilityXXXL", appearance: "Dark")
+        openOtherPractice(in: app)
         let entry = app.buttons["arcade-sound-start"]
         XCTAssertTrue(entry.waitForExistence(timeout: 15))
         for _ in 0..<10 where !entry.isHittable { app.swipeUp() }
         entry.tap()
         XCTAssertTrue(app.buttons["arcade-listen"].waitForExistence(timeout: 8))
         for _ in 0..<8 {
-            let reveal = app.buttons["Wort zeigen"]
+            let reveal = app.buttons["Antwort zeigen"]
             for _ in 0..<10 where !reveal.isHittable { app.swipeUp() }
             reveal.tap()
             let choice = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "arcade-choice-")).firstMatch
@@ -249,7 +254,7 @@ final class LanguageLearningUITests: XCTestCase {
         calibration.tap()
         XCTAssertTrue(app.buttons["episode-check"].waitForExistence(timeout: 4))
         XCTAssertFalse(app.buttons["episode-next"].exists)
-        XCTAssertTrue(app.buttons["Formulierung zeigen"].exists)
+        XCTAssertTrue(app.buttons["Antwort zeigen"].exists)
     }
 
     func testStoryAcceptsUnaidedTypedRussianAnswer() {
@@ -391,7 +396,8 @@ final class LanguageLearningUITests: XCTestCase {
         let other = app.buttons["today-other-practice"]
         XCTAssertTrue(other.waitForExistence(timeout: 15))
         for _ in 0..<10 where !other.isHittable { app.swipeUp() }
-        other.tap()
+        // "Frei üben" remembers being open while an activity covers Heute.
+        if other.value as? String != "geöffnet" { other.tap() }
     }
 
     func testPrimaryJourneyStartsAndClosesCleanly() {
@@ -525,10 +531,10 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testLandscapeKeepsPrimaryActionReachable() {
         let app = launch()
-        XCTAssertTrue(app.buttons["arcade-mix-start"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 8))
         XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(app.buttons["arcade-mix-start"].waitForExistence(timeout: 4))
-        XCTAssertTrue(app.buttons["arcade-mix-start"].isHittable)
+        XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.buttons["today-primary-start"].isHittable)
         XCUIDevice.shared.orientation = .portrait
     }
 

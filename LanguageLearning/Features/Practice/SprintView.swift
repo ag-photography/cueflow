@@ -8,9 +8,9 @@ import UIKit
 /// it hears a close-enough match — hands-free, no tap between cards. The score
 /// is pure output volume (cards cleared), gamified by speed, not accuracy.
 ///
-/// Deliberately *outside* the FSRS schedule: Sprint is a warm-up / fluency game,
-/// not spaced study, so it records no `Review` and changes no card's due date.
-/// It tracks a personal best and private, unscored activity events. Low-stakes
+/// A matched card is an unsupported spoken recall, so it feeds the same memory
+/// as Üben via `ActivityRecall` (due cards only, once per round); skips and
+/// shown answers never grade. It also tracks a personal best. Low-stakes
 /// by design — the point is to get your mouth moving, not to be graded. The
 /// transcription is shown as a mirror, never a "wrong".
 ///
@@ -27,9 +27,6 @@ struct SprintView: View {
     @Query private var languages: [Language]
 
     @StateObject private var speech = SpeechRecognitionService()
-    @AppStorage("sprintBest") private var best: Int = 0
-    // Speaking-volume scoreboard: a date-guarded daily tally of words spoken
-    // aloud, shared (via UserDefaults) with ProfileView's "Sprechen" section.
 
     @State private var phase: Phase = .intro
     @State private var pool: [Phrase] = []
@@ -50,6 +47,8 @@ struct SprintView: View {
     @State private var skippedPhrases: [Phrase] = []
     @State private var revealedAnswer: String?
     @State private var skipGeneration = UUID()
+    /// Cards whose FSRS memory this round already moved (the pool cycles).
+    @State private var scheduledCards: Set<PersistentIdentifier> = []
 
     private let duration: TimeInterval = 60
     private let ticker = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
@@ -60,6 +59,11 @@ struct SprintView: View {
 
     private var activeCode: String { settings.first?.activeLanguageCode ?? "ru" }
     private var activeLanguage: Language? { languages.first { $0.code == activeCode } }
+    /// Personal best per language (RU and AR are different races).
+    private var best: Int {
+        get { SprintBest.value(for: activeCode) }
+        nonmutating set { SprintBest.set(newValue, for: activeCode) }
+    }
     private var currentPhrase: Phrase? {
         guard !pool.isEmpty else { return nil }
         return pool[index % pool.count]
@@ -166,7 +170,7 @@ struct SprintView: View {
             }
             Spacer()
             primaryButton(title: "Los geht's", systemImage: "play.fill") { startRound() }
-            Text("Zählt nicht in deinen Lernplan — reine Sprechübung.")
+            Text("Was du aus dem Kopf sagst, zählt für deine Wiederholung.")
                 .font(.caption)
                 .foregroundStyle(DS.textTertiary)
                 .multilineTextAlignment(.center)
@@ -349,7 +353,7 @@ struct SprintView: View {
     private var skipButton: some View {
         Button { skip() } label: {
             HStack(spacing: 6) {
-                Text("Konnte ich nicht")
+                Text("Antwort zeigen")
                 Image(systemName: "arrow.right")
             }
             .font(.subheadline.weight(.medium))
@@ -453,14 +457,8 @@ struct SprintView: View {
             action()
         } label: {
             Label(title, systemImage: systemImage)
-                .font(.headline.weight(.bold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 20)
-                .background(Capsule().fill(DS.accent))
-                .shadow(color: DS.accent.opacity(0.30), radius: 8, x: 0, y: 4)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.dsPrimary)
     }
 
     // MARK: - Round lifecycle
@@ -529,15 +527,23 @@ struct SprintView: View {
     private func clearCurrent() {
         recordActivity("sprint_answer", support: revealedAnswer == nil ? "speechMatch" : "model")
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        if let said = currentPhrase?.targetText { recordSpokenWords(said) }
+        if revealedAnswer == nil { recordRecall() }
         withAnimation(reduceMotion ? .none : .spring(response: 0.3, dampingFraction: 0.8)) {
             cleared += 1
         }
         advance()
     }
 
-    private func recordSpokenWords(_ text: String) {
-        SpokenWordTally.record(text)
+    /// A matched card was said from memory, unsupported: it feeds the same
+    /// memory and spoken-word counts as Üben (see `ActivityRecall`).
+    private func recordRecall() {
+        guard let phrase = currentPhrase, let card = phrase.cards?.first else { return }
+        do {
+            let moved = try ActivityRecall.record(card: card, kind: "sprint", sessionID: activityID,
+                answer: phrase.targetText, spoken: true, supported: false, correct: true,
+                alreadyScheduled: scheduledCards.contains(card.persistentModelID), context: context)
+            if moved { scheduledCards.insert(card.persistentModelID) }
+        } catch { context.rollback(); activityError = "Antwort konnte nicht gespeichert werden." }
     }
 
     private func skip() {

@@ -72,7 +72,7 @@ struct TutorFocusView: View {
                         displayedComponents: .date
                     )
                 } header: {
-                    Text("Neue oder bestehende Einheit")
+                    Text("Neue oder bestehende Runde")
                 } footer: {
                     Text("CueFlow verteilt neue Ausdrücke so auf die verbleibenden Tage, dass du sie vor der nächsten Stunde mindestens einmal geübt hast.")
                 }
@@ -238,7 +238,7 @@ struct TutorFocusView: View {
                         )
                     }
                 } footer: {
-                    Text("CueFlow berechnet das tägliche Pensum neu. Ohne Termin bleibt die Einheit aktiv und wird in einem sanften Sieben-Tage-Rhythmus vorbereitet.")
+                    Text("CueFlow berechnet das tägliche Pensum neu. Ohne Termin bleibt die Runde aktiv und wird in einem sanften Sieben-Tage-Rhythmus vorbereitet.")
                 }
             }
             .navigationTitle(topic.name)

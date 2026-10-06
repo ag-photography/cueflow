@@ -24,8 +24,8 @@ enum CueFlowPendingAction: String, Sendable {
 }
 
 struct StartCueFlowPracticeIntent: AppIntent {
-    static let title: LocalizedStringResource = "CueFlow-Einheit starten"
-    static let description = IntentDescription("Öffnet direkt die empfohlene sprechorientierte Einheit.")
+    static let title: LocalizedStringResource = "CueFlow-Runde starten"
+    static let description = IntentDescription("Öffnet direkt die empfohlene sprechorientierte Runde.")
     static let openAppWhenRun = true
 
     @MainActor
@@ -64,10 +64,10 @@ struct CueFlowShortcuts: AppShortcutsProvider {
         AppShortcut(
             intent: StartCueFlowPracticeIntent(),
             phrases: [
-                "Einheit mit \(.applicationName) starten",
+                "Runde mit \(.applicationName) starten",
                 "Mit \(.applicationName) sprechen"
             ],
-            shortTitle: "Einheit starten",
+            shortTitle: "Runde starten",
             systemImageName: "text.bubble.fill"
         )
         AppShortcut(

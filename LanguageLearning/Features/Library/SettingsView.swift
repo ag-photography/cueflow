@@ -75,7 +75,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Sprache & Inhalte")
                 } footer: {
-                    Text("Phrasen anderer Sprachen werden ausgeblendet, bis du sie hier auswählst. Russisch & Arabisch werden unterstützt. Transliteration zeigt die Lautschrift unter der Antwort.")
+                    Text("Ausdrücke anderer Sprachen werden ausgeblendet, bis du sie hier auswählst. Russisch & Arabisch werden unterstützt. Transliteration zeigt die Lautschrift unter der Antwort.")
                 }
 
                 // MARK: Üben
@@ -88,7 +88,7 @@ struct SettingsView: View {
                     }
                     Stepper(value: $dailyNewLimit, in: 0...50) {
                         HStack {
-                            Text("Neue Karten pro Tag")
+                            Text("Neue Ausdrücke pro Tag")
                             Spacer()
                             Text("\(dailyNewLimit)")
                                 .foregroundStyle(.secondary)
@@ -100,7 +100,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Üben")
                 } footer: {
-                    Text("Die Standardlänge gilt für neue Einheiten und kann auf Heute jederzeit geändert werden. Neue Karten pro Tag begrenzt nur die Einführung; Wiederholungen bleiben unbegrenzt. Klangeffekte respektieren den Stummmodus – außer direkt neben vorgelesenen Wörtern, die auch bei Stummschaltung hörbar sind.")
+                    Text("Die Standardlänge gilt für neue Runden. Neue Ausdrücke pro Tag begrenzt nur die Einführung; Wiederholungen bleiben unbegrenzt. Klangeffekte respektieren den Stummmodus – außer direkt neben vorgelesenen Wörtern, die auch bei Stummschaltung hörbar sind.")
                 }
                 .listRowBackground(DS.surface1)
 

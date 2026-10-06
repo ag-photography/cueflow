@@ -44,24 +44,25 @@ struct ArcadeView: View {
     @State private var typeInstead = false
     /// The learner asked to see the answer during a from-memory spoken step.
     @State private var peek = false
+    @State private var confirmingQuit = false
     /// Board words already said aloud this round (echo or recall).
     @State private var spokenIDs: Set<String> = []
     @State private var spokenWords = 0
+    /// Word identity → its card, so recall can feed the shared memory.
+    @State private var cardIDs: [String: PersistentIdentifier] = [:]
+    @State private var scheduledCards: Set<PersistentIdentifier> = []
 
     private var language: String { settings.first?.activeLanguageCode ?? "ru" }
-    private var locale: String { LanguagePack.configuration(for: language)?.ttsLocale ?? "ru-RU" }
+    private var pack: LanguagePack? { LanguagePack.configuration(for: language) }
+    private var locale: String { pack?.ttsLocale ?? "" }
+    private var isRTL: Bool { pack?.isRTL ?? false }
+    private var languageLabel: String { pack?.germanLabel ?? "der Zielsprache" }
     private var game: ArcadeMode { plan.indices.contains(stage) ? plan[stage].mode : mode }
     private var board: [ArcadeWord] { plan.indices.contains(stage) ? plan[stage].words : [] }
-    private var gameColor: Color { game == .sound ? DS.listeningColor : game == .swipe ? DS.sprintColor : game == .recall ? DS.accentText : DS.conversationColor }
-    private var gameSymbol: String {
-        switch game {
-        case .mix, .snap: return "square.grid.2x2.fill"
-        case .sound: return "waveform"
-        case .swipe: return "arrow.left.arrow.right"
-        case .builder: return "puzzlepiece.extension.fill"
-        case .recall: return "brain.head.profile"
-        }
-    }
+    /// One colour for the games; mode colours belong to their own modes and
+    /// correct/wrong use the grade tokens (docs/coherence.md → Visual language).
+    private var gameColor: Color { DS.accentText }
+    private var gameSymbol: String { game.symbol }
     private var prompt: ArcadeWord? { board.indices.contains(promptIndex) ? board[promptIndex] : nil }
     private var boardDone: Bool { !board.isEmpty && board.allSatisfy { score.resolved.contains($0.id) } }
     private var stages: Int { plan.count }
@@ -100,14 +101,14 @@ struct ArcadeView: View {
                     if !loaded { ProgressView() }
                     else if plan.isEmpty {
                         ContentUnavailableView(mode == .builder ? "Kurze Sätze gesucht" : "Noch zu wenig verschiedene Wörter", systemImage: "square.grid.2x2",
-                            description: Text(mode == .builder ? "Phrase Builder braucht Ausdrücke mit 2 bis 8 Wörtern. Aktiviere ein passendes Thema oder importiere Unterrichtssätze." : "Aktiviere in der Bibliothek ein Thema mit verschiedenen Bedeutungen und Übersetzungen. Für Zuordnungsspiele brauchst du mindestens vier Paare."))
-                        Button("Zurück") { dismiss() }.buttonStyle(.borderedProminent)
+                            description: Text(mode == .builder ? "Satzbau braucht Ausdrücke mit 2 bis 8 Wörtern. Aktiviere ein passendes Thema oder importiere Unterrichtssätze." : "Aktiviere in der Bibliothek ein Thema mit verschiedenen Bedeutungen und Übersetzungen. Für Zuordnungsspiele brauchst du mindestens vier Paare."))
+                        Button("Zurück") { dismiss() }.buttonStyle(.dsPrimary)
                     } else if finished { result }
                     else {
                         progress
                         if let micNote { Text(micNote).font(.caption).foregroundStyle(DS.textSecondary).multilineTextAlignment(.center) }
                         if mode == .mix && !plan.contains(where: { $0.mode == .builder }) {
-                            Text("Heute ohne Phrase Builder: Dafür brauchst du aktive Ausdrücke mit 2 bis 8 Wörtern.")
+                            Text("Heute ohne Satzbau: Dafür brauchst du aktive Ausdrücke mit 2 bis 8 Wörtern.")
                                 .font(.caption).foregroundStyle(DS.textSecondary)
                         }
                         switch game {
@@ -119,7 +120,7 @@ struct ArcadeView: View {
                         }
                         if boardDone && game == .snap {
                             Button(stage + 1 == stages ? "Runde abschließen" : "Weiter: \(plan[stage + 1].mode.title)") { advanceBoard() }
-                                .buttonStyle(ArcadeActionStyle()).accessibilityIdentifier("arcade-next-board")
+                                .buttonStyle(.dsPrimary).accessibilityIdentifier("arcade-next-board")
                         }
                     }
                 }.padding(20).frame(maxWidth: DS.mainContentWidth).frame(maxWidth: .infinity)
@@ -134,13 +135,27 @@ struct ArcadeView: View {
             .navigationTitle(mode.title).navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Schließen") { dismiss() }.accessibilityIdentifier("arcade-close")
+                    // Same quit grammar as Üben: ask before leaving a round in progress.
+                    Button("Schließen") {
+                        if loaded && !finished && !score.resolved.isEmpty { confirmingQuit = true } else { dismiss() }
+                    }.accessibilityIdentifier("arcade-close")
                 }
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Tastatur schließen") { answerFocused = false }
                 }
             }
+        }
+        .confirmationDialog("Runde beenden?", isPresented: $confirmingQuit, titleVisibility: .visible) {
+            Button("Runde beenden", role: .destructive) {
+                stopAudio()
+                try? LearningActivityRecorder.record("arcade_ended", language: language, session: session,
+                    step: mode.rawValue, support: "arcadePractice", context: context)
+                dismiss()
+            }
+            Button("Weiterspielen", role: .cancel) {}
+        } message: {
+            Text("Was du aus dem Kopf gesagt hast, ist schon gespeichert.")
         }
         .task { if !loaded { load() } }
         .modifier(ExposureBoundary(mode: "arcade", sessionID: session))
@@ -163,19 +178,19 @@ struct ArcadeView: View {
                 Spacer()
                 Text("\(score.resolved.count) / \(words.count)").font(.headline.monospacedDigit())
             }
-            ProgressView(value: Double(score.resolved.count), total: Double(max(1, words.count))).tint(DS.playMint)
+            ProgressView(value: Double(score.resolved.count), total: Double(max(1, words.count))).tint(DS.gradePerfect)
                 .accessibilityLabel("\(score.resolved.count) von \(words.count) Aufgaben geschafft")
             HStack {
-                Text("Board \(stage + 1) von \(stages)").foregroundStyle(DS.textSecondary)
+                Text("Spiel \(stage + 1) von \(stages)").foregroundStyle(DS.textSecondary)
                 Spacer()
-                if score.streak >= 2 { Label("\(score.streak) in Folge!", systemImage: "bolt.fill").foregroundStyle(DS.sprintColor) }
+                if score.streak >= 2 { Label("\(score.streak) in Folge!", systemImage: "bolt.fill").foregroundStyle(DS.accentText) }
             }.font(.caption.bold())
         }
     }
 
     private var snapBoard: some View {
         VStack(spacing: 16) {
-            Text(boardDone ? "Board frei. Stark!" : "Was gehört zusammen?")
+            Text(boardDone ? "Alle Paare gefunden. Stark!" : "Was gehört zusammen?")
                 .font(.system(.title2, design: .rounded, weight: .bold))
             Text("Tippe ein deutsches Wort und seine Übersetzung an. Oder zieh es auf das passende Feld.")
                 .font(.subheadline).foregroundStyle(DS.textSecondary).multilineTextAlignment(.center)
@@ -205,16 +220,16 @@ struct ArcadeView: View {
     private func tile(_ word: ArcadeWord, target: Bool) -> some View {
         let done = score.resolved.contains(word.id)
         let active = !target && selected == word.id
-        let color = done ? DS.playMint : mismatch == word.id ? DS.sprintColor : DS.conversationColor
+        let color = done ? DS.gradePerfect : mismatch == word.id ? DS.gradeWrong : DS.accentText
         return Button {
             guard mismatch == nil else { return }
             if target { match(word) } else { selected = selected == word.id ? nil : word.id }
         } label: {
             VStack(spacing: 6) {
-                if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(DS.playMint) }
+                if done { Image(systemName: "checkmark.circle.fill").foregroundStyle(DS.gradePerfect) }
                 Text(done ? "Gefunden" : target ? word.target : word.source)
-                    .font(.system(.body, design: target && language == "ar" ? .default : .rounded, weight: .semibold))
-                    .environment(\.layoutDirection, target && language == "ar" ? .rightToLeft : .leftToRight)
+                    .font(.system(.body, design: target && isRTL ? .default : .rounded, weight: .semibold))
+                    .environment(\.layoutDirection, target && isRTL ? .rightToLeft : .leftToRight)
                     .foregroundStyle(done ? DS.textSecondary : DS.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, minHeight: 70).padding(12)
@@ -238,17 +253,17 @@ struct ArcadeView: View {
                         Image(systemName: "speaker.wave.2.fill").font(.system(size: 42, weight: .bold))
                         Text(heard ? "Nochmal hören" : "Wort anhören").font(.headline)
                     }.frame(maxWidth: .infinity).padding(28)
-                        .foregroundStyle(DS.listeningColor)
-                        .background(DS.listeningColor.opacity(0.14), in: RoundedRectangle(cornerRadius: 24))
+                        .foregroundStyle(DS.accentText)
+                        .background(DS.accentText.opacity(0.14), in: RoundedRectangle(cornerRadius: 24))
                 }.buttonStyle(PracticePressStyle()).disabled(!canHear).accessibilityIdentifier("arcade-listen")
                 if !canHear { Text("Für diese Sprache ist keine Systemstimme verfügbar. Du kannst das Wort stattdessen ansehen.").font(.caption).foregroundStyle(DS.textSecondary) }
                 if responseID == nil {
-                    Button("Wort zeigen") { revealed = true; heard = true; score.answer(id: word.id, correct: false) }
+                    Button("Antwort zeigen") { revealed = true; heard = true; score.answer(id: word.id, correct: false) }
                         .foregroundStyle(DS.accentText).frame(minHeight: 44)
                 }
                 if revealed || responseID != nil {
                     if revealed || !hidesAnswer(word) {
-                        Text(word.target).font(.title2.bold()).foregroundStyle(DS.listeningColor)
+                        Text(word.target).font(.title2.bold()).foregroundStyle(DS.accentText)
                     }
                     if responseID != nil { Text(word.source).font(.headline) }
                 }
@@ -260,7 +275,7 @@ struct ArcadeView: View {
                             if responseID != nil && option.id == word.id { Image(systemName: "checkmark.circle.fill") }
                         }.font(.headline).foregroundStyle(DS.textPrimary)
                             .padding(18).frame(maxWidth: .infinity, minHeight: 56)
-                            .background(responseID != nil && option.id == word.id ? DS.playMint.opacity(0.18) : DS.surface1, in: RoundedRectangle(cornerRadius: 16))
+                            .background(responseID != nil && option.id == word.id ? DS.gradePerfect.opacity(0.18) : DS.surface1, in: RoundedRectangle(cornerRadius: 16))
                     }.buttonStyle(PracticePressStyle()).disabled(!heard || responseID != nil)
                         .accessibilityIdentifier("arcade-choice-\(option.id)")
                 }
@@ -284,7 +299,7 @@ struct ArcadeView: View {
                     .font(LearningTypography.display(.largeTitle, languageCode: language))
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, minHeight: 150).padding(20)
-                    .background(DS.sprintColor.opacity(0.16), in: RoundedRectangle(cornerRadius: 26))
+                    .background(DS.accentSoft, in: RoundedRectangle(cornerRadius: 26))
                     .offset(x: reduceMotion ? 0 : swipeOffset)
                     .rotationEffect(.degrees(reduceMotion ? 0 : Double(swipeOffset / 16)))
                     .gesture(DragGesture(minimumDistance: 20)
@@ -309,7 +324,7 @@ struct ArcadeView: View {
                                 if responseID != nil && choice.id == word.id { Image(systemName: "checkmark.circle.fill") }
                             }.font(.headline).foregroundStyle(DS.textPrimary)
                                 .frame(maxWidth: .infinity, minHeight: 80).padding(12)
-                                .background(responseID != nil && choice.id == word.id ? DS.playMint.opacity(0.18) : DS.surface1, in: RoundedRectangle(cornerRadius: 18))
+                                .background(responseID != nil && choice.id == word.id ? DS.gradePerfect.opacity(0.18) : DS.surface1, in: RoundedRectangle(cornerRadius: 18))
                         }.buttonStyle(PracticePressStyle()).disabled(responseID != nil)
                             .accessibilityLabel("\(index == 0 ? "Links" : "Rechts"): \(choice.source)")
                             .accessibilityIdentifier("arcade-swipe-\(index)")
@@ -338,7 +353,7 @@ struct ArcadeView: View {
                                     Button { selectedTiles.removeAll { $0 == id } } label: {
                                         Text(tile.text).font(.headline).padding(12)
                                             .frame(maxWidth: .infinity, minHeight: 48)
-                                            .background(DS.conversationColor.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
+                                            .background(DS.accentText.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
                                     }.buttonStyle(.plain).disabled(checked)
                                         .accessibilityLabel("\(tile.text) entfernen")
                                         .accessibilityIdentifier("arcade-built-\(id)")
@@ -348,8 +363,8 @@ struct ArcadeView: View {
                     }
                 }.frame(maxWidth: .infinity, minHeight: 90, alignment: .leading).padding(16)
                     .background(DS.surface1, in: RoundedRectangle(cornerRadius: 20))
-                    .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(DS.conversationColor, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
-                    .environment(\.layoutDirection, language == "ar" ? .rightToLeft : .leftToRight)
+                    .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(DS.accentText, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
+                    .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
                     .dropDestination(for: String.self) { items, _ in
                         guard !checked, let raw = items.first, let id = Int(raw), tokens.contains(where: { $0.id == id }), !selectedTiles.contains(id) else { return false }
                         selectedTiles.append(id); return true
@@ -360,21 +375,21 @@ struct ArcadeView: View {
                             Text(tile.text).font(.headline).padding(12)
                                 .frame(maxWidth: .infinity, minHeight: 52)
                                 .foregroundStyle(selectedTiles.contains(tile.id) ? DS.textSecondary : DS.textPrimary)
-                                .background(DS.conversationColor.opacity(selectedTiles.contains(tile.id) ? 0.04 : 0.16), in: RoundedRectangle(cornerRadius: 14))
+                                .background(DS.accentText.opacity(selectedTiles.contains(tile.id) ? 0.04 : 0.16), in: RoundedRectangle(cornerRadius: 14))
                         }.buttonStyle(PracticePressStyle()).disabled(checked || selectedTiles.contains(tile.id))
                             .draggable(String(tile.id))
                             .accessibilityIdentifier("arcade-token-\(tile.id)")
                     }
-                }.environment(\.layoutDirection, language == "ar" ? .rightToLeft : .leftToRight)
+                }.environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
                 }
                 if checked { answerFeedback(word) }
                 else {
                     Button("Satz prüfen") {
                         checkProduction(TileConstruction.answer(selectedIDs: selectedTiles, from: tokens), word: word)
-                    }.buttonStyle(ArcadeActionStyle())
+                    }.buttonStyle(.dsPrimary)
                         .disabled(!TileConstruction.isComplete(selectedIDs: selectedTiles, tiles: tokens))
                         .accessibilityIdentifier("arcade-builder-check")
-                    Button("Gemeinsam lösen") { revealAnswer(word) }.frame(minHeight: 44).foregroundStyle(DS.accentText)
+                    Button("Antwort zeigen") { revealAnswer(word) }.frame(minHeight: 44).foregroundStyle(DS.accentText)
                         .accessibilityIdentifier("arcade-reveal")
                 }
             }
@@ -389,13 +404,13 @@ struct ArcadeView: View {
                     .frame(maxWidth: .infinity, minHeight: 100).padding(20)
                     .background(DS.accentSoft, in: RoundedRectangle(cornerRadius: 24))
                 if speaking && !typeInstead && !checked {
-                    Text(language == "ar" ? "Sag es auf Arabisch." : "Sag es auf Russisch.")
+                    Text("Sag es auf \(languageLabel).")
                         .font(.subheadline).foregroundStyle(DS.textSecondary)
                     micControls(done: false)
                     Button("Lieber tippen") { stopListening(); typeInstead = true }
                         .frame(minHeight: 44).foregroundStyle(DS.accentText)
                         .accessibilityIdentifier("arcade-recall-type")
-                    Button("Noch unsicher · Antwort zeigen") { stopListening(); revealAnswer(word) }
+                    Button("Antwort zeigen") { stopListening(); revealAnswer(word) }
                         .frame(minHeight: 44).foregroundStyle(DS.accentText).accessibilityIdentifier("arcade-reveal")
                 } else {
                 recallTyping(word)
@@ -406,14 +421,14 @@ struct ArcadeView: View {
 
     @ViewBuilder private func recallTyping(_ word: ArcadeWord) -> some View {
                 if !checked {
-                Text(language == "ar" ? "Tippe auf Arabisch. Die Tastatur wechselst du über die Globus-Taste." : "Tippe auf Russisch. Die Tastatur wechselst du über die Globus-Taste.")
+                Text("Tippe auf \(languageLabel). Die Tastatur wechselst du über die Globus-Taste.")
                     .font(.subheadline).foregroundStyle(DS.textSecondary)
                 }
                 if !checked || !typedAnswer.isEmpty {
                 TextField("Deine Antwort", text: $typedAnswer, axis: .vertical)
                     .font(.title2).lineLimit(2...5).padding(16)
                     .background(DS.surface1, in: RoundedRectangle(cornerRadius: 16))
-                    .environment(\.layoutDirection, language == "ar" ? .rightToLeft : .leftToRight)
+                    .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
                     .autocorrectionDisabled().textInputAutocapitalization(.never)
                     .focused($answerFocused).disabled(checked)
                     .accessibilityIdentifier("arcade-recall-input")
@@ -421,16 +436,16 @@ struct ArcadeView: View {
                 if checked { answerFeedback(word) }
                 else {
                     Button("Antwort prüfen") { checkProduction(typedAnswer, word: word) }
-                        .buttonStyle(ArcadeActionStyle()).disabled(typedAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .buttonStyle(.dsPrimary).disabled(typedAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityIdentifier("arcade-recall-check")
-                    Button("Noch unsicher · Antwort zeigen") { revealAnswer(word) }
+                    Button("Antwort zeigen") { revealAnswer(word) }
                         .frame(minHeight: 44).foregroundStyle(DS.accentText).accessibilityIdentifier("arcade-reveal")
                 }
     }
 
     private func answerFeedback(_ word: ArcadeWord) -> some View {
         VStack(spacing: 12) {
-            Label(correctAnswer && !revealed ? "Yes! Getroffen!" : "Unsere Kursantwort", systemImage: correctAnswer && !revealed ? "checkmark.circle.fill" : "lightbulb.fill")
+            Label(correctAnswer && !revealed ? "Yes! Getroffen!" : "Antwort", systemImage: correctAnswer && !revealed ? "checkmark.circle.fill" : "lightbulb.fill")
                 .font(.headline).foregroundStyle(DS.accentText)
             if !hidesAnswer(word) {
                 Text(word.target).font(LearningTypography.display(.title2, languageCode: language))
@@ -440,7 +455,7 @@ struct ArcadeView: View {
             if game != .builder { Text(word.source).font(.subheadline).foregroundStyle(DS.textSecondary) }
             if revealed { Text("Mit Hilfe geübt – zählt nicht als erster Treffer.").font(.caption).foregroundStyle(DS.textSecondary) }
             else if !correctAnswer && game == .recall {
-                Text("Verglichen mit der Kursantwort und gespeicherten Alternativen. Weitere Formulierungen können ebenfalls richtig sein.")
+                Text("Verglichen mit der gespeicherten Antwort und ihren Alternativen. Andere Formulierungen können auch richtig sein.")
                     .font(.caption).foregroundStyle(DS.textSecondary)
             }
             if !hidesAnswer(word) {
@@ -458,7 +473,7 @@ struct ArcadeView: View {
         return VStack(spacing: 10) {
             if said {
                 Label("Laut gesagt", systemImage: "checkmark.circle.fill")
-                    .font(.headline).foregroundStyle(DS.playMint)
+                    .font(.headline).foregroundStyle(DS.gradePerfect)
                     .accessibilityIdentifier("arcade-said")
             } else {
                 Text(sayItPrompt)
@@ -487,14 +502,11 @@ struct ArcadeView: View {
         if !done {
             Button { listening ? stopListening() : listen() } label: {
                 Label(listening ? "Ich höre zu … Stopp" : "Sprechen", systemImage: listening ? "stop.circle.fill" : "mic.fill")
-                    .font(.headline.bold()).foregroundStyle(listening ? DS.textPrimary : DS.playInk)
-                    .frame(maxWidth: .infinity, minHeight: 54)
-                    .background(listening ? DS.sprintColor.opacity(0.25) : DS.playMint, in: RoundedRectangle(cornerRadius: 18))
-            }.buttonStyle(PracticePressStyle()).accessibilityIdentifier("arcade-speak")
+            }.buttonStyle(.dsPrimary).accessibilityIdentifier("arcade-speak")
             if listening || !speech.transcription.isEmpty {
                 Text(speech.transcription.isEmpty ? "…" : "„\(speech.transcription)“")
                     .font(.subheadline).foregroundStyle(DS.textSecondary).multilineTextAlignment(.center)
-                    .environment(\.layoutDirection, language == "ar" ? .rightToLeft : .leftToRight)
+                    .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
             }
         }
     }
@@ -508,7 +520,7 @@ struct ArcadeView: View {
 
     @ViewBuilder private func nextButton(_ title: String, primary: Bool, identifier: String, action: @escaping () -> Void) -> some View {
         if primary {
-            Button(title, action: action).buttonStyle(ArcadeActionStyle()).accessibilityIdentifier(identifier)
+            Button(title, action: action).buttonStyle(.dsPrimary).accessibilityIdentifier(identifier)
         } else {
             Button(title, action: action).frame(minHeight: 44).foregroundStyle(DS.textSecondary)
                 .accessibilityIdentifier(identifier)
@@ -530,6 +542,8 @@ struct ArcadeView: View {
         correctAnswer = VocabularyArcade.accepts(answer, for: word)
         responseID = correctAnswer ? word.id : "incorrect"
         score.answer(id: word.id, correct: correctAnswer)
+        // Typed Quick Recall is production from memory; Phrase Builder used tiles.
+        if game == .recall { recordRecall(word, answer: answer, spoken: false, supported: false, correct: correctAnswer) }
         if correctAnswer { CompletionFeedbackService.shared.playStepSuccess() }
         // Playing it now would hand over the sentence the learner is about to say.
         if !hidesAnswer(word) { speakAutomatically(word) }
@@ -550,13 +564,13 @@ struct ArcadeView: View {
             } else {
                 HStack(spacing: 20) { resultStats }
             }
-            Text("Dein Spiele-Ergebnis bleibt von der regulären Wiederholung getrennt. Deine Wiederholungstermine bleiben erhalten.")
+            Text("Was du aus dem Kopf abrufst, zählt für deine Wiederholung. Zuordnen und Nachsprechen sind Aufwärmen.")
                 .font(.caption).foregroundStyle(DS.textSecondary).multilineTextAlignment(.center)
             if let failure {
-                Text(failure).font(.caption).foregroundStyle(DS.sprintColor)
+                Text(failure).font(.caption).foregroundStyle(DS.gradeWrong)
                 Button("Ergebnis erneut speichern") { saveResult() }
             }
-            Button("Noch eine Runde") { restart() }.buttonStyle(ArcadeActionStyle()).accessibilityIdentifier("arcade-replay")
+            Button("Noch eine Runde") { restart() }.buttonStyle(.dsPrimary).accessibilityIdentifier("arcade-replay")
             Button("Für heute fertig") { dismiss() }.frame(minHeight: 44).foregroundStyle(DS.accentText)
                 .accessibilityIdentifier("arcade-finish")
         }
@@ -564,7 +578,7 @@ struct ArcadeView: View {
 
     @ViewBuilder private var resultStats: some View {
         stat("\(score.firstTry)/\(words.count)", "Beim ersten Versuch")
-        stat("\(score.bestStreak)", "Beste Serie")
+        stat("\(score.bestStreak)", "Am Stück richtig")
         if spokenWords > 0 { stat("\(spokenWords)", "Wörter laut gesagt") }
     }
 
@@ -582,13 +596,16 @@ struct ArcadeView: View {
             return card.hasBeenIntroduced ? 2 : 3
         }
         var identities: [PersistentIdentifier: String] = [:]
+        var cardsByWord: [String: PersistentIdentifier] = [:]
         let candidates = eligible.shuffled().sorted { rank($0) < rank($1) }.compactMap { card -> ArcadeWord? in
             guard let phrase = card.phrase else { return nil }
             let id = identities[phrase.persistentModelID] ?? UUID().uuidString
             identities[phrase.persistentModelID] = id
+            if cardsByWord[id] == nil { cardsByWord[id] = card.persistentModelID }
             return ArcadeWord(id: id, source: phrase.sourceText,
                               target: phrase.targetText, alternatives: phrase.acceptedAlternatives)
         }
+        cardIDs = cardsByWord
         pool = VocabularyArcade.unique(candidates, limit: 64)
         plan = VocabularyArcade.plan(from: candidates, mode: mode)
         prepareBoard(); loaded = true
@@ -673,7 +690,9 @@ struct ArcadeView: View {
         guard listening, !transcript.isEmpty else { return }
         guard let word = prompt, !spokenIDs.contains(word.id), VocabularyArcade.heard(transcript, for: word) else { return }
         stopListening()
-        creditSpoken(word)
+        // Only Quick Recall before any answer or help is unsupported; everything
+        // else (shadowing, after tiles, after a reveal) is supported practice.
+        creditSpoken(word, transcript: transcript, supported: !(game == .recall && !checked))
         if game == .recall && !checked {
             // Said it from memory: the same credit as a correct typed answer.
             checked = true; correctAnswer = true; responseID = word.id
@@ -683,9 +702,21 @@ struct ArcadeView: View {
         if game == .builder { speakAutomatically(word, delay: .milliseconds(400)) }
     }
 
-    private func creditSpoken(_ word: ArcadeWord) {
+    private func creditSpoken(_ word: ArcadeWord, transcript: String, supported: Bool) {
         guard spokenIDs.insert(word.id).inserted else { return }
-        spokenWords += SpokenWordTally.record(word.target)
+        spokenWords += max(1, word.target.split(whereSeparator: \.isWhitespace).count)
+        recordRecall(word, answer: transcript, spoken: true, supported: supported, correct: true)
+    }
+
+    private func recordRecall(_ word: ArcadeWord, answer: String, spoken: Bool, supported: Bool, correct: Bool) {
+        let key = String(word.id.split(separator: ":").first ?? "")
+        guard let id = cardIDs[key], let card = context.model(for: id) as? StudyCard else { return }
+        do {
+            let moved = try ActivityRecall.record(card: card, kind: "arcade.\(game.rawValue)", sessionID: session,
+                answer: answer, spoken: spoken, supported: supported, correct: correct,
+                alreadyScheduled: scheduledCards.contains(id), context: context)
+            if moved { scheduledCards.insert(id) }
+        } catch { context.rollback(); failure = "Antwort konnte nicht gespeichert werden." }
     }
     private func chooseMeaning(_ option: ArcadeWord, correct word: ArcadeWord) {
         guard heard, responseID == nil else { return }
@@ -720,16 +751,7 @@ struct ArcadeView: View {
     private func restart() {
         stopAudio()
         session = UUID(); score = ArcadeScore(); stage = 0; finished = false; saved = false; failure = nil
-        spokenIDs = []; spokenWords = 0
+        spokenIDs = []; spokenWords = 0; scheduledCards = []
         load()
-    }
-}
-
-private struct ArcadeActionStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label.font(.headline.bold()).foregroundStyle(DS.playInk)
-            .frame(maxWidth: .infinity, minHeight: 54)
-            .background(DS.playMint, in: RoundedRectangle(cornerRadius: 18))
-            .opacity(configuration.isPressed ? 0.8 : 1)
     }
 }

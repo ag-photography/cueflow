@@ -185,13 +185,13 @@ enum ProgressionSystem {
             ),
             LearningMilestone(
                 id: "conversation-ready", title: "Breiter Wortschatz",
-                detail: "Mindestens 80 % einer Situation einmal richtig abrufen – kein Gesprächsnachweis",
+                detail: "Mindestens 80 % eines Themas einmal richtig abrufen – kein Gesprächsnachweis",
                 systemImage: "person.2.wave.2.fill",
                 isEarned: capabilities.contains { $0.level == .fluent }
             ),
             LearningMilestone(
                 id: "weekly-flow", title: "Woche im Flow",
-                detail: "Alle drei Wochenmissionen erfüllen",
+                detail: "Alle drei Wochenziele erreichen",
                 systemImage: "calendar.badge.checkmark",
                 isEarned: !weeklyMissions.isEmpty && weeklyMissions.allSatisfy(\.isComplete)
             )

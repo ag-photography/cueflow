@@ -40,7 +40,7 @@ struct ReadingView: View {
                         description: Text("Der Wiederholungsplan schätzt noch zu wenige Ausdrücke als vertraut ein. Das ist eine Schätzung, kein Verständnisnachweis.")
                     )
                     Button("Einfache Szenen lesen") { loadBeginnerPassages() }
-                        .buttonStyle(.borderedProminent).padding(.bottom, DS.space.xl)
+                        .buttonStyle(.dsPrimary).padding(.bottom, DS.space.xl)
                     }
                 } else {
                     content

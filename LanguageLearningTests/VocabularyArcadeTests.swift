@@ -91,14 +91,13 @@ struct VocabularyArcadeTests {
         let thanks = word("b", "Danke", "شُكْرًا")
         #expect(VocabularyArcade.heard("شكرا", for: thanks))
     }
-    @Test func spokenTallyCountsWordsAndResetsEachDay() throws {
-        let defaults = try #require(UserDefaults(suiteName: "SpokenWordTallyTests"))
-        defaults.removePersistentDomain(forName: "SpokenWordTallyTests")
-        let monday = Date(timeIntervalSinceReferenceDate: 800_000_000)
-        #expect(SpokenWordTally.record("большое спасибо", defaults: defaults, now: monday) == 2)
-        SpokenWordTally.record("дом", defaults: defaults, now: monday)
-        #expect(defaults.integer(forKey: SpokenWordTally.countKey) == 3)
-        SpokenWordTally.record("вода", defaults: defaults, now: monday.addingTimeInterval(86_400 * 2))
-        #expect(defaults.integer(forKey: SpokenWordTally.countKey) == 1)
+    @Test func activityRecallSchedulesOnlyUnsupportedDueIntroducedCardsOncePerRound() {
+        let free = ActivityRecall.decision(supported: false, correct: true, introduced: true, due: true, alreadyScheduled: false)
+        #expect(free == .init(schedules: true, rating: 3))
+        #expect(ActivityRecall.decision(supported: false, correct: false, introduced: true, due: true, alreadyScheduled: false) == .init(schedules: true, rating: 1))
+        #expect(!ActivityRecall.decision(supported: true, correct: true, introduced: true, due: true, alreadyScheduled: false).schedules)
+        #expect(!ActivityRecall.decision(supported: false, correct: true, introduced: false, due: true, alreadyScheduled: false).schedules)
+        #expect(!ActivityRecall.decision(supported: false, correct: true, introduced: true, due: false, alreadyScheduled: false).schedules)
+        #expect(!ActivityRecall.decision(supported: false, correct: true, introduced: true, due: true, alreadyScheduled: true).schedules)
     }
 }

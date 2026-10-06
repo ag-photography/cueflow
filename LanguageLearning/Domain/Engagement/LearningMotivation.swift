@@ -93,7 +93,7 @@ enum LearningMotivation {
             ),
             DailyQuestProgress(
                 kind: .deepenMission,
-                title: "Eine Mission vertiefen",
+                title: "Ein Thema vertiefen",
                 detail: "5 produktive Antworten in einem Thema",
                 systemImage: "map.fill",
                 current: deepestMission,

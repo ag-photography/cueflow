@@ -34,3 +34,22 @@ enum SprintMatcher {
         return FuzzyMatcher.levenshtein(window, t) <= budget
     }
 }
+
+/// Sprint personal best, stored per language. The first read adopts the old
+/// app-wide best so nobody loses their record.
+enum SprintBest {
+    private static let legacyKey = "sprintBest"
+    private static func key(_ language: String) -> String { "sprintBest.\(language)" }
+
+    static func value(for language: String, defaults: UserDefaults = .standard) -> Int {
+        if defaults.object(forKey: key(language)) == nil, defaults.integer(forKey: legacyKey) > 0 {
+            defaults.set(defaults.integer(forKey: legacyKey), forKey: key(language))
+            defaults.removeObject(forKey: legacyKey)
+        }
+        return defaults.integer(forKey: key(language))
+    }
+
+    static func set(_ value: Int, for language: String, defaults: UserDefaults = .standard) {
+        defaults.set(value, forKey: key(language))
+    }
+}

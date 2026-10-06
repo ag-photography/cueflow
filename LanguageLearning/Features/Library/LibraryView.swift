@@ -150,7 +150,6 @@ struct LibraryView: View {
             .fullScreenCover(item: $practiceTopic) { topic in
                 PracticeView(
                     sessionTarget: min(10, max(1, topic.phrases?.count ?? 1)),
-                    isFocusedSession: true,
                     scope: .topic(id: topic.persistentModelID)
                 )
             }
@@ -179,7 +178,7 @@ struct LibraryView: View {
                 }
                 Button("Abbrechen", role: .cancel) { topicPendingDeletion = nil }
             } message: {
-                Text("Die Zuordnung zu dieser Mission wird entfernt. Die enthaltenen Phrasen bleiben erhalten.")
+                Text("Die Zuordnung zu diesem Thema wird entfernt. Die enthaltenen Ausdrücke bleiben erhalten.")
             }
             .confirmationDialog(
                 "Phrase endgültig löschen?",
@@ -229,7 +228,7 @@ struct LibraryView: View {
             topicsSection
             if !searchText.isEmpty { phrasesSection }
         }
-        .searchable(text: $searchText, prompt: "Themen & Phrasen suchen")
+        .searchable(text: $searchText, prompt: "Themen & Ausdrücke suchen")
     }
 
     private var libraryPlaceholder: some View {
@@ -272,7 +271,7 @@ struct LibraryView: View {
                         .font(.title3.weight(.bold))
                         .foregroundStyle(DS.textPrimary)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("Wähle eine praktische Mission. CueFlow stellt die passenden Ausdrücke automatisch in deine Einheiten.")
+                    Text("Wähle ein Thema für den Alltag. CueFlow stellt die passenden Ausdrücke automatisch in deine Runden.")
                         .font(.subheadline)
                         .foregroundStyle(DS.textSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -283,7 +282,7 @@ struct LibraryView: View {
 
                 DSSectionHeader(
                     title: "Deine Themen",
-                    subtitle: "Aktive Themen liefern neue Ausdrücke für deine täglichen Einheiten."
+                    subtitle: "Aktive Themen liefern neue Ausdrücke für deine täglichen Runden."
                 )
 
                 LazyVStack(spacing: DS.space.sm) {
@@ -292,7 +291,7 @@ struct LibraryView: View {
                     }
                     if journeys.missionRows.isEmpty {
                         ContentUnavailableView(
-                            "Noch keine Missionen",
+                            "Noch keine Themen",
                             systemImage: "books.vertical",
                             description: Text("Inhalte kannst du unter Verwalten hinzufügen.")
                         )
@@ -381,7 +380,7 @@ struct LibraryView: View {
                     if let tutorFocusTopic {
                         Text(journeys.tutorTopics.count == 1
                              ? tutorFocusTopic.name
-                             : "\(journeys.tutorTopics.count) laufende Einheiten")
+                             : "\(journeys.tutorTopics.count) laufende Runden")
                             .font(.title3.weight(.bold))
                             .foregroundStyle(DS.textPrimary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -457,7 +456,7 @@ struct LibraryView: View {
 
     private var scenarioCollections: some View {
         VStack(alignment: .leading, spacing: DS.space.sm) {
-            DSSectionHeader(title: "Situationen")
+            DSSectionHeader(title: "Themen für den Alltag")
             NavigationLink {
                 SkillPathView()
             } label: {
@@ -524,7 +523,7 @@ struct LibraryView: View {
         .buttonStyle(.plain)
         .disabled(card.matchedTopics.isEmpty)
         .accessibilityLabel("\(card.scenario.title), \(capabilityLabel(card.fraction))")
-        .accessibilityHint("Aktiviert die passenden Missionen")
+        .accessibilityHint("Aktiviert die passenden Themen")
     }
 
     private func missionRow(_ row: LibraryJourneys.MissionRow) -> some View {
@@ -563,7 +562,7 @@ struct LibraryView: View {
             )
         }
         .buttonStyle(.plain)
-        .accessibilityHint(row.isActive ? "Öffnet diese Mission" : "Aktiviert und öffnet diese Mission")
+        .accessibilityHint(row.isActive ? "Öffnet dieses Thema" : "Aktiviert und öffnet dieses Thema")
     }
 
     private func capabilityLabel(_ fraction: Double) -> String {
@@ -750,9 +749,9 @@ struct LibraryView: View {
     // MARK: - Phrases (search results only)
 
     private var phrasesSection: some View {
-        Section("Phrasen (\(filteredPhrases.count))") {
+        Section("Ausdrücke (\(filteredPhrases.count))") {
             if filteredPhrases.isEmpty {
-                Text("Keine passenden Phrasen.")
+                Text("Keine passenden Ausdrücke.")
                     .foregroundStyle(.secondary)
             } else {
                 ForEach(filteredPhrases.prefix(phraseResultCap)) { phrase in
@@ -856,7 +855,7 @@ struct LibraryView: View {
     private var topicsEmptyMessage: String {
         if !searchText.isEmpty { return "Nichts gefunden für \(searchText)." }
         switch activeFilter {
-        case .active: return "Keine aktiven Themen. Aktiviere eines, um neue Karten zu bekommen."
+        case .active: return "Keine aktiven Themen. Aktiviere eines, um neue Ausdrücke zu bekommen."
         case .inactive: return "Keine inaktiven Themen."
         case .all: return "Noch keine Themen."
         }

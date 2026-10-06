@@ -1,11 +1,21 @@
 import Foundation
 
-/// Arcade practice is kept separate from scheduled FSRS assessments.
+/// Arcade games are presentations of the learner's Ausdrücke. Matching games are
+/// recognition warm-ups; recall from memory feeds FSRS via `ActivityRecall`.
 enum ArcadeMode: String, Identifiable, CaseIterable {
     case mix, snap, sound, swipe, builder, recall
     var id: String { rawValue }
+    var symbol: String {
+        switch self {
+        case .mix, .snap: return "square.grid.2x2.fill"
+        case .sound: return "waveform"
+        case .swipe: return "arrow.left.arrow.right"
+        case .builder: return "puzzlepiece.extension.fill"
+        case .recall: return "brain.head.profile"
+        }
+    }
     var title: String {
-        switch self { case .mix: return "Dein Spiele-Mix"; case .snap: return "Word Snap"; case .sound: return "Sound Hunt"; case .swipe: return "Swipe Match"; case .builder: return "Phrase Builder"; case .recall: return "Quick Recall" }
+        switch self { case .mix: return "Spiele-Mix"; case .snap: return "Paare finden"; case .sound: return "Hör hin"; case .swipe: return "Wisch & triff"; case .builder: return "Satzbau"; case .recall: return "Aus dem Kopf" }
     }
 }
 

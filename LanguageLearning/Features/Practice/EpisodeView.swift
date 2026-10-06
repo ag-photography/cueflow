@@ -34,7 +34,13 @@ struct EpisodeView: View {
     }
     private var result: EpisodeAttempt? { run?.attempts.first { $0.stepID == step?.id } }
 
+    /// "Nächste Situation" swaps the content in place instead of stacking a
+    /// second full-screen cover on top of this one (HIG: one modal at a time).
     var body: some View {
+        if let nextEpisode { EpisodeView(episode: nextEpisode) } else { lesson }
+    }
+
+    private var lesson: some View {
         NavigationStack {
             ScrollViewReader { proxy in
             ScrollView {
@@ -89,7 +95,6 @@ struct EpisodeView: View {
         }
         .onChange(of: settings.first?.activeLanguageCode) { _, _ in stopAudio(); dismiss() }
         .onDisappear { stopAudio() }
-        .fullScreenCover(item: $nextEpisode) { EpisodeView(episode: $0) }
         .alert("Dein Tageslimit für neue Ausdrücke", isPresented: Binding(get: { newLimitWarning != nil }, set: { if !$0 { newLimitWarning = nil } })) {
             Button("Für heute bei Wiederholungen bleiben", role: .cancel) { dismiss() }
             Button("Diese Situation trotzdem üben") { allowExtraIntroductions = true; newLimitWarning = nil; load() }
@@ -102,7 +107,7 @@ struct EpisodeView: View {
         VStack(alignment: .leading, spacing: DS.space.md) {
             HStack {
                 StoryCompanion(language: episode.language, celebrating: result?.correct == true || run.completedAt != nil)
-                Label(episode.language == "ar" ? "Mit Lina · Hocharabisch" : "Mit Sascha · Russisch", systemImage: "person.crop.circle.fill")
+                Label("Mit \(pack.companionName) · \(pack.storyVarietyLabel)", systemImage: "person.crop.circle.fill")
                     .labelStyle(.titleOnly)
                 Spacer()
                 Text("\(min(run.stepIndex + 1, episode.steps.count))/\(episode.steps.count)").monospacedDigit()
@@ -114,7 +119,7 @@ struct EpisodeView: View {
             HStack(spacing: DS.space.md) {
                 VStack(alignment: .leading, spacing: 6) {
                     Text(episode.title).font(.system(.title3, design: .rounded, weight: .bold))
-                    Text(run.completedAt != nil ? "Ihr habt die Szene zusammen abgeschlossen." : run.stepIndex < 2 ? episode.hook : "\(episode.language == "ar" ? "Lina" : "Sascha") hört zu. Du kannst es ausprobieren – Hilfe ist jederzeit da.")
+                    Text(run.completedAt != nil ? "Ihr habt die Szene zusammen abgeschlossen." : run.stepIndex < 2 ? episode.hook : "\(pack.companionName) hört zu. Du kannst es ausprobieren – Hilfe ist jederzeit da.")
                         .font(.subheadline).foregroundStyle(DS.textSecondary)
                 }
             }
@@ -148,7 +153,7 @@ struct EpisodeView: View {
                     .font(.caption.weight(.semibold)).foregroundStyle(DS.accentText)
                 Text(step.prompt).font(.title3.weight(.semibold))
                 if let result {
-                    Label(result.correct ? "Formulierung getroffen" : "Eine mögliche Formulierung", systemImage: result.correct ? "checkmark.circle.fill" : "lightbulb.fill")
+                    Label(result.correct ? "Formulierung getroffen" : "Antwort", systemImage: result.correct ? "checkmark.circle.fill" : "lightbulb.fill")
                         .foregroundStyle(result.correct ? DS.gradePerfect : DS.textSecondary)
                     target(step.answer)
                     Text(episode.consequence(for: step, correct: result.correct))
@@ -181,10 +186,10 @@ struct EpisodeView: View {
                         if let message = speech.lastError { Text(message).font(.footnote).foregroundStyle(DS.textSecondary) }
                     }
                     Button("Prüfen") { submit(step) }
-                        .buttonStyle(.borderedProminent).tint(DS.accent)
+                        .buttonStyle(.dsPrimary)
                         .disabled(input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || permissionTask != nil)
                         .accessibilityIdentifier("episode-check")
-                    Button("Formulierung zeigen") {
+                    Button("Antwort zeigen") {
                         stopAudio()
                         var candidate = run
                         candidate.modelRevealed = true
@@ -207,8 +212,8 @@ struct EpisodeView: View {
             .padding().background(DS.surface1, in: RoundedRectangle(cornerRadius: DS.radius.md))
     }
     private func nextButton(_ title: String) -> some View {
-        Button { advance() } label: { Text(title).frame(maxWidth: .infinity).padding(.vertical, 8) }
-            .buttonStyle(.borderedProminent).tint(DS.accent)
+        Button { advance() } label: { Text(title) }
+            .buttonStyle(.dsPrimary)
             .accessibilityIdentifier("episode-next")
     }
     private func completion(_ run: EpisodeRun) -> some View {
@@ -238,7 +243,7 @@ struct EpisodeView: View {
                         StoryArtwork(episode: episode, celebrating: true)
                             .aspectRatio(320.0 / 150.0, contentMode: .fit)
                         Text(episode.outcome).font(.headline)
-                        Text("In deiner Sammlung auf Heute. Ein kleines Stück Alltag, das du ausprobiert hast.")
+                        Text("In deiner Sammlung unter Heute → Frei üben → Situationen. Ein kleines Stück Alltag, das du ausprobiert hast.")
                             .font(.subheadline).foregroundStyle(DS.textSecondary)
                     }.padding(DS.space.md)
                         .background(DS.surface1, in: RoundedRectangle(cornerRadius: 20))
@@ -250,8 +255,8 @@ struct EpisodeView: View {
                     .font(.caption).foregroundStyle(DS.textSecondary)
             }
             Text("\(run.independentCount) von \(run.attempts.count) Antworten ohne eingeblendete Hilfe getroffen.")
-            Button { dismiss() } label: { Text("Fertig").frame(maxWidth: .infinity).padding(.vertical, 8) }
-                .buttonStyle(.borderedProminent).tint(DS.accent)
+            Button { dismiss() } label: { Text("Fertig") }
+                .buttonStyle(.dsPrimary)
                 .accessibilityIdentifier("episode-finish")
             if let next = EpisodeLibrary.all.first(where: { $0.language == episode.language && $0.id != episode.id &&
                 !((try? settings.first?.readExperience().completed(in: episode.language)) ?? []).contains($0.id) }) {

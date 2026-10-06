@@ -166,6 +166,28 @@ struct PracticeStage<Content: View>: View {
     }
 }
 
+/// The one primary action style (docs/coherence.md → Visual language): accent
+/// capsule, full width. Mint is for celebration content, never for actions.
+struct DSPrimaryButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline.weight(.bold))
+            .foregroundStyle(isEnabled ? Color.white : DS.disabledText)
+            .frame(maxWidth: .infinity, minHeight: 54)
+            .background(Capsule().fill(isEnabled ? DS.accent : DS.disabled))
+            .shadow(color: isEnabled ? DS.accent.opacity(0.30) : .clear, radius: 8, x: 0, y: 4)
+            .opacity(configuration.isPressed ? 0.85 : 1)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == DSPrimaryButtonStyle {
+    static var dsPrimary: DSPrimaryButtonStyle { DSPrimaryButtonStyle() }
+}
+
 /// Immediate tactile acknowledgement, not success feedback or a timed gate.
 struct PracticePressStyle: ButtonStyle {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion

@@ -115,12 +115,6 @@ struct ConversationView: View {
                     .accessibilityIdentifier("roleplay-\(roleplay.id)")
                     .accessibilityHint("Startet das Rollenspiel")
                 }
-                Label("Rollenspiele verändern deinen FSRS-Lernplan nicht.", systemImage: "checkmark.shield")
-                    .font(.caption)
-                    .foregroundStyle(DS.textSecondary)
-                Label("Kursentwürfe: vor Veröffentlichung sprachlich prüfen.", systemImage: "person.crop.circle.badge.checkmark")
-                    .font(.caption)
-                    .foregroundStyle(DS.textSecondary)
             }
             .padding(DS.space.md)
             .frame(maxWidth: 680)
@@ -293,8 +287,7 @@ struct ConversationView: View {
                 .foregroundStyle(DS.textSecondary)
                 .multilineTextAlignment(.center)
             Button("Anderes Gespräch wählen") { resetConversation() }
-                .buttonStyle(.borderedProminent)
-                .tint(DS.accent)
+                .buttonStyle(.dsPrimary)
         }
         .padding(DS.space.md)
         .frame(maxWidth: .infinity)
@@ -351,7 +344,7 @@ struct ConversationView: View {
         case .close(let reference):
             coachingNote = "Nahe an einer möglichen Formulierung: \(reference)"
         case .model(let reference):
-            coachingNote = "Eine mögliche Formulierung: \(reference)"
+            coachingNote = "Antwort: \(reference)"
         }
         turns.append(.init(speaker: .coach, text: progress.partnerReply))
         TTSService.shared.speak(progress.partnerReply, language: pack.ttsLocale)

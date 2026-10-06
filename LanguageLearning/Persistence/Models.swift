@@ -21,6 +21,9 @@ struct LanguagePack: Equatable, Sendable {
     let contentVersion: Int
     let supportedFeatures: Set<LearningFeature>
     let dialectLabels: [String]
+    /// Story companion and the variety named in Situationen.
+    let companionName: String
+    let storyVarietyLabel: String
 
     static let russian = LanguagePack(
         code: "ru", nativeName: "Русский", germanLabel: "Russisch",
@@ -29,7 +32,8 @@ struct LanguagePack: Equatable, Sendable {
         scriptDirection: .leftToRight,
         contentVersion: 1,
         supportedFeatures: Set(LearningFeature.allCases),
-        dialectLabels: ["Standardrussisch"]
+        dialectLabels: ["Standardrussisch"],
+        companionName: "Sascha", storyVarietyLabel: "Russisch"
     )
 
     static let arabic = LanguagePack(
@@ -39,7 +43,8 @@ struct LanguagePack: Equatable, Sendable {
         scriptDirection: .rightToLeft,
         contentVersion: 1,
         supportedFeatures: Set(LearningFeature.allCases),
-        dialectLabels: ["Modernes Hocharabisch", "Dialekt nicht angegeben"]
+        dialectLabels: ["Modernes Hocharabisch", "Dialekt nicht angegeben"],
+        companionName: "Lina", storyVarietyLabel: "Hocharabisch"
     )
 
     static let supported: [LanguagePack] = [.russian, .arabic]

@@ -23,6 +23,7 @@ struct ListeningLabView: View {
     /// Shadowing is ear-to-mouth: the text stays hidden until after the attempt
     /// unless the learner asks for it.
     @State private var shadowPeek = false
+    @State private var finished = false
     @State private var shadowingTimeout: Task<Void, Never>?
     @StateObject private var speech = SpeechRecognitionService()
 
@@ -56,7 +57,13 @@ struct ListeningLabView: View {
                     }
                 }
                 Spacer(minLength: DS.space.sm)
-                if let challenge {
+                if finished {
+                    // Same ending as every other activity.
+                    CompletionCelebration(title: "Hörstudio geschafft!",
+                        detail: "5 Ausdrücke gehört und nachgesprochen.", symbol: "headphones")
+                    Button("Fertig") { dismiss() }.buttonStyle(.dsPrimary)
+                        .accessibilityIdentifier("listening-finish")
+                } else if let challenge {
                     if isShadowing {
                         shadowingCard(challenge)
                     } else if labMode == .dictation {
@@ -68,7 +75,7 @@ struct ListeningLabView: View {
                     ContentUnavailableView(
                         "Noch nicht genug Hörmaterial",
                         systemImage: "ear",
-                        description: Text("Aktiviere eine Mission mit mindestens drei Ausdrücken.")
+                        description: Text("Aktiviere ein Thema mit mindestens drei Ausdrücken.")
                     )
                 }
                 Spacer()
@@ -161,8 +168,7 @@ struct ListeningLabView: View {
             }
             if selected != nil {
                 Button("Jetzt nachsprechen") { isShadowing = true }
-                    .buttonStyle(.borderedProminent)
-                    .tint(DS.accent)
+                    .buttonStyle(.dsPrimary)
             }
         }
         .onAppear { play(challenge, slow: false) }
@@ -211,8 +217,7 @@ struct ListeningLabView: View {
                         .multilineTextAlignment(.center)
                         .fixedSize(horizontal: false, vertical: true)
                     Button("Jetzt nachsprechen") { isShadowing = true }
-                        .buttonStyle(.borderedProminent)
-                        .tint(DS.accent)
+                        .buttonStyle(.dsPrimary)
                 }
                 .padding(DS.space.md)
                 .frame(maxWidth: .infinity)
@@ -233,8 +238,7 @@ struct ListeningLabView: View {
                     .background(DS.surface1)
                     .clipShape(Capsule())
                 Button("Prüfen", action: checkDictation)
-                    .buttonStyle(.borderedProminent)
-                    .tint(DS.accent)
+                    .buttonStyle(.dsPrimary)
                     .disabled(dictation.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
@@ -303,13 +307,12 @@ struct ListeningLabView: View {
                     if completed >= 5 {
                         recordActivity("listening_completed", support: "shadowing")
                         CompletionFeedbackService.shared.playCompletion()
-                        dismiss()
+                        finished = true
                     } else {
                         loadNext()
                     }
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(DS.accent)
+                .buttonStyle(.dsPrimary)
             }
         }
     }

@@ -23,16 +23,8 @@ struct ProfileView: View {
     @State private var contextExampleCount = 0
 
     // Speaking-volume scoreboard — shared with Sprint via UserDefaults.
-    @AppStorage("sprintBest") private var sprintBest: Int = 0
-    @AppStorage("spokenWordsCount") private var spokenWordsCountStored: Int = 0
-    @AppStorage("spokenWordsDayIndex") private var spokenWordsDayIndex: Int = 0
 
     var showsDismissButton = true
-
-    private let flame = LinearGradient(
-        colors: [Color(red: 0.97, green: 0.45, blue: 0.17), Color(red: 0.98, green: 0.66, blue: 0.22)],
-        startPoint: .top, endPoint: .bottom
-    )
 
     var body: some View {
         NavigationStack {
@@ -40,6 +32,7 @@ struct ProfileView: View {
                 if dashboard != nil {
                     ScrollView {
                         VStack(spacing: DS.space.lg) {
+                            headline
                             if let data = try? settings.first?.readExperience() {
                                 StoryPassportLink(passport: .init(language: activeLanguageCode, experience: data)) { showingStories = true }
                             }
@@ -54,7 +47,6 @@ struct ProfileView: View {
                                 perLanguage
                             }
                             learningProgressSection
-                            streakHero
                         }
                         .padding(.horizontal, DS.space.md)
                         .padding(.top, DS.space.sm)
@@ -87,7 +79,7 @@ struct ProfileView: View {
             .sheet(isPresented: $showingSettings) { SettingsView() }
             .sheet(isPresented: $showingStories) { EpisodeCollectionView() }
             .fullScreenCover(isPresented: $showingRecommendedPractice) {
-                PracticeView(sessionTarget: 10, isFocusedSession: true, scope: recommendedScope)
+                PracticeView(sessionTarget: 10, scope: recommendedScope)
             }
             .task(id: "\(activeLanguageCode)|\(LearningDataCache.shared.revision)") { await loadDashboardIfNeeded() }
         }
@@ -358,56 +350,37 @@ struct ProfileView: View {
         }
     }
 
-    // MARK: - Streak hero
+    // MARK: - Headline
 
-    private var streakHero: some View {
-        VStack(spacing: DS.space.md) {
-            HStack(spacing: DS.space.md) {
-                ZStack {
-                    Circle().fill(flame)
-                        .shadow(color: Color(red: 0.97, green: 0.45, blue: 0.17).opacity(0.4), radius: 10, y: 4)
-                    Image(systemName: "flame.fill")
-                        .font(.system(size: 30, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: 68, height: 68)
-
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("\(currentStreak)")
-                        .font(.system(size: 52, weight: .bold, design: .rounded))
-                        .foregroundStyle(DS.textPrimary)
-                        .monospacedDigit()
-                    Text(streakLabel)
-                        .font(.subheadline)
-                        .foregroundStyle(DS.textSecondary)
-                }
-                Spacer()
+    /// One honest number first: what you said aloud from memory this week, and
+    /// how many Ausdrücke now sit. The day count is a quiet fact, never a countdown.
+    private var headline: some View {
+        VStack(alignment: .leading, spacing: DS.space.md) {
+            HStack(alignment: .firstTextBaseline, spacing: DS.space.lg) {
+                headlineNumber(spokenFromMemory, "aus dem Kopf gesprochen", "diese Woche")
+                headlineNumber(durableCount, "Ausdrücke sitzen", "mind. 3 Wochen im Gedächtnis")
             }
-
-            if let next = nextMilestone(after: currentStreak), currentStreak > 0 {
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Nächstes Ziel")
-                        Spacer()
-                        Text("noch \(next - currentStreak) \(next - currentStreak == 1 ? "Tag" : "Tage") bis \(next)")
-                    }
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(DS.textSecondary)
-                    ProgressCapsule(fraction: Double(currentStreak) / Double(next),
-                                    fill: AnyShapeStyle(flame))
-                        .frame(height: 7)
-                }
-            } else if currentStreak == 0 {
-                Text("Übe heute eine Runde, um die Serie zu starten.")
-                    .font(.caption)
-                    .foregroundStyle(DS.textSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
+            Text(currentStreak == 0 ? "Heute noch nicht geübt."
+                 : currentStreak == 1 ? "Heute geübt." : "\(currentStreak) Tage in Folge geübt.")
+                .font(.caption).foregroundStyle(DS.textSecondary)
+                .accessibilityIdentifier("progress-days")
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DS.space.lg)
         .background(DS.surface1)
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
         .modifier(DS.Elevation(level: 2))
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("progress-headline")
+    }
+
+    private func headlineNumber(_ value: Int, _ label: String, _ detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("\(value)").font(.system(size: 44, weight: .bold, design: .rounded))
+                .foregroundStyle(DS.textPrimary).monospacedDigit()
+            Text(label).font(.subheadline.weight(.semibold)).foregroundStyle(DS.textPrimary)
+            Text(detail).font(.caption).foregroundStyle(DS.textSecondary)
+        }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var miniStatsRow: some View {
@@ -676,17 +649,11 @@ struct ProfileView: View {
 
     // MARK: - Speaking scoreboard data
 
-    private var todayIndex: Int {
-        Int(Calendar.current.startOfDay(for: .now).timeIntervalSinceReferenceDate / 86_400)
-    }
-    private var sprintWordsToday: Int {
-        spokenWordsDayIndex == todayIndex ? spokenWordsCountStored : 0
-    }
-
     private var spokenWordsTodayPractice: Int {
         dashboard?.spokenWordsTodayPractice ?? 0
     }
-    private var spokenWordsTodayTotal: Int { spokenWordsTodayPractice + sprintWordsToday }
+    /// Sprint and Arcade log spoken attempts as reviews, so one source counts all.
+    private var spokenWordsTodayTotal: Int { spokenWordsTodayPractice }
 
     private var spokenWeekly: [ProgressDayStat] { dashboard?.spokenWeekly ?? [] }
     private var fluencyLabel: String? { dashboard?.fluencyLabel }
@@ -700,19 +667,10 @@ struct ProfileView: View {
     private var dueNow: Int { dashboard?.dueNow ?? 0 }
     private var reviewedToday: Int { dashboard?.reviewedToday ?? 0 }
 
-    private func nextMilestone(after streak: Int) -> Int? {
-        [3, 7, 14, 30, 100, 365].first { $0 > streak }
-    }
-
     private var currentStreak: Int { dashboard?.currentStreak ?? 0 }
-
-    private var streakLabel: String {
-        switch currentStreak {
-        case 0: return "noch keine Serie"
-        case 1: return "Tag in Folge"
-        default: return "Tage in Folge"
-        }
-    }
+    private var sprintBest: Int { SprintBest.value(for: activeLanguageCode) }
+    private var spokenFromMemory: Int { dashboard?.spokenFromMemoryThisWeek ?? 0 }
+    private var durableCount: Int { dashboard?.durableCount ?? 0 }
 
 }
 

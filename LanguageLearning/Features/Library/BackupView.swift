@@ -16,7 +16,7 @@ struct BackupView: View {
     var body: some View {
         Form {
             Section("Stand") {
-                row("Phrasen", "\(counts.phrases)")
+                row("Ausdrücke", "\(counts.phrases)")
                 row("Themen", "\(counts.topics)")
                 row("Reviews", "\(counts.reviews)")
             }
@@ -43,7 +43,7 @@ struct BackupView: View {
             } header: {
                 Text("Sicherung & Wiederherstellung")
             } footer: {
-                Text("Die JSON-Datei enthält Sprachen, Themen, Phrasen, Lernpläne, Reviews und Einstellungen. Wiederherstellen führt Daten sicher zusammen und erzeugt keine doppelten Reviews.")
+                Text("Die JSON-Datei enthält Sprachen, Themen, Ausdrücke, Lernpläne, Reviews und Einstellungen. Wiederherstellen führt Daten sicher zusammen und erzeugt keine doppelten Reviews.")
             }
         }
         .navigationTitle("Sicherung")
@@ -111,7 +111,7 @@ struct BackupView: View {
             )
             let summary = try BackupService.restore(backup, into: context)
             refreshCounts()
-            message = "Wiederhergestellt: \(summary.phrasesAdded) neue Phrasen, \(summary.phrasesMerged) zusammengeführt, \(summary.reviewsAdded) Reviews."
+            message = "Wiederhergestellt: \(summary.phrasesAdded) neue Ausdrücke, \(summary.phrasesMerged) zusammengeführt, \(summary.reviewsAdded) Reviews."
         } catch {
             message = "Fehler: \(error.localizedDescription)"
         }
