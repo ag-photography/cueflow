@@ -72,7 +72,7 @@ final class LanguageLearningUITests: XCTestCase {
         for appearance in ["Light", "Dark"] {
             let app = launch(appearance: appearance)
             XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 15))
-            XCTAssertTrue(app.buttons["today-primary-start"].isHittable)
+            XCTAssertTrue(app.buttons["arcade-mix-start"].isHittable)
             XCTAssertFalse(app.buttons["story-passport-open"].exists)
             XCTAssertFalse(app.buttons["sprint-start"].exists)
             XCTAssertFalse(app.buttons["Deine Ziele & Lernmomente"].exists)
@@ -89,6 +89,153 @@ final class LanguageLearningUITests: XCTestCase {
             app.terminate()
         }
     }
+    func testWordSnapSupportsWrongMatchesDragAndCompletion() {
+        let app = launch(appearance: "Dark")
+        let entry = app.buttons["arcade-snap-start"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 15))
+        for _ in 0..<5 where !entry.isHittable { app.swipeUp() }
+        entry.tap()
+        let sources = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "arcade-source-"))
+        XCTAssertTrue(sources.firstMatch.waitForExistence(timeout: 8))
+        let first = sources.element(boundBy: 0)
+        let second = sources.element(boundBy: 1)
+        let firstID = String(first.identifier.dropFirst("arcade-source-".count))
+        let secondID = String(second.identifier.dropFirst("arcade-source-".count))
+        first.tap()
+        app.buttons["arcade-target-" + secondID].tap()
+        XCTAssertTrue(app.staticTexts["0 / 8"].exists)
+        let firstTarget = app.buttons["arcade-target-" + firstID]
+        first.press(forDuration: 1, thenDragTo: firstTarget)
+        for _ in 0..<2 {
+            for source in sources.allElementsBoundByIndex where source.isEnabled {
+                let id = String(source.identifier.dropFirst("arcade-source-".count))
+                for _ in 0..<4 where !source.isHittable { app.swipeUp() }
+                source.tap()
+                let target = app.buttons["arcade-target-" + id]
+                for _ in 0..<4 where !target.isHittable { app.swipeUp() }
+                target.tap()
+            }
+            let next = app.buttons["arcade-next-board"]
+            XCTAssertTrue(next.waitForExistence(timeout: 5))
+            for _ in 0..<5 where !next.isHittable { app.swipeUp() }
+            next.tap()
+        }
+        XCTAssertTrue(app.buttons["arcade-replay"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["7/8"].exists)
+        let screenshot = XCTAttachment(screenshot: app.screenshot())
+        screenshot.name = "Word Snap completion"; screenshot.lifetime = .keepAlways; add(screenshot)
+        app.buttons["arcade-replay"].tap()
+        XCTAssertTrue(app.staticTexts["0 / 8"].waitForExistence(timeout: 5))
+        app.buttons["arcade-close"].tap()
+    }
+
+    func testFiveGameMixCompletesWithTypedRecallInBothLanguages() {
+        for language in ["ru", "ar"] {
+            let app = launch(language: language, appearance: "Dark")
+            app.buttons["arcade-mix-start"].tap()
+            let sources = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "arcade-source-"))
+            XCTAssertTrue(sources.firstMatch.waitForExistence(timeout: 8))
+            let firstID = String(sources.firstMatch.identifier.dropFirst("arcade-source-".count))
+            let recallAnswer = app.buttons["arcade-target-" + firstID].label
+            for source in sources.allElementsBoundByIndex {
+                let id = String(source.identifier.dropFirst("arcade-source-".count))
+                source.tap(); app.buttons["arcade-target-" + id].tap()
+            }
+            tapArcade("arcade-next-board", in: app)
+            let choices = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "arcade-choice-"))
+            // Sound Hunt auto-plays after 0.45 s, so "disabled until heard" can't be
+            // asserted without racing that timer; hearing must enable the choices.
+            app.buttons["arcade-listen"].tap()
+            XCTAssertTrue(choices.firstMatch.isEnabled)
+            choices.firstMatch.tap()
+            tapArcade("arcade-sound-next", in: app)
+            let swipe = app.descendants(matching: .any)["arcade-swipe-card"]
+            XCTAssertTrue(swipe.waitForExistence(timeout: 5))
+            swipe.swipeLeft()
+            XCTAssertTrue(app.buttons["arcade-answer-next"].waitForExistence(timeout: 5))
+            XCTAssertFalse(app.buttons["arcade-swipe-0"].isEnabled)
+            tapArcade("arcade-answer-next", in: app)
+            let tiles = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "arcade-token-"))
+            XCTAssertTrue(tiles.firstMatch.waitForExistence(timeout: 5))
+            app.buttons["arcade-token-0"].tap()
+            XCTAssertFalse(app.buttons["arcade-token-0"].isEnabled)
+            app.buttons["arcade-built-0"].tap()
+            XCTAssertTrue(app.buttons["arcade-token-0"].isEnabled)
+            for index in 0..<tiles.count { tapArcade("arcade-token-\(index)", in: app) }
+            tapArcade("arcade-builder-check", in: app)
+            XCTAssertTrue(app.staticTexts["Yes! Getroffen!"].exists)
+            let image = XCTAttachment(screenshot: app.screenshot())
+            image.name = "Phrase Builder — \(language)"; image.lifetime = .keepAlways; add(image)
+            tapArcade("arcade-answer-next", in: app)
+            XCTAssertTrue(app.buttons["arcade-speak"].waitForExistence(timeout: 5))
+            tapArcade("arcade-recall-type", in: app)
+            let input = app.descendants(matching: .any)["arcade-recall-input"]
+            XCTAssertTrue(input.waitForExistence(timeout: 5))
+            input.tap(); input.typeText(recallAnswer)
+            if app.buttons["Tastatur schließen"].exists { app.buttons["Tastatur schließen"].tap() }
+            tapArcade("arcade-recall-check", in: app)
+            XCTAssertTrue(app.staticTexts["Yes! Getroffen!"].exists)
+            tapArcade("arcade-answer-next", in: app)
+            XCTAssertTrue(app.buttons["arcade-replay"].waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["8 Aufgaben geschafft."].exists)
+            app.buttons["arcade-finish"].tap()
+            app.terminate()
+        }
+    }
+
+    func testBuilderAndRecallCanBeChosenAndFinishedWithHelp() {
+        for game in ["builder", "recall", "swipe"] {
+            let app = launch()
+            tapArcade("arcade-\(game)-start", in: app)
+            let count = game == "swipe" ? 8 : 4
+            for _ in 0..<count {
+                tapArcade(game == "swipe" ? "arcade-swipe-0" : "arcade-reveal", in: app)
+                tapArcade("arcade-answer-next", in: app)
+            }
+            XCTAssertTrue(app.buttons["arcade-replay"].waitForExistence(timeout: 5))
+            if game != "swipe" { XCTAssertTrue(app.staticTexts["0/4"].exists) }
+            app.buttons["arcade-replay"].tap()
+            XCTAssertFalse(app.buttons["arcade-answer-next"].exists)
+            XCTAssertTrue(app.staticTexts["0 / \(count)"].exists)
+            app.buttons["arcade-close"].tap()
+            app.terminate()
+        }
+    }
+
+    private func tapArcade(_ identifier: String, in app: XCUIApplication) {
+        let element = app.buttons[identifier]
+        for _ in 0..<8 where !element.isHittable { app.swipeUp() }
+        XCTAssertTrue(element.waitForExistence(timeout: 5))
+        element.tap()
+    }
+
+    func testSoundHuntSupportsArabicLargeTextAndRevealedAnswers() {
+        let app = launch(language: "ar", contentSize: "UICTContentSizeCategoryAccessibilityXXXL", appearance: "Dark")
+        let entry = app.buttons["arcade-sound-start"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 15))
+        for _ in 0..<10 where !entry.isHittable { app.swipeUp() }
+        entry.tap()
+        XCTAssertTrue(app.buttons["arcade-listen"].waitForExistence(timeout: 8))
+        for _ in 0..<8 {
+            let reveal = app.buttons["Wort zeigen"]
+            for _ in 0..<10 where !reveal.isHittable { app.swipeUp() }
+            reveal.tap()
+            let choice = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "arcade-choice-")).firstMatch
+            for _ in 0..<10 where !choice.isHittable { app.swipeUp() }
+            choice.tap()
+            let next = app.buttons["arcade-sound-next"]
+            for _ in 0..<10 where !next.isHittable { app.swipeUp() }
+            next.tap()
+            if app.buttons["arcade-replay"].exists { break }
+        }
+        XCTAssertTrue(app.descendants(matching: .any)["completion-celebration"].waitForExistence(timeout: 5))
+        for _ in 0..<10 where !app.staticTexts["0/8"].isHittable { app.swipeUp() }
+        XCTAssertTrue(app.staticTexts["0/8"].exists)
+        let finish = app.buttons["arcade-finish"]
+        for _ in 0..<10 where !finish.isHittable { app.swipeUp() }
+        finish.tap()
+    }
+
     func testOptionalCalibrationStartsWithoutShowingAModel() {
         let app = launch()
         XCTAssertTrue(app.buttons["today-settings"].waitForExistence(timeout: 8))
@@ -165,6 +312,8 @@ final class LanguageLearningUITests: XCTestCase {
         let finish = app.buttons["episode-finish"]
         XCTAssertTrue(finish.waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Eine weitere Situation geübt"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["episode-new-postcard"].exists)
+        XCTAssertTrue(app.descendants(matching: .any)["completion-celebration"].exists)
         let screenshot = XCTAttachment(screenshot: app.screenshot())
         screenshot.name = "Story completion — quiet, supported answers"
         screenshot.lifetime = .keepAlways
@@ -241,6 +390,7 @@ final class LanguageLearningUITests: XCTestCase {
     private func openOtherPractice(in app: XCUIApplication) {
         let other = app.buttons["today-other-practice"]
         XCTAssertTrue(other.waitForExistence(timeout: 15))
+        for _ in 0..<10 where !other.isHittable { app.swipeUp() }
         other.tap()
     }
 
@@ -375,10 +525,10 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testLandscapeKeepsPrimaryActionReachable() {
         let app = launch()
-        XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["arcade-mix-start"].waitForExistence(timeout: 8))
         XCUIDevice.shared.orientation = .landscapeLeft
-        XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 4))
-        XCTAssertTrue(app.buttons["today-primary-start"].isHittable)
+        XCTAssertTrue(app.buttons["arcade-mix-start"].waitForExistence(timeout: 4))
+        XCTAssertTrue(app.buttons["arcade-mix-start"].isHittable)
         XCUIDevice.shared.orientation = .portrait
     }
 

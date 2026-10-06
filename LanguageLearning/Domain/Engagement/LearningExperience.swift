@@ -69,7 +69,7 @@ struct LearningTrial: Codable, Equatable {
 }
 
 struct LearningExperience: Codable {
-    static let meaningfulEventNames: Set<String> = ["practice_answer", "listening_answer", "listening_dictation", "reading_translation", "reading_audio", "conversation_turn", "sprint_answer"]
+    static let meaningfulEventNames: Set<String> = ["practice_answer", "listening_answer", "listening_dictation", "reading_translation", "reading_audio", "conversation_turn", "sprint_answer", "arcade_completed"]
     var version = 1
     var preferences: [String: LearningPreferences] = [:]
     var runs: [EpisodeRun] = []

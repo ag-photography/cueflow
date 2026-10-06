@@ -377,7 +377,7 @@ struct LibraryView: View {
                     Text("TUTOR-FOKUS")
                         .font(.caption.weight(.bold))
                         .tracking(1.1)
-                        .foregroundStyle(DS.accent)
+                        .foregroundStyle(DS.accentText)
                     if let tutorFocusTopic {
                         Text(journeys.tutorTopics.count == 1
                              ? tutorFocusTopic.name
@@ -493,7 +493,7 @@ struct LibraryView: View {
                     if card.isRecommended {
                         Label("Empfohlen", systemImage: "sparkles")
                             .font(.caption2.weight(.bold))
-                            .foregroundStyle(DS.accent)
+                            .foregroundStyle(DS.accentText)
                     } else if card.fraction >= 0.8 {
                         Image(systemName: "checkmark.seal.fill")
                             .foregroundStyle(DS.gradePerfect)
@@ -543,7 +543,7 @@ struct LibraryView: View {
                     Spacer()
                     Text(row.isActive ? "Aktiv" : "Starten")
                         .font(.caption.weight(.semibold))
-                        .foregroundStyle(DS.accent)
+                        .foregroundStyle(DS.accentText)
                 }
                 Text("\(row.total) Ausdrücke · etwa \(max(3, Int(ceil(Double(row.total) * 0.45)))) Min.")
                     .font(.caption)
@@ -603,7 +603,7 @@ struct LibraryView: View {
             HStack(spacing: 6) {
                 Text(topic.name)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                 Image(systemName: "xmark.circle.fill")
                     .font(.caption)
                     .foregroundStyle(DS.accent.opacity(0.6))

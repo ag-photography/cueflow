@@ -102,7 +102,7 @@ struct ReadingView: View {
             if let new = passage.unknownWords.first {
                 Label("Neu: \(new)", systemImage: "sparkle")
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
             }
 
             if revealed.contains(passage.id) {
@@ -129,7 +129,7 @@ struct ReadingView: View {
                         .font(.caption.weight(.semibold))
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
                 .accessibilityLabel("Satz vorlesen")
 
                 Button {

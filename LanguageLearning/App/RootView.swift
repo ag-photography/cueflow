@@ -137,8 +137,8 @@ private struct MainTabView: View {
     }
 }
 
-/// The calm launch destination: one recommended action, a visible Sprint, and
-/// enough context to understand why today's session is useful.
+/// A short practice invitation followed by a visible world to explore.
+/// Collection rewards are derived from saved learning evidence.
 private struct TodayView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.verticalSizeClass) private var verticalSizeClass
@@ -154,6 +154,7 @@ private struct TodayView: View {
     @AppStorage("weeklyRecapEnabled") private var weeklyRecapEnabled = false
     @State private var showingPractice = false
     @State private var showingSprint = false
+    @State private var arcadeMode: ArcadeMode?
     @State private var showingConversation = false
     @State private var showingListeningLab = false
     @State private var showingReading = false
@@ -206,7 +207,10 @@ private struct TodayView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: verticalSizeClass == .compact ? DS.space.sm : DS.space.lg) {
                     if let activitySaveError { Text(activitySaveError).font(.caption).foregroundStyle(DS.gradeHesitant) }
+                    arcadeInvitation
+                    arcadeChoices
                     practiceInvitation
+                    playShelf
                     otherPracticeMenu
                 }
                 .padding(.horizontal, DS.space.md)
@@ -234,6 +238,7 @@ private struct TodayView: View {
                     scope: .topic(id: round.topic.persistentModelID), suppliedPlan: round.plan,
                     contextTitle: round.topic.name)
             }
+            .fullScreenCover(item: $arcadeMode) { ArcadeView(mode: $0) }
             .sheet(isPresented: $showingEpisodes) { EpisodeCollectionView() }
             .fullScreenCover(item: $selectedEpisode) { EpisodeView(episode: $0, previewSessionID: episodePreviewIDs[$0.id]) }
             .fullScreenCover(isPresented: $showingPractice, onDismiss: { launchedPlan = nil }) {
@@ -304,12 +309,10 @@ private struct TodayView: View {
         return TodayPracticeRecommendation.choose(
             tutorResume: tutor.flatMap { saved.contains($0.plan.id) ? $0.plan.createdAt : nil },
             practiceResume: continuationPlan?.createdAt,
-            situationResume: data?.runs.filter { run in run.language == activeLanguageCode && run.isOpen &&
-                EpisodeLibrary.all.contains(where: { episode in episode.id == run.episodeID && episode.version == run.contentVersion }) }
-                .map(\.updatedAt).max(),
+            situationResume: nil,
             hasTutor: tutor != nil,
-            hasPractice: previewRemaining > 0 && !(data?.trial?.variant == "stories-first" && data?.trial?.endedAt == nil && suggestedEpisode != nil),
-            hasSituation: suggestedEpisode != nil)
+            hasPractice: previewRemaining > 0,
+            hasSituation: false)
     }
 
     private var practiceInvitation: some View {
@@ -327,7 +330,7 @@ private struct TodayView: View {
             Label(resuming ? "Deine Runde wartet" : choice == .tutor ? "Für deinen nächsten Unterricht" : "Deine kurze Sprachpause",
                   systemImage: choice == .tutor ? "person.text.rectangle" : "bubble.left.and.text.bubble.right")
                 .font(.subheadline.weight(.semibold)).foregroundStyle(DS.accentText)
-            Text(choice == .tutor ? tutor?.topic.name ?? "Unterricht" : choice == .situation ? episode?.title ?? "Im Alltag" : resuming ? continuationTitle ?? "Deine Runde fortsetzen" : "Kurz üben. Weiterkommen.")
+            Text(choice == .tutor ? tutor?.topic.name ?? "Unterricht" : choice == .situation ? episode?.title ?? "Im Alltag" : resuming ? continuationTitle ?? "Deine Runde fortsetzen" : "Mach die Wörter zu deinen.")
                 .font(.title.bold()).fixedSize(horizontal: false, vertical: true)
             Text(choice == .tutor ? "\(tutor?.remainingCount ?? 0) Ausdrücke · ohne Zeitdruck" :
                  choice == .practice ? "\(continuationPlan == nil ? previewRemaining : continuationRemaining) Ausdrücke · eine überschaubare Runde" :
@@ -345,15 +348,108 @@ private struct TodayView: View {
                     case nil: break
                     }
                 } label: {
-                    Label(resuming ? "Weiterüben" : "Jetzt üben", systemImage: "play.fill")
-                        .font(.headline).frame(maxWidth: .infinity, minHeight: 48)
-                }.buttonStyle(.borderedProminent).tint(DS.accent)
+                    Label(resuming ? "Meine Runde fortsetzen" : "Los geht’s", systemImage: "play.fill")
+                        .font(.headline.bold()).frame(maxWidth: .infinity, minHeight: 54)
+                        .foregroundStyle(DS.playInk)
+                        .background(DS.playMint, in: RoundedRectangle(cornerRadius: 18))
+                }.buttonStyle(PracticePressStyle())
                     .accessibilityIdentifier("today-primary-start")
             }
         }.dsCard(elevation: 1, padding: DS.space.lg)
+            .overlay { RoundedRectangle(cornerRadius: DS.radius.lg).strokeBorder(DS.playMint.opacity(0.3), lineWidth: 1) }
             .task(id: "\(String(describing: choice))-\(episode?.id ?? "")-\(isCovered)") {
                 if choice == .situation, let episode { recordEpisodePreview(episode) }
             }
+    }
+
+    private var arcadeInvitation: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            if verticalSizeClass != .compact {
+                Label("DEINE WÖRTER. DEIN SPIEL.", systemImage: "sparkles")
+                    .font(.caption.weight(.heavy)).tracking(1).foregroundStyle(DS.accentText)
+                HStack(alignment: .center) {
+                    Text("Kleine Runde.\nGroßes Yes!")
+                        .font(.system(.largeTitle, design: .rounded, weight: .heavy))
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer(minLength: 8)
+                    Image(systemName: "square.grid.2x2.fill")
+                        .font(.system(size: 54, weight: .bold)).rotationEffect(.degrees(-10))
+                        .foregroundStyle(DS.playMint).accessibilityHidden(true)
+                }
+                Text("Wischen. Hören. Bauen. Laut sagen.")
+                    .font(.subheadline).foregroundStyle(DS.textSecondary)
+            } else {
+                Text("Deine Wörter. Dein Spiel.").font(.title2.bold())
+            }
+            Button { arcadeMode = .mix } label: {
+                Label("Spiele-Mix starten", systemImage: "play.fill")
+                    .font(.headline.bold()).foregroundStyle(DS.playInk)
+                    .frame(maxWidth: .infinity, minHeight: 54)
+                    .background(DS.playMint, in: RoundedRectangle(cornerRadius: 18))
+            }.buttonStyle(PracticePressStyle()).accessibilityIdentifier("arcade-mix-start")
+            if verticalSizeClass != .compact {
+                Text("Etwa 2–3 Minuten · dein Wortschatz · ohne Zeitdruck")
+                    .font(.caption).foregroundStyle(DS.textSecondary)
+            }
+        }.padding(24)
+            .background(DS.surface1, in: RoundedRectangle(cornerRadius: 26))
+            .overlay { RoundedRectangle(cornerRadius: 26).strokeBorder(DS.playMint.opacity(0.35), lineWidth: 1) }
+    }
+
+    private var arcadeChoices: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Such dir dein Spiel aus").font(.system(.title2, design: .rounded, weight: .bold))
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 12)], alignment: .leading, spacing: 12) {
+                    quickPlay("Word Snap", detail: "Paare finden & wegklicken", icon: "square.grid.2x2.fill", color: DS.conversationColor,
+                              identifier: "arcade-snap-start", width: nil) { arcadeMode = .snap }
+                    quickPlay("Sound Hunt", detail: "Hören. Erkennen. Nachsprechen.", icon: "waveform", color: DS.listeningColor,
+                              identifier: "arcade-sound-start", width: nil) { arcadeMode = .sound }
+                    quickPlay("Swipe Match", detail: "Wisch zur richtigen Bedeutung", icon: "arrow.left.arrow.right", color: DS.sprintColor,
+                              identifier: "arcade-swipe-start", width: nil) { arcadeMode = .swipe }
+                    quickPlay("Phrase Builder", detail: "Satz bauen und laut sprechen", icon: "puzzlepiece.extension.fill", color: DS.conversationColor,
+                              identifier: "arcade-builder-start", width: nil) { arcadeMode = .builder }
+                    quickPlay("Quick Recall", detail: "Aus dem Kopf – laut gesagt", icon: "brain.head.profile", color: DS.listeningColor,
+                              identifier: "arcade-recall-start", width: nil) { arcadeMode = .recall }
+            }.padding(.vertical, 4)
+        }
+    }
+
+    private var playShelf: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Heute lieber …").font(.system(.title2, design: .rounded, weight: .bold))
+            Text("Wähle, worauf du Lust hast.").font(.subheadline).foregroundStyle(DS.textSecondary)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .top, spacing: 12) { quickPlayCards }
+                    .padding(.vertical, 4)
+            }
+        }
+    }
+
+    @ViewBuilder private var quickPlayCards: some View {
+        quickPlay("Tempo machen", detail: "60-Sekunden-Sprint", icon: "bolt.fill", color: DS.sprintColor,
+                  identifier: "home-sprint") { showingSprint = true }
+        quickPlay("Ins Gespräch", detail: "Eine Rolle. Deine Worte.", icon: "bubble.left.and.bubble.right.fill", color: DS.conversationColor,
+                  identifier: "home-conversation") { showingConversation = true }
+        quickPlay("Ganz Ohr sein", detail: "Hören & nachsprechen", icon: "headphones", color: DS.listeningColor,
+                  identifier: "home-listening") { showingListeningLab = true }
+    }
+
+    private func quickPlay(_ title: String, detail: String, icon: String, color: Color,
+                           identifier: String, width: CGFloat? = 152, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 10) {
+                Image(systemName: icon).font(.title2.bold()).foregroundStyle(color)
+                    .frame(width: 46, height: 46).background(color.opacity(0.18), in: RoundedRectangle(cornerRadius: 14))
+                Text(title).font(.headline).foregroundStyle(DS.textPrimary).fixedSize(horizontal: false, vertical: true)
+                Text(detail).font(.caption).foregroundStyle(DS.textSecondary).fixedSize(horizontal: false, vertical: true)
+                Image(systemName: "arrow.up.right").font(.caption.bold()).foregroundStyle(DS.accentText)
+            }.frame(width: width, alignment: .leading)
+                .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
+                .padding(16)
+                .background(color.opacity(0.13), in: RoundedRectangle(cornerRadius: 20))
+                .background(DS.surface1, in: RoundedRectangle(cornerRadius: 20))
+                .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(color.opacity(0.45), lineWidth: 1) }
+        }.buttonStyle(.plain).accessibilityIdentifier(identifier)
     }
 
     private var otherPracticeMenu: some View {
@@ -567,7 +663,7 @@ private struct TodayView: View {
             HStack(spacing: DS.space.sm) {
                 Image(systemName: icon)
                     .font(.headline)
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                     .frame(width: 36, height: 36)
                     .background(DS.accentSoft)
                     .clipShape(Circle())
@@ -593,7 +689,7 @@ private struct TodayView: View {
                     Text("HEUTE IM FLOW")
                         .font(.caption2.weight(.bold))
                         .tracking(0.7)
-                        .foregroundStyle(DS.accent)
+                        .foregroundStyle(DS.accentText)
                     Text(snapshot.allQuestsComplete ? "Tagesziele geschafft" : "Drei kleine Ziele")
                         .font(.headline)
                         .foregroundStyle(DS.textPrimary)
@@ -707,7 +803,7 @@ private struct TodayView: View {
     /// True while a session is covering Heute. Its numbers can't be seen, and
     /// they'd be recomputed after every answer.
     private var isCovered: Bool {
-        showingPractice || showingSprint || showingListeningLab
+        showingPractice || arcadeMode != nil || showingSprint || showingListeningLab
             || showingConversation || showingReading || selectedEpisode != nil || showingSettings || showingEpisodes
             || activeTutorRound != nil || showingTutorFocus
     }
@@ -766,7 +862,7 @@ private struct TodayView: View {
             HStack {
                 Label("Empfohlen", systemImage: "sparkles")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                 Spacer()
                 Menu {
                     sessionChoice("Schnellrunde", target: 5)
@@ -797,7 +893,7 @@ private struct TodayView: View {
                     systemImage: "person.2.fill"
                 )
                 .font(.caption.weight(.medium))
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
                 if (tutorDailyDemand ?? tutorPacing.dailyNewTarget) > (settings.first?.dailyNewLimit ?? 10) {
                     Text("Das liegt über deinem Tageslimit. Dein Limit bleibt unverändert; passe bei Bedarf Termin oder Umfang in der Bibliothek an.")
                         .font(.caption).foregroundStyle(DS.textSecondary)
@@ -815,7 +911,7 @@ private struct TodayView: View {
             } label: {
                 Label("Wiederholungsrunde starten", systemImage: "arrow.right.circle.fill")
                     .font(.headline.weight(.bold))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, verticalSizeClass == .compact ? 10 : 16)
                     .background(DS.accentSoft)

@@ -21,16 +21,26 @@ enum StoryPalette {
         }
     }
 
+    /// Art keeps its own saturated night palette; text panels use `paper`.
+    var illustrationPaper: Color {
+        switch self {
+        case .orchard: return Color(light: paper, dark: Color(red: 0.10, green: 0.36, blue: 0.31))
+        case .cafe: return Color(light: paper, dark: Color(red: 0.48, green: 0.23, blue: 0.26))
+        case .sky: return Color(light: paper, dark: Color(red: 0.13, green: 0.30, blue: 0.59))
+        case .evening: return Color(light: paper, dark: Color(red: 0.31, green: 0.20, blue: 0.53))
+        }
+    }
+
     var ink: Color {
         Color(light: Color(red: 0.16, green: 0.24, blue: 0.23), dark: Color(red: 0.92, green: 0.95, blue: 0.87))
     }
 
     var accent: Color {
         switch self {
-        case .orchard: return Color(red: 0.38, green: 0.58, blue: 0.36)
-        case .cafe: return Color(red: 0.77, green: 0.39, blue: 0.26)
-        case .sky: return Color(red: 0.31, green: 0.55, blue: 0.72)
-        case .evening: return Color(red: 0.55, green: 0.44, blue: 0.72)
+        case .orchard: return Color(light: Color(red: 0.38, green: 0.58, blue: 0.36), dark: Color(red: 0.40, green: 0.81, blue: 0.53))
+        case .cafe: return Color(light: Color(red: 0.77, green: 0.39, blue: 0.26), dark: Color(red: 1.00, green: 0.58, blue: 0.39))
+        case .sky: return Color(light: Color(red: 0.31, green: 0.55, blue: 0.72), dark: Color(red: 0.36, green: 0.72, blue: 0.96))
+        case .evening: return Color(light: Color(red: 0.55, green: 0.44, blue: 0.72), dark: Color(red: 0.76, green: 0.57, blue: 0.97))
         }
     }
 }
@@ -110,7 +120,7 @@ struct StoryArtwork: View {
                 }
             }
         }
-        .background(palette.paper)
+        .background(palette.illustrationPaper)
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.lg))
         .scaleEffect(celebrating && !reduceMotion ? 1.015 : 1)
         .animation(reduceMotion ? nil : .spring(duration: 0.3, bounce: 0.2), value: celebrating)
@@ -185,5 +195,61 @@ struct StoryPassportLink: View {
                 Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(DS.textSecondary)
             }.dsCard()
         }.buttonStyle(.plain).accessibilityIdentifier("story-passport-open")
+    }
+}
+
+/// A finite celebration of participation. Sound stays with the successful save
+/// in the owning flow; this view never awards progress or plays audio on redraw.
+struct CompletionCelebration: View {
+    let title: String
+    let detail: String
+    var symbol = "star.fill"
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var appeared = false
+    @State private var settled = false
+
+    private let colors = [DS.playMint, DS.sprintColor, DS.conversationColor, DS.listeningColor]
+
+    var body: some View {
+        VStack(spacing: 10) {
+            ZStack {
+                Circle().fill(DS.playMint.opacity(0.10)).frame(width: 112, height: 112)
+                ForEach(0..<20, id: \.self) { index in
+                    let angle = Double(index) * .pi / 10
+                    let radius = reduceMotion || appeared ? Double(66 + (index % 3) * 12) : 12
+                    RoundedRectangle(cornerRadius: index.isMultiple(of: 3) ? 5 : 2)
+                        .fill(colors[index % colors.count])
+                        .frame(width: 5, height: index.isMultiple(of: 3) ? 5 : 11)
+                        .rotationEffect(.degrees(Double(index * 37) + (appeared ? 100 : 0)))
+                        .offset(x: cos(angle) * radius, y: sin(angle) * radius * 0.62 + (settled ? 12 : 0))
+                        .opacity(reduceMotion ? 0.8 : settled ? 0 : appeared ? 1 : 0)
+                }
+                Image(systemName: symbol)
+                    .font(.system(size: 42, weight: .bold))
+                    .foregroundStyle(DS.playInk)
+                    .frame(width: 80, height: 80)
+                    .background(DS.playMint, in: Circle())
+                    .rotationEffect(.degrees(reduceMotion || appeared ? 0 : -12))
+                    .scaleEffect(reduceMotion || appeared ? 1 : 0.7)
+            }.frame(height: 132).frame(maxWidth: .infinity).accessibilityHidden(true)
+            Text(title).font(.system(.title, design: .rounded, weight: .heavy))
+                .foregroundStyle(DS.textPrimary)
+            Text(detail).font(.subheadline).foregroundStyle(DS.textSecondary)
+        }
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity)
+        .padding(DS.space.md)
+        .background(DS.playMint.opacity(0.07), in: RoundedRectangle(cornerRadius: 24))
+        .overlay { RoundedRectangle(cornerRadius: 24).strokeBorder(DS.playMint.opacity(0.25), lineWidth: 1) }
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("completion-celebration")
+        .task {
+            guard !appeared else { return }
+            guard !reduceMotion else { appeared = true; return }
+            withAnimation(.spring(duration: 0.65, bounce: 0.3)) { appeared = true }
+            do { try await Task.sleep(for: .seconds(1.1)) } catch { return }
+            withAnimation(.easeOut(duration: 0.45)) { settled = true }
+        }
     }
 }

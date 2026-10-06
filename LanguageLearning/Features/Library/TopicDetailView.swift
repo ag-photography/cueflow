@@ -135,7 +135,7 @@ struct TopicDetailView: View {
             HStack(alignment: .firstTextBaseline) {
                 Text("\(Int((practisedFraction * 100).rounded()))%")
                     .font(.system(size: 34, weight: .bold, design: .rounded))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                     .monospacedDigit()
                 Text("schon geübt")
                     .font(.subheadline)
@@ -144,7 +144,7 @@ struct TopicDetailView: View {
                 if dueNow > 0 {
                     Label("\(dueNow) fällig", systemImage: "clock.fill")
                         .font(.caption.weight(.medium))
-                        .foregroundStyle(DS.accent)
+                        .foregroundStyle(DS.accentText)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 6)
                         .background(DS.accentSoft)
@@ -251,7 +251,7 @@ struct TopicDetailView: View {
                     if phrase.qualityStatus == .nativeVerified {
                         Label("Geprüft", systemImage: "checkmark.seal.fill")
                             .font(.caption2)
-                            .foregroundStyle(DS.accent)
+                            .foregroundStyle(DS.accentText)
                     }
                 }
             }

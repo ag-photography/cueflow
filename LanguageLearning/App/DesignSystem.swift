@@ -22,45 +22,38 @@ enum DS {
 
     // MARK: - Colour
 
-    /// Brand accent — deep teal, slightly more saturated than the previous
-    /// muted shade so primary buttons read as confident, not tentative.
-    static let accent = Color(red: 0.08, green: 0.42, blue: 0.52)
-    static let accentSoft = Color(red: 0.08, green: 0.42, blue: 0.52).opacity(0.12)
-    /// Readable brand text on neutral dark surfaces; button fill stays deep teal.
-    static let accentText = Color(light: accent, dark: Color(red: 0.43, green: 0.79, blue: 0.87))
+    /// Filled system controls retain light foreground contrast in both modes.
+    static let accent = Color(light: Color(red: 0.08, green: 0.42, blue: 0.52),
+                              dark: Color(red: 0.32, green: 0.36, blue: 0.84))
+    static let accentText = Color(light: Color(red: 0.08, green: 0.42, blue: 0.52),
+                                  dark: Color(red: 0.70, green: 0.75, blue: 1.00))
+    static let accentSoft = accentText.opacity(0.16)
+    static let onAccent = Color(red: 0.97, green: 0.98, blue: 1.00)
 
-    /// Fixed warm cream that does NOT flip in dark mode — for content layered
-    /// directly on the brand teal (e.g. the onboarding badge lettering), where
-    /// it must stay light in both appearances. `surface0` would invert to
-    /// near-black in dark and kill the contrast.
-    static let onAccent = Color(red: 0.97, green: 0.95, blue: 0.90)
-
-    /// Surface scale. Warm cream in light mode (Babbel-style premium reading
-    /// surface), deep neutral charcoal in dark mode. Avoids the stark
-    /// iOS-default white that read as "system form".
-    static let surface0 = Color(
-        light: Color(red: 0.97, green: 0.95, blue: 0.90),   // warm cream
-        dark: Color(red: 0.09, green: 0.09, blue: 0.10)      // near-black
-    )
-    static let surface1 = Color(
-        light: Color(red: 1.00, green: 0.99, blue: 0.96),   // very light cream / "white" on cream
-        dark: Color(red: 0.16, green: 0.16, blue: 0.17)
-    )
-    static let surface2 = Color(
-        light: Color(red: 0.93, green: 0.90, blue: 0.83),   // slightly deeper cream
-        dark: Color(red: 0.22, green: 0.22, blue: 0.23)
-    )
-
-    /// One calm canvas for every primary destination.
+    /// Midnight blue keeps the canvas restful without draining the colour.
+    static let surface0 = Color(light: Color(red: 0.97, green: 0.95, blue: 0.90),
+                                dark: Color(red: 0.045, green: 0.065, blue: 0.12))
+    static let surface1 = Color(light: Color(red: 1.00, green: 0.99, blue: 0.96),
+                                dark: Color(red: 0.085, green: 0.12, blue: 0.20))
+    static let surface2 = Color(light: Color(red: 0.93, green: 0.90, blue: 0.83),
+                                dark: Color(red: 0.13, green: 0.17, blue: 0.28))
     static let pageBackground = LinearGradient(
-        colors: [surface0, surface2.opacity(0.30)],
-        startPoint: .top,
-        endPoint: .bottom
-    )
-
+        colors: [surface0, surface0, surface2], startPoint: .top, endPoint: .bottom)
     static let textPrimary = Color(.label)
-    static let textSecondary = Color(.secondaryLabel)
-    static let textTertiary = Color(.tertiaryLabel)
+    static let textSecondary = Color(light: Color(.secondaryLabel),
+                                     dark: Color(red: 0.72, green: 0.78, blue: 0.88))
+    static let textTertiary = Color(light: Color(.tertiaryLabel),
+                                    dark: Color(red: 0.60, green: 0.67, blue: 0.79))
+
+    /// Decorative activity identities stay separate from grading signals.
+    static let playMint = Color(red: 0.39, green: 0.94, blue: 0.73)
+    static let playInk = Color(red: 0.035, green: 0.16, blue: 0.16)
+    static let sprintColor = Color(light: Color(red: 0.65, green: 0.33, blue: 0.02),
+                                   dark: Color(red: 1.00, green: 0.73, blue: 0.29))
+    static let conversationColor = Color(light: Color(red: 0.49, green: 0.24, blue: 0.74),
+                                         dark: Color(red: 0.79, green: 0.62, blue: 1.00))
+    static let listeningColor = Color(light: Color(red: 0.02, green: 0.43, blue: 0.56),
+                                      dark: Color(red: 0.32, green: 0.82, blue: 1.00))
 
     /// Disabled-state grey. Distinct from the faded-accent look so a disabled
     /// primary button reads as "waiting for input" not "broken".

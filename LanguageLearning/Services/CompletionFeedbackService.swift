@@ -19,8 +19,8 @@ final class CompletionFeedbackService {
         engine.connect(player, to: engine.mainMixerNode, format: format)
     }
 
-    func playCompletion() {
-        guard UserDefaults.standard.object(forKey: "soundEffectsEnabled") as? Bool ?? true else {
+    func playCompletion(sound: Bool = true) {
+        guard sound && (UserDefaults.standard.object(forKey: "soundEffectsEnabled") as? Bool ?? true) else {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
             return
         }
@@ -59,8 +59,8 @@ final class CompletionFeedbackService {
 
     /// A lighter single-note acknowledgement for correct steps inside a
     /// session. The two-note signature remains reserved for completion.
-    func playStepSuccess() {
-        guard UserDefaults.standard.object(forKey: "soundEffectsEnabled") as? Bool ?? true else {
+    func playStepSuccess(sound: Bool = true) {
+        guard sound && (UserDefaults.standard.object(forKey: "soundEffectsEnabled") as? Bool ?? true) else {
             UISelectionFeedbackGenerator().selectionChanged()
             return
         }
@@ -71,7 +71,13 @@ final class CompletionFeedbackService {
     private func playBuffer(_ buffer: AVAudioPCMBuffer) {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            // While a word is being read aloud the session is already in
+            // `.playback`; dropping to `.ambient` would mute that speech under
+            // the Silent switch, so the chime joins the active session instead.
+            // Callers must not chime while the microphone is listening.
+            if session.category != .playback {
+                try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+            }
             try session.setActive(true)
             if !engine.isRunning { try engine.start() }
             player.stop()

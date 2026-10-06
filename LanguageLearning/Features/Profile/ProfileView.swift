@@ -197,7 +197,7 @@ struct ProfileView: View {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text("Nächster sinnvoller Fokus")
                                     .font(.caption.weight(.bold))
-                                    .foregroundStyle(DS.accent)
+                                    .foregroundStyle(DS.accentText)
                                 Text(recommendation.scenario.title)
                                     .font(.subheadline.weight(.semibold))
                                     .foregroundStyle(DS.textPrimary)
@@ -309,7 +309,7 @@ struct ProfileView: View {
                 ForEach(Array(learningPatterns.enumerated()), id: \.element.id) { index, insight in
                     HStack(alignment: .top, spacing: DS.space.sm) {
                         Image(systemName: insight.pattern.systemImage)
-                            .foregroundStyle(DS.accent)
+                            .foregroundStyle(DS.accentText)
                             .frame(width: 34, height: 34)
                             .background(DS.accentSoft)
                             .clipShape(Circle())
@@ -601,7 +601,7 @@ struct ProfileView: View {
                     HStack(alignment: .firstTextBaseline, spacing: DS.space.sm) {
                         Image(systemName: "waveform")
                             .font(.title3)
-                            .foregroundStyle(DS.accent)
+                            .foregroundStyle(DS.accentText)
                         Text("\(spokenWordsTodayTotal)")
                             .font(.system(size: 40, weight: .bold, design: .rounded))
                             .monospacedDigit()
@@ -758,7 +758,7 @@ private struct LearningProgressRing: View {
             VStack(spacing: 0) {
                 Text("\(introducedPct)%")
                     .font(.system(size: 28, weight: .bold, design: .rounded))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                     .monospacedDigit()
                 Text("schon geübt")
                     .font(.caption2)

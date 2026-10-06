@@ -30,8 +30,6 @@ struct SprintView: View {
     @AppStorage("sprintBest") private var best: Int = 0
     // Speaking-volume scoreboard: a date-guarded daily tally of words spoken
     // aloud, shared (via UserDefaults) with ProfileView's "Sprechen" section.
-    @AppStorage("spokenWordsCount") private var spokenWordsCount: Int = 0
-    @AppStorage("spokenWordsDayIndex") private var spokenWordsDayIndex: Int = 0
 
     @State private var phase: Phase = .intro
     @State private var pool: [Phrase] = []
@@ -86,7 +84,7 @@ struct SprintView: View {
             case .preparing: preparationView
             case .countdown: countdownView
             case .running: runningView
-            case .done:    doneView
+            case .done:    ScrollView { doneView }
             }
         }
         .onAppear(perform: handleAppear)
@@ -133,7 +131,7 @@ struct SprintView: View {
             Spacer()
             Image(systemName: "bolt.fill")
                 .font(.system(size: 52, weight: .bold))
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
                 .frame(width: 104, height: 104)
                 .background(DS.accentSoft)
                 .clipShape(Circle())
@@ -200,7 +198,7 @@ struct SprintView: View {
             Spacer()
             Text(countdownValue > 0 ? "\(countdownValue)" : "Los")
                 .font(.system(size: 112, weight: .bold, design: .rounded).monospacedDigit())
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
                 .contentTransition(.numericText())
                 .accessibilityLabel(countdownValue > 0 ? "Start in \(countdownValue)" : "Los")
             Text("Mach dich bereit")
@@ -255,7 +253,7 @@ struct SprintView: View {
         HStack(spacing: 8) {
             Text("\(cleared)")
                 .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
                 .contentTransition(.numericText())
             Text("gesagt")
                 .font(.subheadline)
@@ -303,7 +301,7 @@ struct SprintView: View {
                         languageCode: currentPhrase?.language?.code
                     ))
                     .multilineTextAlignment(.center)
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                     .transition(.opacity)
                     .accessibilityLabel("Antwort: \(revealedAnswer)")
             }
@@ -331,7 +329,7 @@ struct SprintView: View {
                     }
                 }
                 .font(.footnote.weight(.semibold))
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
             }
             .frame(minHeight: 44)
         } else {
@@ -372,6 +370,11 @@ struct SprintView: View {
         let isRecord = cleared > bestAtRoundStart && cleared > 0
         return VStack(spacing: DS.space.lg) {
             Spacer()
+            if cleared > 0 && activityError == nil && unavailableMessage == nil {
+                CompletionCelebration(title: isRecord ? "Wow! Neue Bestleistung!" : "Stark! Du hast losgelegt!",
+                    detail: "\(cleared) Ausdrücke im Sprint getroffen.",
+                    symbol: isRecord ? "trophy.fill" : "bolt.fill")
+            }
             if isRecord {
                 Label("Neue Bestleistung!", systemImage: "trophy.fill")
                     .font(.headline.weight(.bold))
@@ -383,7 +386,7 @@ struct SprintView: View {
             }
             Text("\(cleared)")
                 .font(.system(size: 88, weight: .bold, design: .rounded).monospacedDigit())
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
             Text(doneMessage)
                 .font(.title3)
                 .multilineTextAlignment(.center)
@@ -533,18 +536,8 @@ struct SprintView: View {
         advance()
     }
 
-    /// Day-bucket index (days since the reference date) so the tally auto-resets
-    /// at midnight without a cleanup job. Matches ProfileView's computation.
-    private var todayIndex: Int {
-        Int(Calendar.current.startOfDay(for: .now).timeIntervalSinceReferenceDate / 86_400)
-    }
-
     private func recordSpokenWords(_ text: String) {
-        if spokenWordsDayIndex != todayIndex {
-            spokenWordsDayIndex = todayIndex
-            spokenWordsCount = 0
-        }
-        spokenWordsCount += max(1, text.split(separator: " ").count)
+        SpokenWordTally.record(text)
     }
 
     private func skip() {

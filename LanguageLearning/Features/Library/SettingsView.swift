@@ -59,7 +59,7 @@ struct SettingsView: View {
                         }
                     } label: {
                         HStack(spacing: DS.space.sm) {
-                            Image(systemName: "globe").foregroundStyle(DS.accent)
+                            Image(systemName: "globe").foregroundStyle(DS.accentText)
                             Text("Aktive Sprache")
                         }
                     }
@@ -100,7 +100,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Üben")
                 } footer: {
-                    Text("Die Standardlänge gilt für neue Einheiten und kann auf Heute jederzeit geändert werden. Neue Karten pro Tag begrenzt nur die Einführung; Wiederholungen bleiben unbegrenzt. Klangeffekte respektieren den Stummmodus.")
+                    Text("Die Standardlänge gilt für neue Einheiten und kann auf Heute jederzeit geändert werden. Neue Karten pro Tag begrenzt nur die Einführung; Wiederholungen bleiben unbegrenzt. Klangeffekte respektieren den Stummmodus – außer direkt neben vorgelesenen Wörtern, die auch bei Stummschaltung hörbar sind.")
                 }
                 .listRowBackground(DS.surface1)
 

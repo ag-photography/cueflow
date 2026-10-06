@@ -650,7 +650,7 @@ struct OnboardingView: View {
                 } label: {
                     Label("Einstellungen öffnen", systemImage: "arrow.up.forward.app")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(DS.accent)
+                        .foregroundStyle(DS.accentText)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(DS.accentSoft)
@@ -687,7 +687,7 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: DS.space.md) {
             Image(systemName: icon)
                 .font(.title3)
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
                 .frame(width: 44, height: 44)
                 .background(DS.accentSoft)
                 .clipShape(RoundedRectangle(cornerRadius: DS.radius.sm))
@@ -713,7 +713,7 @@ struct OnboardingView: View {
         HStack(alignment: .top, spacing: DS.space.md) {
             Image(systemName: icon)
                 .font(.headline)
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)

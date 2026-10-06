@@ -378,7 +378,7 @@ struct PracticeView: View {
             Spacer()
             Image(systemName: "pause.circle.fill")
                 .font(.system(size: 64))
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
             Text("Einheit pausiert")
                 .font(.title2.weight(.bold))
                 .foregroundStyle(DS.textPrimary)
@@ -460,7 +460,7 @@ struct PracticeView: View {
                 Text("\(currentStreak)")
                     .font(.caption.weight(.bold).monospacedDigit())
             }
-            .foregroundStyle(DS.accent)
+            .foregroundStyle(DS.accentText)
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(DS.accentSoft)
@@ -553,7 +553,7 @@ struct PracticeView: View {
         Button { showingSprint = true } label: {
             Image(systemName: "bolt.fill")
                 .font(.callout)
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
                 .frame(width: 36, height: 36)
                 .background(DS.accentSoft)
                 .clipShape(Circle())
@@ -876,7 +876,7 @@ struct PracticeView: View {
                 Text("Wieder sprechen").font(.caption.weight(.semibold))
                 Image(systemName: "chevron.right").font(.caption2)
             }
-            .foregroundStyle(DS.accent)
+            .foregroundStyle(DS.accentText)
             .padding(.horizontal, DS.space.md)
             .padding(.vertical, 10)
             .background(DS.accentSoft)
@@ -949,6 +949,7 @@ struct PracticeView: View {
         withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) { choiceChosen = option }
         if correct {
             UINotificationFeedbackGenerator().notificationOccurred(.success)
+            CompletionFeedbackService.shared.playStepSuccess(sound: !speechMuted)
         } else {
             UINotificationFeedbackGenerator().notificationOccurred(.error)
         }
@@ -1155,7 +1156,7 @@ struct PracticeView: View {
             if cloze.teachesInflection {
                 Text(cloze.headword)
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                     .padding(.horizontal, 10)
                     .padding(.vertical, 4)
                     .background(DS.accentSoft)
@@ -1347,7 +1348,7 @@ struct PracticeView: View {
                             } label: {
                                 Text("Ich weiß es nicht")
                                     .font(.subheadline.weight(.semibold))
-                                    .foregroundStyle(DS.accent)
+                                    .foregroundStyle(DS.accentText)
                             }
                         }
                     }
@@ -1564,7 +1565,7 @@ struct PracticeView: View {
                 Label("Langsam anhören", systemImage: "tortoise.fill")
                     .font(.caption.weight(.semibold))
             }
-            .foregroundStyle(DS.accent)
+            .foregroundStyle(DS.accentText)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(DS.space.sm)
@@ -1600,7 +1601,7 @@ struct PracticeView: View {
             } label: {
                 Image(systemName: "speaker.wave.2.fill")
                     .font(.system(size: 22))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                     .frame(width: 44, height: 44)
                     .background(DS.accentSoft)
                     .clipShape(Circle())
@@ -1683,7 +1684,7 @@ struct PracticeView: View {
                 } label: {
                     Image(systemName: "speaker.wave.2.fill")
                         .font(.subheadline)
-                        .foregroundStyle(DS.accent)
+                        .foregroundStyle(DS.accentText)
                         .frame(width: 38, height: 38)
                         .background(DS.surface0)
                         .clipShape(Circle())
@@ -1691,7 +1692,7 @@ struct PracticeView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Satz vorlesen")
             }
-            .foregroundStyle(DS.accent)
+            .foregroundStyle(DS.accentText)
 
             Text(sentence)
                 .font(LearningTypography.display(
@@ -1736,7 +1737,7 @@ struct PracticeView: View {
             VStack(spacing: 8) {
                 Image(systemName: "mic.fill")
                     .font(.system(size: 28, weight: .semibold))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                     .frame(width: 64, height: 64)
                     .background(DS.accentSoft)
                     .clipShape(Circle())
@@ -1995,7 +1996,7 @@ struct PracticeView: View {
             Spacer()
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 60))
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
             Text("Tagesziel erreicht")
                 .font(.title2.weight(.semibold))
             Text("Du hast heute \(newCardsDoneToday) neue Karten gelernt. Es warten noch \(availableNewCount) in deinen aktiven Themen.")
@@ -2032,7 +2033,7 @@ struct PracticeView: View {
             Spacer()
             Image(systemName: "checkmark.circle")
                 .font(.system(size: 64))
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
             Text("Alles erledigt!")
                 .font(.title2.weight(.semibold))
             Text("Keine fälligen Karten und keine neuen in deinen aktiven Themen. Aktiviere ein Thema oder importiere neue Vokabeln in der Bibliothek.")
@@ -2078,6 +2079,7 @@ struct PracticeView: View {
     // MARK: - Session summary
 
     private var sessionSummarySheet: some View {
+        ScrollView {
         VStack(spacing: DS.space.lg) {
             if let persistenceErrorMessage {
                 persistenceErrorBanner(persistenceErrorMessage)
@@ -2086,14 +2088,17 @@ struct PracticeView: View {
                 milestoneBanner(days: milestone)
                     .onAppear { markStreakCelebrated(milestone) }
             }
-            Spacer()
+            if sessionCount > 0 && persistenceErrorMessage == nil {
+                CompletionCelebration(title: "Yes! Runde geschafft!",
+                    detail: "\(sessionCount) Antworten geübt. Das hast du dir erarbeitet.")
+            }
             VStack(spacing: DS.space.xs) {
                 Text(sessionSpokenAnswers > 0 ? "In dieser Runde gesprochen" : "In dieser Runde geübt")
                     .font(.headline)
                     .foregroundStyle(DS.textPrimary)
                 Text("\(sessionSpokenAnswers > 0 ? sessionSpokenAnswers : sessionCount)")
                     .font(.system(size: 64, weight: .bold, design: .rounded))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                 Text(sessionSpokenAnswers > 0 ? "Antworten · \(sessionSpokenWords) Wörter" : "Ausdrücke · \(sessionCorrect) richtige Antworten")
                     .font(.subheadline)
                     .foregroundStyle(DS.textSecondary)
@@ -2159,9 +2164,11 @@ struct PracticeView: View {
             .padding(.bottom)
         }
         .padding()
+        }
+        .background(DS.pageBackground)
         .presentationDetents([.large])
         .onAppear {
-            if !playedSummarySound && !speechMuted { CompletionFeedbackService.shared.playCompletion() }
+            if !playedSummarySound && sessionCount > 0 && persistenceErrorMessage == nil { CompletionFeedbackService.shared.playCompletion(sound: !speechMuted) }
             playedSummarySound = true
         }
     }
@@ -2419,6 +2426,9 @@ struct PracticeView: View {
         inputFocused = false
         guard saveAttemptCheckpoint(card: card, result: result, answer: userAnswer, elapsed: elapsedMs,
                                     support: !selectedTileIDs.isEmpty ? .tiles : (answerWasRevealed ? .revealed : retryWasNeeded ? .retry : .none)) else { return }
+        if !revealed && result.autoGrade.suggestedRating >= 3 {
+            CompletionFeedbackService.shared.playStepSuccess(sound: !speechMuted)
+        }
         phase = .reveal(card, result, userAnswer: userAnswer, responseTimeMs: elapsedMs)
     }
 

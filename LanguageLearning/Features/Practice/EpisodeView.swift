@@ -36,12 +36,13 @@ struct EpisodeView: View {
 
     var body: some View {
         NavigationStack {
+            ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: DS.space.lg) {
                     if let error { Text(error).foregroundStyle(DS.gradeWrong).accessibilityIdentifier("episode-error") }
                     if let run {
                         scene(run)
-                        if run.completedAt != nil { completion(run) }
+                        if run.completedAt != nil { completion(run).id("episode-celebration") }
                         else if let step { exercise(step, run: run) }
                     } else {
                         if error != nil { Button("Erneut versuchen") { load() } }
@@ -51,6 +52,11 @@ struct EpisodeView: View {
                 .padding(DS.space.lg)
                 .frame(maxWidth: DS.mainContentWidth)
                 .frame(maxWidth: .infinity)
+            }
+            .onChange(of: run?.completedAt) { _, completedAt in
+                guard completedAt != nil else { return }
+                proxy.scrollTo("episode-celebration", anchor: .top)
+            }
             }
             .background(DS.pageBackground.ignoresSafeArea())
             .navigationTitle("Situation üben")
@@ -139,7 +145,7 @@ struct EpisodeView: View {
                 nextButton("Merken und weiter")
             } else {
                 Text(step.kind == .transfer ? "Jetzt bist du dran" : "Aus dem Gedächtnis")
-                    .font(.caption.weight(.semibold)).foregroundStyle(DS.accent)
+                    .font(.caption.weight(.semibold)).foregroundStyle(DS.accentText)
                 Text(step.prompt).font(.title3.weight(.semibold))
                 if let result {
                     Label(result.correct ? "Formulierung getroffen" : "Eine mögliche Formulierung", systemImage: result.correct ? "checkmark.circle.fill" : "lightbulb.fill")
@@ -213,10 +219,32 @@ struct EpisodeView: View {
         let oldStamp = StoryPassport(language: episode.language, experience: previous).stamp(for: episode)
         let reward = run.calibration == true ? "Dein Startpunkt ist gefunden" : !oldStamp.collected ? "Eine weitere Situation geübt" : !oldStamp.remembered && stamp.remembered ? "Nach mindestens 7 Tagen wieder abgerufen" : !oldStamp.recalled && stamp.recalled ? "Jetzt auch ohne Hilfe abgerufen" : "Erneut geübt"
         return VStack(alignment: .leading, spacing: DS.space.md) {
-            Text(run.calibration == true ? "Startcheck geschafft" : "Situation geschafft").font(.title.bold())
+            CompletionCelebration(
+                title: run.calibration == true ? "Startcheck geschafft!" : "Jaaa! Geschafft!",
+                detail: run.calibration == true ? "Dein erster Schritt ist gemacht." : "Du hast „\(episode.title)“ zu Ende gespielt.",
+                symbol: run.calibration != true && !oldStamp.collected ? "rectangle.stack.fill" : "star.fill")
+                .id(run.id)
             Label(reward, systemImage: "checkmark.seal.fill")
                 .font(.headline).foregroundStyle(DS.accentText).accessibilityIdentifier("episode-reward")
             if run.calibration != true {
+                if stamp.collected && !oldStamp.collected {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Label("NEUE POSTKARTE", systemImage: "sparkles")
+                                .font(.caption.weight(.heavy)).tracking(1)
+                            Spacer()
+                            Image(systemName: "checkmark.seal.fill").font(.title2)
+                        }.foregroundStyle(DS.accentText)
+                        StoryArtwork(episode: episode, celebrating: true)
+                            .aspectRatio(320.0 / 150.0, contentMode: .fit)
+                        Text(episode.outcome).font(.headline)
+                        Text("In deiner Sammlung auf Heute. Ein kleines Stück Alltag, das du ausprobiert hast.")
+                            .font(.subheadline).foregroundStyle(DS.textSecondary)
+                    }.padding(DS.space.md)
+                        .background(DS.surface1, in: RoundedRectangle(cornerRadius: 20))
+                        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(DS.accent.opacity(0.25), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
+                        .accessibilityIdentifier("episode-new-postcard")
+                }
                 StoryStampRow(stamp: stamp)
                 Text("Abgeschlossen heißt geübt. Wie viel du ohne Hilfe abrufen konntest, siehst du hier.")
                     .font(.caption).foregroundStyle(DS.textSecondary)
@@ -352,7 +380,7 @@ struct EpisodeView: View {
         if save(candidate, event: candidate.completedAt == nil ? "step_presented" : "session_completed", step: nextID) {
             input = ""
             submittedWithVoice = false
-            if candidate.completedAt != nil && !quiet { CompletionFeedbackService.shared.playCompletion() }
+            if candidate.completedAt != nil { CompletionFeedbackService.shared.playCompletion(sound: !quiet) }
         }
     }
     private func startRecording() {

@@ -87,7 +87,7 @@ struct ConversationView: View {
                         HStack(spacing: DS.space.md) {
                             Image(systemName: roleplay.systemImage)
                                 .font(.title2)
-                                .foregroundStyle(DS.accent)
+                                .foregroundStyle(DS.accentText)
                                 .frame(width: 52, height: 52)
                                 .background(DS.accentSoft)
                                 .clipShape(Circle())
@@ -100,7 +100,7 @@ struct ConversationView: View {
                                     .foregroundStyle(DS.textSecondary)
                                 Text("\(roleplay.steps.count) kurze Gesprächszüge")
                                     .font(.caption.weight(.semibold))
-                                    .foregroundStyle(DS.accent)
+                                    .foregroundStyle(DS.accentText)
                             }
                             Spacer()
                             Image(systemName: "chevron.right")
@@ -131,7 +131,7 @@ struct ConversationView: View {
     private var contextHeader: some View {
         HStack(spacing: DS.space.sm) {
             Image(systemName: "person.2.wave.2.fill")
-                .foregroundStyle(DS.accent)
+                .foregroundStyle(DS.accentText)
                 .frame(width: 38, height: 38)
                 .background(DS.accentSoft)
                 .clipShape(Circle())
@@ -205,7 +205,7 @@ struct ConversationView: View {
                         Label("Anhören", systemImage: "speaker.wave.2.fill")
                             .font(.caption)
                     }
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
                 }
             }
             .padding(.horizontal, DS.space.md)
@@ -222,11 +222,11 @@ struct ConversationView: View {
             if let roleplay = selectedScenario, roleplay.steps.indices.contains(stepIndex) {
                 HStack(alignment: .top, spacing: DS.space.xs) {
                     Image(systemName: "quote.bubble.fill")
-                        .foregroundStyle(DS.accent)
+                        .foregroundStyle(DS.accentText)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Deine Aufgabe")
                             .font(.caption.weight(.bold))
-                            .foregroundStyle(DS.accent)
+                            .foregroundStyle(DS.accentText)
                         Text(roleplay.steps[stepIndex].learnerGoal)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(DS.textPrimary)
@@ -241,7 +241,7 @@ struct ConversationView: View {
             if speech.isRecording {
                 Label("Ich höre zu … Tippe zum Stoppen", systemImage: "waveform")
                     .font(.caption.weight(.semibold))
-                    .foregroundStyle(DS.accent)
+                    .foregroundStyle(DS.accentText)
             }
             HStack(alignment: .bottom, spacing: DS.space.sm) {
                 Button { toggleRecording() } label: {

@@ -46,6 +46,9 @@
     "%@ deaktivieren" : {
 
     },
+    "%@ entfernen" : {
+
+    },
     "%@, %@" : {
       "localizations" : {
         "de" : {
@@ -82,8 +85,38 @@
     "%@, inaktiv" : {
 
     },
+    "%@: %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@: %2$@"
+          }
+        }
+      }
+    },
+    "%@%@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@%2$@"
+          }
+        }
+      }
+    },
     "%lld" : {
 
+    },
+    "%lld / %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld / %2$lld"
+          }
+        }
+      }
     },
     "%lld %@ gezielt festigen" : {
       "localizations" : {
@@ -95,6 +128,22 @@
         }
       }
     },
+    "%lld Ausdrücke · %lld Schritte · etwa 2 Minuten" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld Ausdrücke · %2$lld Schritte · etwa 2 Minuten"
+          }
+        }
+      }
+    },
+    "%lld Ausdrücke · eine kleine Runde" : {
+
+    },
+    "%lld Ausdrücke · eine überschaubare Runde" : {
+
+    },
     "%lld Ausdrücke · etwa %lld Min." : {
       "localizations" : {
         "de" : {
@@ -105,6 +154,21 @@
         }
       }
     },
+    "%lld Ausdrücke · etwa 2 Minuten" : {
+
+    },
+    "%lld Ausdrücke · ohne Zeitdruck" : {
+
+    },
+    "%lld Ausdrücke aus deiner Liste · ohne Zeitdruck" : {
+
+    },
+    "%lld Ausdrücke in veränderter Szene getroffen. Historische Nachweise, kein Zertifikat für freies Sprechen." : {
+
+    },
+    "%lld Ausdrücke nach mindestens 7 Tagen ohne aufgezeichnete Zwischenübung abgerufen." : {
+
+    },
     "%lld automatische Hinweise" : {
 
     },
@@ -114,7 +178,23 @@
     "%lld gesagt" : {
 
     },
+    "%lld in Folge!" : {
+
+    },
+    "%lld kennengelernt · %lld nach 7 Tagen abgerufen · %lld in einer Szene angewandt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld kennengelernt · %2$lld nach 7 Tagen abgerufen · %3$lld in einer Szene angewandt"
+          }
+        }
+      }
+    },
     "%lld kurze Gesprächszüge" : {
+
+    },
+    "%lld Lerntage pro Woche" : {
 
     },
     "%lld neue Karten, %@" : {
@@ -130,11 +210,31 @@
     "%lld nützliche Ausdrücke · produktiv üben" : {
 
     },
+    "%lld ohne Hilfe · %lld nach mindestens 7 Tagen abgerufen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld ohne Hilfe · %2$lld nach mindestens 7 Tagen abgerufen"
+          }
+        }
+      }
+    },
     "%lld s" : {
 
     },
     "%lld Tage Serie!" : {
 
+    },
+    "%lld Übungsgelegenheiten · %lld neue Ausdrücke je Lerntag nötig" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld Übungsgelegenheiten · %2$lld neue Ausdrücke je Lerntag nötig"
+          }
+        }
+      }
     },
     "%lld von %lld" : {
       "localizations" : {
@@ -156,12 +256,62 @@
         }
       }
     },
+    "%lld von %lld Antworten ohne eingeblendete Hilfe getroffen." : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld Antworten ohne eingeblendete Hilfe getroffen."
+          }
+        }
+      }
+    },
+    "%lld von %lld Aufgaben geschafft" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld Aufgaben geschafft"
+          }
+        }
+      }
+    },
     "%lld von %lld Phrasen mindestens einmal geübt" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld von %2$lld Phrasen mindestens einmal geübt"
+          }
+        }
+      }
+    },
+    "%lld von %lld Schritten abgeschlossen" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld Schritten abgeschlossen"
+          }
+        }
+      }
+    },
+    "%lld von %lld Situationen geübt" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld Situationen geübt"
+          }
+        }
+      }
+    },
+    "%lld von %lld Wörtern vermutlich vertraut" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld von %2$lld Wörtern vermutlich vertraut"
           }
         }
       }
@@ -176,15 +326,8 @@
         }
       }
     },
-    "%lld Wiederholungen · %lld neue Ausdrücke" : {
-      "localizations" : {
-        "de" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "%1$lld Wiederholungen · %2$lld neue Ausdrücke"
-          }
-        }
-      }
+    "%lld zähe Ausdrücke" : {
+
     },
     "%lld/%lld" : {
       "localizations" : {
@@ -192,6 +335,16 @@
           "stringUnit" : {
             "state" : "new",
             "value" : "%1$lld/%2$lld"
+          }
+        }
+      }
+    },
+    "%lld/%lld Lerntage diese Woche" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$lld/%2$lld Lerntage diese Woche"
           }
         }
       }
@@ -211,6 +364,9 @@
     "=" : {
 
     },
+    "3 kurze Antworten · ohne Vorlage" : {
+
+    },
     "60 Sekunden. Sag die Übersetzung laut — so viele wie du schaffst. Es hört mit und springt von selbst weiter." : {
 
     },
@@ -220,7 +376,13 @@
     "Abbrechen" : {
 
     },
+    "Abgerufen heißt: alle Kursantworten einer Runde ohne eingeblendete Hilfe getroffen. Die 7-Tage-Marke benötigt zusätzlich eine spätere Prüfung nach mindestens sieben Tagen ohne erfasste erneute Begegnung. Das ist kein Nachweis für freies Sprechen. Andere richtige Formulierungen sind möglich. Eine neue Prüfung erscheint, wenn der Abstand zu deiner letzten Übung passt." : {
+
+    },
     "Abgeschlossen" : {
+
+    },
+    "Abgeschlossen heißt geübt. Wie viel du ohne Hilfe abrufen konntest, siehst du hier." : {
 
     },
     "Abruf-Meilensteine" : {
@@ -245,6 +407,9 @@
 
     },
     "Aktiviere eine Mission mit mindestens drei Ausdrücken." : {
+
+    },
+    "Aktiviere in der Bibliothek ein Thema mit verschiedenen Bedeutungen und Übersetzungen. Für Zuordnungsspiele brauchst du mindestens vier Paare." : {
 
     },
     "Aktivieren" : {
@@ -274,6 +439,12 @@
     "Alle deaktivieren" : {
 
     },
+    "Alle Paare gefunden." : {
+
+    },
+    "Alle Situationen" : {
+
+    },
     "Alle Sprachen" : {
 
     },
@@ -281,6 +452,9 @@
 
     },
     "Alles geprüft" : {
+
+    },
+    "Andere Übung wählen" : {
 
     },
     "Anderes Gespräch wählen" : {
@@ -292,13 +466,22 @@
     "Anhören" : {
 
     },
+    "Anonyme Zusammenfassung teilen" : {
+
+    },
     "Ansicht" : {
+
+    },
+    "Anteil bisher richtig beantworteter Ausdrücke, kein Nachweis für freies Sprechen. Bei älteren Antworten ist verwendete Hilfe nicht immer bekannt." : {
 
     },
     "Antwort" : {
 
     },
     "Antwort gemerkt: " : {
+
+    },
+    "Antwort prüfen" : {
 
     },
     "Antwort senden" : {
@@ -337,13 +520,37 @@
     "Aufnahme stoppen" : {
 
     },
+    "Aus deinem Unterricht" : {
+
+    },
+    "AUS DEINEM UNTERRICHT" : {
+
+    },
+    "Aus dem Gedächtnis" : {
+
+    },
     "Ausdruck noch einmal anhören" : {
+
+    },
+    "Ausdrücke · %lld richtige Antworten" : {
 
     },
     "Auto-Grade vs. Override" : {
 
     },
+    "Bau den Satz." : {
+
+    },
     "Baue die Antwort" : {
+
+    },
+    "Bedeutung" : {
+
+    },
+    "Beendet · bisherige Ergebnisse bleiben erhalten." : {
+
+    },
+    "Beim aktuellen Limit bleiben voraussichtlich %lld neue Ausdrücke offen. Passe Umfang, Lerntage oder Termin an – deine Runden werden nicht automatisch länger." : {
 
     },
     "Beispiel: %@" : {
@@ -367,7 +574,23 @@
     "Bibliothek wird geladen" : {
 
     },
+    "Bis zu %lld Ausdrücke · eine überschaubare Runde" : {
+
+    },
     "Bleibt Teil deines langfristigen Lernplans" : {
+
+    },
+    "Board %lld von %lld" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Board %1$lld von %2$lld"
+          }
+        }
+      }
+    },
+    "Board frei. Stark!" : {
 
     },
     "C" : {
@@ -397,6 +620,12 @@
     "Danke, dass du hilfst, CueFlow zuverlässiger zu machen." : {
 
     },
+    "Das gehört zusammen. Hör es dir gern nochmal an." : {
+
+    },
+    "Das liegt über deinem Tageslimit. Dein Limit bleibt unverändert; passe bei Bedarf Termin oder Umfang in der Bibliothek an." : {
+
+    },
     "Das Tageslimit kannst du in den Einstellungen ändern (Üben → Neue Karten pro Tag)." : {
 
     },
@@ -421,10 +650,31 @@
     "Deaktivieren" : {
 
     },
+    "Dein Alltag" : {
+
+    },
     "Dein bereits gespeicherter Fortschritt bleibt erhalten." : {
 
     },
+    "Dein erster Versuch wurde gespeichert." : {
+
+    },
+    "Dein Satz entsteht hier …" : {
+
+    },
+    "Dein Spiele-Ergebnis bleibt von der regulären Wiederholung getrennt. Deine Wiederholungstermine bleiben erhalten." : {
+
+    },
+    "Dein Tageslimit für neue Ausdrücke" : {
+
+    },
     "Dein Weg ins Gespräch" : {
+
+    },
+    "Dein Ziel beeinflusst die Situationen auf Heute. Aktive Unterrichtsthemen werden bevorzugt. Du kannst jederzeit eine andere Situation wählen. Eine Pause kostet keine Punkte." : {
+
+    },
+    "Deine Antwort" : {
 
     },
     "Deine Aufgabe" : {
@@ -433,13 +683,40 @@
     "Deine erste Übung wird vorbereitet." : {
 
     },
+    "Deine kurze Sprachpause" : {
+
+    },
     "Deine Lernreise wird vorbereitet …" : {
 
     },
     "DEINE MOMENTE" : {
 
     },
+    "Deine Runde wartet" : {
+
+    },
     "Deine Sammlung" : {
+
+    },
+    "Deine Situationen" : {
+
+    },
+    "Deine Wörter. Dein Spiel." : {
+
+    },
+    "DEINE WÖRTER. DEIN SPIEL." : {
+
+    },
+    "Der erste richtige Abruf ist der Anfang. Spätere Checks zeigen dir, was nach einer Woche geblieben ist." : {
+
+    },
+    "Der Lernverlauf konnte nicht gelesen werden. Deine Daten werden nicht überschrieben." : {
+
+    },
+    "Der Wiederholungsplan schätzt fast alle Wörter als vertraut ein. Grammatik und Verständnis werden damit nicht geprüft. Erst lesen, dann die Übersetzung aufdecken." : {
+
+    },
+    "Der Wiederholungsplan schätzt noch zu wenige Ausdrücke als vertraut ein. Das ist eine Schätzung, kein Verständnisnachweis." : {
 
     },
     "Details & Abgleich" : {
@@ -457,13 +734,19 @@
     "Dialekt oder Region (optional)" : {
 
     },
+    "Die gewählten Wochentage bestimmen die verbleibenden Übungsgelegenheiten vor deinem Unterricht. Das Tageslimit bleibt unverändert." : {
+
+    },
     "Die JSON-Datei enthält Sprachen, Themen, Phrasen, Lernpläne, Reviews und Einstellungen. Wiederherstellen führt Daten sicher zusammen und erzeugt keine doppelten Reviews." : {
 
     },
     "Die Phrase und ihr gesamter Lernfortschritt werden gelöscht. Das lässt sich nicht rückgängig machen." : {
 
     },
-    "Die Standardlänge gilt für neue Einheiten und kann auf Heute jederzeit geändert werden. Neue Karten pro Tag begrenzt nur die Einführung; Wiederholungen bleiben unbegrenzt. Klangeffekte respektieren den Stummmodus." : {
+    "Die Standardlänge gilt für neue Einheiten und kann auf Heute jederzeit geändert werden. Neue Karten pro Tag begrenzt nur die Einführung; Wiederholungen bleiben unbegrenzt. Klangeffekte respektieren den Stummmodus – außer direkt neben vorgelesenen Wörtern, die auch bei Stummschaltung hörbar sind." : {
+
+    },
+    "Die Stufen zeigen bisher richtig abgerufenen Wortschatz, nicht freie Gesprächsfähigkeit. Erreichte Abzeichen bleiben erhalten, auch wenn eine Wiederholung nötig wird." : {
 
     },
     "Die tägliche Erinnerung ist ein sanfter Impuls. Der Rückblick fasst sonntags echte Antworten, neue Ausdrücke und erfolgreiche Sprechabrufe zusammen — ohne Zielvorgabe oder Streak-Panik." : {
@@ -475,6 +758,15 @@
     "Die Zuordnung zu dieser Mission wird entfernt. Die enthaltenen Phrasen bleiben erhalten." : {
 
     },
+    "Diese rutschen immer wieder weg. Formuliere sie um oder teile sie auf — das hilft mehr als weiter zu wiederholen." : {
+
+    },
+    "Diese Situation führt %lld neue Ausdrücke ein und würde dein Tageslimit überschreiten. Du entscheidest, ob du heute mehr lernen möchtest." : {
+
+    },
+    "Diese Situation trotzdem üben" : {
+
+    },
     "Diese Woche" : {
 
     },
@@ -482,6 +774,12 @@
 
     },
     "Dieses Thema jetzt üben" : {
+
+    },
+    "Diktat" : {
+
+    },
+    "Drei Antworten ohne Vorlage helfen dir einzuschätzen, ob du zuerst mit Beispielen üben möchtest. Das ist keine Prüfung und kein Nachweis für langfristiges Können." : {
 
     },
     "Drei kleine Ziele" : {
@@ -497,7 +795,25 @@
         }
       }
     },
+    "Du kannst direkt kurze Abrufrunden probieren." : {
+
+    },
+    "Ein zäher Ausdruck" : {
+
+    },
+    "Eine mögliche Formulierung" : {
+
+    },
+    "Eine neue Runde, nur wenn du möchtest. Für heute bist du fertig." : {
+
+    },
     "Eine Vokabel oder Redewendung pro Zeile, getrennt mit =. Du kannst die Liste direkt aus den Notizen deines Tutors kopieren." : {
+
+    },
+    "Einfache Alltagsszenen" : {
+
+    },
+    "Einfache Szenen lesen" : {
 
     },
     "Einfügen" : {
@@ -527,6 +843,9 @@
     "Einheit starten" : {
 
     },
+    "Einheit wählen" : {
+
+    },
     "Einstellungen" : {
 
     },
@@ -545,16 +864,34 @@
     "Entwicklermodus ausblenden" : {
 
     },
+    "Ereignisse löschen" : {
+
+    },
     "Ergänzen" : {
 
     },
+    "Ergebnis erneut speichern" : {
+
+    },
+    "Erinnern mit Abstand" : {
+
+    },
     "Erinnerungen" : {
+
+    },
+    "Erneut versuchen" : {
+
+    },
+    "Erst kennenlernen" : {
 
     },
     "Erste Einheit starten" : {
 
     },
     "Etwa %lld Minuten" : {
+
+    },
+    "Etwa 2–3 Minuten · dein Wortschatz · ohne Zeitdruck" : {
 
     },
     "Fehlermeldung schließen" : {
@@ -569,16 +906,52 @@
     "Format" : {
 
     },
+    "Formulierung" : {
+
+    },
+    "Formulierung getroffen" : {
+
+    },
+    "Formulierung zeigen" : {
+
+    },
     "Fortschritt" : {
+
+    },
+    "Fortschritt nicht dauerhaft gespeichert · Details" : {
 
     },
     "Fortschritt wird geladen" : {
 
     },
+    "Freiwillig teilnehmen" : {
+
+    },
+    "Freiwilliger lokaler Lerntest" : {
+
+    },
+    "Freiwilliger Startcheck" : {
+
+    },
     "Füge z. B. „Jahreszeiten“ und den Termin deiner nächsten Stunde hinzu." : {
 
     },
+    "Für deinen nächsten Unterricht" : {
+
+    },
     "Für die Offline-Optimierung der FSRS-Gewichte mit fsrs-optimizer (Python). Format: card_id, review_time, rating." : {
+
+    },
+    "Für diese Einheit ist gerade keine weitere Runde geplant. Dein Tageslimit und die Wiederholungstermine bleiben erhalten." : {
+
+    },
+    "Für diese Sprache ist keine Systemstimme verfügbar. Du kannst das Wort stattdessen ansehen." : {
+
+    },
+    "Für heute bei Wiederholungen bleiben" : {
+
+    },
+    "Für heute fertig" : {
 
     },
     "Geführte Rollenspiele funktionieren auf jedem Gerät. Du antwortest frei; Beispiele helfen nur, wenn du sie brauchst." : {
@@ -587,7 +960,19 @@
     "Gehört: %@" : {
 
     },
+    "Gehörtes tippen…" : {
+
+    },
+    "Gemeinsam lösen" : {
+
+    },
+    "Genau so. Dein Ohr hat den ganzen Satz erfasst." : {
+
+    },
     "Geprüft" : {
+
+    },
+    "Gerade ist keine Runde verfügbar. Wähle ein Thema oder füge Unterrichtsvokabeln hinzu." : {
 
     },
     "gesagt" : {
@@ -605,10 +990,19 @@
     "Gespräch geschafft" : {
 
     },
-    "Heute" : {
+    "Geübt heißt abgeschlossen, nicht beherrscht. Die Abrufnachweise beziehen sich auf alle Kursantworten einer Runde, nicht auf freies Sprechen. Inhalte sind noch nicht muttersprachlich geprüft; Arabisch verwendet Hocharabisch." : {
 
     },
-    "Heute gesprochen" : {
+    "Gezielt wiederholen" : {
+
+    },
+    "Grundform %@" : {
+
+    },
+    "Grundform: %@" : {
+
+    },
+    "Heute" : {
 
     },
     "HEUTE IM FLOW" : {
@@ -617,10 +1011,19 @@
     "heute laut gesprochen" : {
 
     },
+    "Heute lieber …" : {
+
+    },
+    "Heute ohne Phrase Builder: Dafür brauchst du aktive Ausdrücke mit 2 bis 8 Wörtern." : {
+
+    },
     "Heute schon %lld Antworten produziert." : {
 
     },
     "Hinweis der Spracherkennung, keine phonetische Aussprachebewertung." : {
+
+    },
+    "Hinweise zur Spracherkennung" : {
 
     },
     "Hinzufügen" : {
@@ -630,6 +1033,12 @@
 
     },
     "Hol die richtigen Wörter selbst hervor — und sprich sie aus. So wird aus Verstehen echte Gesprächsfähigkeit." : {
+
+    },
+    "Hör genau hin." : {
+
+    },
+    "Hören" : {
 
     },
     "Hören → verstehen → nachsprechen" : {
@@ -656,10 +1065,22 @@
     "Ich weiß es nicht" : {
 
     },
+    "IM ALLTAG" : {
+
+    },
     "Import konnte nicht gespeichert werden" : {
 
     },
     "Importieren" : {
+
+    },
+    "In deiner Sammlung auf Heute. Ein kleines Stück Alltag, das du ausprobiert hast." : {
+
+    },
+    "In dieser Runde gesprochen" : {
+
+    },
+    "In dieser Runde geübt" : {
 
     },
     "In Einstellungen erlauben" : {
@@ -683,7 +1104,16 @@
     "Intensiv · etwa 15 Min." : {
 
     },
-    "Jeder Schritt wächst nur durch Antworten, die du selbst formulierst." : {
+    "Ja! Richtig gehört." : {
+
+    },
+    "Jetzt aus dem Kopf." : {
+
+    },
+    "Jetzt bist du dran" : {
+
+    },
+    "Jetzt die passende Übersetzung." : {
 
     },
     "Jetzt du – sprich den Satz" : {
@@ -704,6 +1134,9 @@
     "Kein Muss — du kannst das auch später machen. Zum Erkennen und Sprechen brauchst du keine Tastatur." : {
 
     },
+    "Kein Tracking-Server: Ereignisse enthalten nur Schritt-IDs und Zeitpunkte, keine Antworten oder Sprachaufnahmen. Rohereignisse werden nach 90 Tagen bei der nächsten Speicherung entfernt. Dein Lernstand und deine Einstellungen bleiben beim Löschen erhalten." : {
+
+    },
     "Keine fälligen Karten und keine neuen in deinen aktiven Themen. Aktiviere ein Thema oder importiere neue Vokabeln in der Bibliothek." : {
 
     },
@@ -719,6 +1152,12 @@
     "Klangeffekte" : {
 
     },
+    "Kleine Runde.\nGroßes Yes!" : {
+
+    },
+    "Kleine Unterrichtsrunde" : {
+
+    },
     "Kompletten Lernweg ansehen" : {
 
     },
@@ -728,7 +1167,16 @@
     "Kursentwürfe: vor Veröffentlichung sprachlich prüfen." : {
 
     },
+    "Kurz erinnern" : {
+
+    },
     "Kurze Antworten · privat auf dem Gerät · ohne Bewertung" : {
+
+    },
+    "Kurze Formulierungen aus den Situationen. Erst lesen, dann bei Bedarf die Übersetzung zeigen. Entwurf: muttersprachliche Prüfung ausstehend." : {
+
+    },
+    "Kurze Sätze gesucht" : {
 
     },
     "Langsam" : {
@@ -749,19 +1197,58 @@
     "Laut nachsprechen. Wird nicht bewertet – einfach sagen." : {
 
     },
+    "Leise starten" : {
+
+    },
+    "Leise üben" : {
+
+    },
     "Lerne passend zu deinem Unterricht" : {
 
     },
     "Lernen" : {
 
     },
+    "Lernqualität prüfen" : {
+
+    },
+    "Lerntest beenden" : {
+
+    },
+    "Lernverlauf konnte nicht zusammengeführt werden" : {
+
+    },
+    "Lernverlauf nicht gespeichert" : {
+
+    },
     "Lernweg" : {
+
+    },
+    "Lesen" : {
 
     },
     "Letzte 7 Tage" : {
 
     },
+    "Letzter Check: %lld von 3 ohne Hilfe getroffen." : {
+
+    },
+    "Lieber kurz wiederholen?" : {
+
+    },
+    "Lies die Formulierung. Gleich probierst du es ohne Vorlage." : {
+
+    },
+    "Links oder rechts? Du kannst auch die Antwort antippen." : {
+
+    },
+    "Lokale Nutzungsereignisse löschen" : {
+
+    },
     "Los" : {
+
+    },
+    "Los geht’s" : {
 
     },
     "Löschen" : {
@@ -770,7 +1257,13 @@
     "Mach dich bereit" : {
 
     },
+    "Mein Lernrhythmus" : {
+
+    },
     "Mein Ziel" : {
+
+    },
+    "Meine Runde fortsetzen" : {
 
     },
     "Mikrofon hört zu" : {
@@ -779,13 +1272,31 @@
     "Mikrofon wird vorbereitet …" : {
 
     },
+    "Mit einer Fünferrunde zurückkommen" : {
+
+    },
+    "Mit Hilfe geübt – zählt nicht als erster Treffer." : {
+
+    },
     "Mit iCloud werden Lernstand und Inhalte privat über deine Apple-ID synchronisiert. Ohne verfügbaren Account bleibt alles vollständig auf diesem Gerät nutzbar. Sicherungen lassen sich zusätzlich exportieren und wiederherstellen." : {
+
+    },
+    "Mit Lina · Hocharabisch" : {
+
+    },
+    "Mit Sascha · Russisch" : {
+
+    },
+    "Mit Unterstützung geübt. Das zählt als Übung, nicht als freier Abruf." : {
 
     },
     "Nachgesprochen" : {
 
     },
     "Nachsprechen" : {
+
+    },
+    "Nächste Situation: %@" : {
 
     },
     "Nächste Stunde" : {
@@ -815,6 +1326,9 @@
     "Native" : {
 
     },
+    "Neu: %@" : {
+
+    },
     "Neue Bestleistung!" : {
 
     },
@@ -833,6 +1347,9 @@
     "Neue Phrase" : {
 
     },
+    "NEUE POSTKARTE" : {
+
+    },
     "Neues Thema" : {
 
     },
@@ -848,6 +1365,9 @@
           }
         }
       }
+    },
+    "Noch eine Runde" : {
+
     },
     "Noch einmal sagen" : {
 
@@ -867,16 +1387,37 @@
     "Noch nicht begonnen" : {
 
     },
+    "Noch nicht das Paar. Probier’s nochmal." : {
+
+    },
+    "Noch nicht genug gefestigt" : {
+
+    },
     "Noch nicht genug Hörmaterial" : {
 
     },
+    "Noch unsicher · Antwort zeigen" : {
+
+    },
+    "Noch unsicher · gemeinsam weiter" : {
+
+    },
+    "Noch zu wenig verschiedene Wörter" : {
+
+    },
     "Nochmal ansehen" : {
+
+    },
+    "Nochmal hören" : {
 
     },
     "Nochmal sprechen" : {
 
     },
     "Notizen" : {
+
+    },
+    "Nutzungsereignisse löschen? Dein Lernstand bleibt erhalten." : {
 
     },
     "Oder Antwort eingeben" : {
@@ -925,6 +1466,9 @@
 
     },
     "Phrase bearbeiten" : {
+
+    },
+    "Phrase Builder braucht Ausdrücke mit 2 bis 8 Wörtern. Aktiviere ein passendes Thema oder importiere Unterrichtssätze." : {
 
     },
     "Phrase endgültig löschen?" : {
@@ -981,10 +1525,22 @@
     "Rollenspiele verändern deinen FSRS-Lernplan nicht." : {
 
     },
+    "Runde abschließen" : {
+
+    },
+    "Runde wird vorbereitet" : {
+
+    },
     "Sag es im Satz" : {
 
     },
+    "Satz prüfen" : {
+
+    },
     "Satz vorlesen" : {
+
+    },
+    "Schau dir die Formulierung an. Danach wählst du sie selbst aus." : {
 
     },
     "Schließen" : {
@@ -996,10 +1552,10 @@
     "schon geübt" : {
 
     },
-    "Serie: %lld Tage" : {
+    "Schön, dass du wieder da bist. Kein Nachholen nötig – fünf Ausdrücke reichen für den Wiedereinstieg." : {
 
     },
-    "Sichere Sitzung" : {
+    "Serie: %lld Tage" : {
 
     },
     "Sichere Sitzung. %@" : {
@@ -1020,6 +1576,15 @@
     "Sicherung wiederherstellen" : {
 
     },
+    "Situation fortsetzen" : {
+
+    },
+    "Situation üben" : {
+
+    },
+    "Situationen geübt" : {
+
+    },
     "So wirkt der Tutor-Fokus" : {
 
     },
@@ -1029,10 +1594,16 @@
     "Speichern" : {
 
     },
+    "Spiele-Mix starten" : {
+
+    },
     "Sprache" : {
 
     },
     "Sprache & Inhalte" : {
+
+    },
+    "Sprache für deinen Alltag." : {
 
     },
     "Sprachgebrauch" : {
@@ -1092,6 +1663,15 @@
     "Start in %lld" : {
 
     },
+    "Startcheck ausprobieren" : {
+
+    },
+    "Startcheck wiederholen" : {
+
+    },
+    "Starte gern mit den Beispielen einer Situation." : {
+
+    },
     "Starten" : {
 
     },
@@ -1116,10 +1696,16 @@
     "Stoppen & Prüfen" : {
 
     },
+    "Such dir dein Spiel aus" : {
+
+    },
     "Tab" : {
 
     },
     "Tag" : {
+
+    },
+    "Tage mit Lernaktivität" : {
 
     },
     "Tagesziel erreicht" : {
@@ -1138,6 +1724,12 @@
 
     },
     "Tägliches Pensum passend zum nächsten Termin" : {
+
+    },
+    "Tastatur schließen" : {
+
+    },
+    "Temporäre Sitzung" : {
 
     },
     "Termin bearbeiten" : {
@@ -1173,7 +1765,19 @@
     "Tier-Verteilung" : {
 
     },
+    "Tippe auf Arabisch. Die Tastatur wechselst du über die Globus-Taste." : {
+
+    },
+    "Tippe auf Russisch. Die Tastatur wechselst du über die Globus-Taste." : {
+
+    },
+    "Tippe die Wörter in der passenden Reihenfolge. Im Satz kannst du sie wieder entfernen." : {
+
+    },
     "Tippe die Wörter in der richtigen Reihenfolge." : {
+
+    },
+    "Tippe ein deutsches Wort und seine Übersetzung an. Oder zieh es auf das passende Feld." : {
 
     },
     "Tippen zum Aufdecken" : {
@@ -1197,12 +1801,15 @@
     "Tutor-Fokus konnte nicht gespeichert werden" : {
 
     },
-    "Tutor-Fokus: heute %lld neue · %lld Tage verbleibend" : {
+    "Tutor-Fokus: %lld neue Ausdrücke je Lerntag. Termine und Umfang findest du in der Bibliothek." : {
+
+    },
+    "Tutor-Fokus: %lld neue je Lerntag · %lld Tage bis zur nächsten Stunde" : {
       "localizations" : {
         "de" : {
           "stringUnit" : {
             "state" : "new",
-            "value" : "Tutor-Fokus: heute %1$lld neue · %2$lld Tage verbleibend"
+            "value" : "Tutor-Fokus: %1$lld neue je Lerntag · %2$lld Tage bis zur nächsten Stunde"
           }
         }
       }
@@ -1210,7 +1817,13 @@
     "Übe heute eine Runde, um die Serie zu starten." : {
 
     },
+    "Übe Situationen, die für dich relevant sind. Du kannst frei wählen und bei Bedarf Hilfe nutzen." : {
+
+    },
     "Üben" : {
+
+    },
+    "Übersetzung" : {
 
     },
     "Übersicht" : {
@@ -1222,7 +1835,44 @@
     "Überspringt diese Karte ohne Punkt" : {
 
     },
+    "Übung" : {
+
+    },
+    "Unsere Kursantwort" : {
+
+    },
+    "Unterricht verwalten" : {
+
+    },
+    "Variante: %@ · seit %@" : {
+      "localizations" : {
+        "de" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Variante: %1$@ · seit %2$@"
+          }
+        }
+      }
+    },
+    "Verbergen" : {
+
+    },
+    "Vergleiche in Ruhe — hier geht es ums Hören, nicht um eine Note." : {
+
+    },
+    "Vergleiche über mehrere Wochen eine Situation zuerst mit einer Kartenrunde zuerst. Die Variante wird einmal zufällig gewählt; keine Daten werden automatisch geteilt. Alle Varianten behalten dieselben Korrekturen und Lernregeln." : {
+
+    },
+    "Verglichen mit der Kursantwort und gespeicherten Alternativen. Weitere Formulierungen können ebenfalls richtig sein." : {
+
+    },
+    "Vermutlich vertraute Wörter" : {
+
+    },
     "Verwalten" : {
+
+    },
+    "Vier Paare. Du hast alle Zeit der Welt." : {
 
     },
     "Vokabeln einfügen" : {
@@ -1250,13 +1900,25 @@
     "Wähle eine Text-PDF von deinem Tutor. Die Vokabeln werden automatisch dem passenden Thema zugeordnet (Familie, Verben, Essen & Trinken, …) und die Themen aktiviert." : {
 
     },
+    "Wähle, worauf du Lust hast." : {
+
+    },
     "War schwerer – früher zeigen" : {
 
     },
     "Was bedeutet dieser Ausdruck?" : {
 
     },
+    "Was gehört zusammen?" : {
+
+    },
+    "Was ist hängen geblieben?" : {
+
+    },
     "Was willst du als Nächstes können?" : {
+
+    },
+    "Was zeigen die Abrufnachweise?" : {
 
     },
     "Weiter" : {
@@ -1268,16 +1930,31 @@
     "Weiter üben" : {
 
     },
-    "Weiterlernen" : {
+    "Weiter: %@" : {
+
+    },
+    "Welche Bedeutung hörst du?" : {
 
     },
     "Wieder sprechen" : {
 
     },
+    "Wiederholen" : {
+
+    },
+    "Wiederholungsrunde starten" : {
+
+    },
     "Willkommen bei\nCueFlow" : {
 
     },
+    "Wisch zum richtigen Wort." : {
+
+    },
     "Wischen" : {
+
+    },
+    "Wischen. Hören. Bauen. Selbst erinnern." : {
 
     },
     "Wo möchtest du sprechen?" : {
@@ -1286,7 +1963,19 @@
     "Wöchentlicher Rückblick" : {
 
     },
+    "Wofür lernst du?" : {
+
+    },
+    "Wort anhören" : {
+
+    },
+    "Wort zeigen" : {
+
+    },
     "Wörter" : {
+
+    },
+    "Yes! Getroffen!" : {
 
     },
     "z. B. Jahreszeiten" : {
