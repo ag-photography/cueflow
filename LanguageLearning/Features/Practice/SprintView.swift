@@ -554,7 +554,7 @@ struct SprintView: View {
         revealedAnswer = phrase.targetText
         TTSService.shared.speak(
             phrase.targetText,
-            language: phrase.language?.ttsLocale ?? "ru-RU"
+            language: phrase.language.ttsLocaleOrDevice
         )
         let generation = UUID()
         skipGeneration = generation

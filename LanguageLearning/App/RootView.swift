@@ -266,6 +266,7 @@ private struct TodayView: View {
                     practiceScope = .recommended
                     showingPractice = true
                 case "listening": showingListeningLab = true
+                case "arcade": arcadeMode = ArcadeMode(rawValue: url.lastPathComponent) ?? .mix
                 case "reading": showingReading = true
                 case "skill-path": showingSkillPath = true
                 case "conversation": showingConversation = true
@@ -395,9 +396,8 @@ private struct TodayView: View {
                     freeRow("Sprint", "60 Sekunden, so viel du sagen kannst", "bolt.fill", "sprint-start") { showingSprint = true }
                     freeRow("Gespräch", "Eine Rolle, deine Worte", "bubble.left.and.bubble.right.fill", "conversation-start") { showingConversation = true }
                 }
-                freeSection("Hören & Lesen") {
+                freeSection("Hören") {
                     freeRow("Hörstudio", "Hören, verstehen, nachsprechen", "headphones", "listening-lab-start") { showingListeningLab = true }
-                    freeRow("Lesen", "Sätze mit höchstens einem neuen Wort", "book", "reading-start") { showingReading = true }
                 }
                 freeSection("Situationen") {
                     if let episode = suggestedEpisode {
@@ -406,7 +406,7 @@ private struct TodayView: View {
                     freeRow("Alle Situationen", nil, "square.stack", "episodes-all") { showingEpisodes = true }
                 }
                 freeSection("Spiele") {
-                    ForEach(ArcadeMode.allCases) { game in
+                    ForEach(ArcadeMode.standalone) { game in
                         freeRow(game.title, nil, game.symbol, "arcade-\(game.rawValue)-start") { arcadeMode = game }
                     }
                 }

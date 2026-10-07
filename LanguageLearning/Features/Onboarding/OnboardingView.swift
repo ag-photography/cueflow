@@ -314,7 +314,7 @@ struct OnboardingView: View {
                         Button {
                             TTSService.shared.speak(
                                 phrase.targetText,
-                                language: phrase.language?.ttsLocale ?? "ru-RU"
+                                language: phrase.language.ttsLocaleOrDevice
                             )
                         } label: {
                             Label("Anhören", systemImage: "speaker.wave.2.fill")
@@ -751,7 +751,7 @@ struct OnboardingView: View {
     /// German language name used in the keyboard-page copy. "Russisch" + "e
     /// Tastatur" → "Russische Tastatur"; "Arabisch" → "Arabische Tastatur".
     private var keyboardLanguageLabel: String {
-        activeLanguage?.germanLabel ?? "Russisch"
+        activeLanguage?.germanLabel ?? LanguagePack.supported.first?.germanLabel ?? ""
     }
 
     // MARK: - Persistence

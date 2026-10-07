@@ -33,6 +33,7 @@ struct LibraryView: View {
     @State private var showingTutorFocus = false
     @State private var showingSettings = false
     @State private var showingStories = false
+    @State private var showingReading = false
     @State private var phraseInEditor: Phrase?
     @State private var creatingPhrase = false
     @State private var creatingTopic = false
@@ -463,6 +464,13 @@ struct LibraryView: View {
                 Label("Kompletten Lernweg ansehen", systemImage: "point.bottomleft.forward.to.point.topright.scurvepath.fill")
                     .font(.subheadline.weight(.semibold))
             }
+            // Reading is receptive, so it lives with the content, not on Heute.
+            Button { showingReading = true } label: {
+                Label("Lesen · Sätze mit höchstens einem neuen Wort", systemImage: "book")
+                    .font(.subheadline.weight(.semibold))
+            }
+            .accessibilityIdentifier("reading-start")
+            .fullScreenCover(isPresented: $showingReading) { ReadingView() }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: DS.space.sm) {
                     ForEach(journeys.scenarioCards) { card in

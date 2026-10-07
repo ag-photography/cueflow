@@ -531,3 +531,14 @@ final class AppSettings {
         self.developerModeEnabled = false
     }
 }
+
+
+/// Speech output locale for an item. A phrase always has a language; if one is
+/// ever missing, fall back to the device rather than assuming Russian.
+extension Optional where Wrapped == Phrase {
+    var ttsLocaleOrDevice: String { (self?.language).ttsLocaleOrDevice }
+}
+
+extension Optional where Wrapped == Language {
+    var ttsLocaleOrDevice: String { self?.ttsLocale ?? Locale.current.identifier }
+}

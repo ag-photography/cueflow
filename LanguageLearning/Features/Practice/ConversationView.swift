@@ -5,6 +5,7 @@ struct ConversationView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Query private var settings: [AppSettings]
+    @Query private var cards: [StudyCard]
 
     @StateObject private var speech = SpeechRecognitionService()
     @State private var selectedScenario: GuidedRoleplay?
@@ -17,6 +18,9 @@ struct ConversationView: View {
     @State private var isThinking = false
     @State private var errorMessage: String?
     @State private var activityID = UUID()
+    /// The draft came from the microphone (not typed) — for spoken-word counts.
+    @State private var draftFromSpeech = false
+    @State private var scheduledCards: Set<PersistentIdentifier> = []
     @FocusState private var isDraftFocused: Bool
 
     private var languageCode: String { settings.first?.activeLanguageCode ?? "ru" }
@@ -42,12 +46,8 @@ struct ConversationView: View {
                 }
             }
             .background(DS.surface0)
-            .navigationTitle("Gespräch")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Schließen") { dismiss() }
-                }
+            .sessionChrome("Gespräch", confirmQuit: turns.count > 1 && !isComplete) {
+                recordActivity("conversation_ended", support: "authoredScenario")
             }
             .onAppear {
                 speech.setLocale(pack.speechLocale)
@@ -58,7 +58,7 @@ struct ConversationView: View {
                 TTSService.shared.stop()
             }
             .onChange(of: speech.transcription) { _, value in
-                if speech.isRecording { draft = value }
+                if speech.isRecording { draft = value; draftFromSpeech = true }
             }
             .alert("Gespräch gerade nicht verfügbar", isPresented: Binding(
                 get: { errorMessage != nil },
@@ -334,6 +334,9 @@ struct ConversationView: View {
         case .model: support = "model"
         }
         recordActivity("conversation_turn", support: support)
+        // Free production: every known Ausdruck used in the answer is retrieval
+        // from memory and feeds the shared schedule (examples only appear after).
+        recordUsedItems(in: text)
         turns.append(.init(speaker: .learner, text: text))
         draft = ""
         isThinking = true
@@ -354,8 +357,27 @@ struct ConversationView: View {
         if isComplete { recordActivity("conversation_completed", support: "authoredScenario"); CompletionFeedbackService.shared.playCompletion() }
     }
 
+    private func recordUsedItems(in text: String) {
+        let known = cards.filter { $0.hasBeenIntroduced && $0.phrase?.language?.code == languageCode }
+        let candidates = known.compactMap { card -> (id: PersistentIdentifier, answers: [String])? in
+            guard let phrase = card.phrase else { return nil }
+            return (card.persistentModelID, [phrase.targetText] + phrase.acceptedAlternatives)
+        }
+        let used = Set(ActivityRecall.itemsUsed(in: text, candidates: candidates))
+        for card in known where used.contains(card.persistentModelID) {
+            do {
+                let moved = try ActivityRecall.record(card: card, kind: "conversation", sessionID: activityID,
+                    answer: card.phrase?.targetText ?? "", spoken: draftFromSpeech, supported: false, correct: true,
+                    alreadyScheduled: scheduledCards.contains(card.persistentModelID), context: context)
+                if moved { scheduledCards.insert(card.persistentModelID) }
+            } catch { context.rollback(); errorMessage = "Antwort konnte nicht gespeichert werden. Dein Gespräch kann weitergehen." }
+        }
+        draftFromSpeech = false
+    }
+
     private func begin(_ roleplay: GuidedRoleplay) {
         activityID = UUID()
+        scheduledCards = []
         selectedScenario = roleplay
         stepIndex = 0
         independentTurns = 0

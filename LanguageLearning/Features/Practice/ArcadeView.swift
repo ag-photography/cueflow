@@ -44,7 +44,6 @@ struct ArcadeView: View {
     @State private var typeInstead = false
     /// The learner asked to see the answer during a from-memory spoken step.
     @State private var peek = false
-    @State private var confirmingQuit = false
     /// Board words already said aloud this round (echo or recall).
     @State private var spokenIDs: Set<String> = []
     @State private var spokenWords = 0
@@ -131,31 +130,20 @@ struct ArcadeView: View {
             .onChange(of: promptIndex) { _, _ in proxy.scrollTo("arcade-top", anchor: .top) }
             .onChange(of: finished) { _, _ in proxy.scrollTo("arcade-top", anchor: .top) }
             }
-            .background(DS.pageBackground.ignoresSafeArea())
-            .navigationTitle(mode.title).navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    // Same quit grammar as Üben: ask before leaving a round in progress.
-                    Button("Schließen") {
-                        if loaded && !finished && !score.resolved.isEmpty { confirmingQuit = true } else { dismiss() }
-                    }.accessibilityIdentifier("arcade-close")
+            .sessionChrome(mode.title, confirmQuit: loaded && !finished && !score.resolved.isEmpty,
+                           closeIdentifier: "arcade-close") {
+                stopAudio()
+                if !finished {
+                    try? LearningActivityRecorder.record("arcade_ended", language: language, session: session,
+                        step: mode.rawValue, support: "arcadePractice", context: context)
                 }
+            }
+            .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
                     Spacer()
                     Button("Tastatur schließen") { answerFocused = false }
                 }
             }
-        }
-        .confirmationDialog("Runde beenden?", isPresented: $confirmingQuit, titleVisibility: .visible) {
-            Button("Runde beenden", role: .destructive) {
-                stopAudio()
-                try? LearningActivityRecorder.record("arcade_ended", language: language, session: session,
-                    step: mode.rawValue, support: "arcadePractice", context: context)
-                dismiss()
-            }
-            Button("Weiterspielen", role: .cancel) {}
-        } message: {
-            Text("Was du aus dem Kopf gesagt hast, ist schon gespeichert.")
         }
         .task { if !loaded { load() } }
         .modifier(ExposureBoundary(mode: "arcade", sessionID: session))
@@ -500,9 +488,7 @@ struct ArcadeView: View {
     /// Mic button with live transcript. Listening ends by itself on a match.
     @ViewBuilder private func micControls(done: Bool) -> some View {
         if !done {
-            Button { listening ? stopListening() : listen() } label: {
-                Label(listening ? "Ich höre zu … Stopp" : "Sprechen", systemImage: listening ? "stop.circle.fill" : "mic.fill")
-            }.buttonStyle(.dsPrimary).accessibilityIdentifier("arcade-speak")
+            MicButton(isRecording: listening, identifier: "arcade-speak") { listening ? stopListening() : listen() }
             if listening || !speech.transcription.isEmpty {
                 Text(speech.transcription.isEmpty ? "…" : "„\(speech.transcription)“")
                     .font(.subheadline).foregroundStyle(DS.textSecondary).multilineTextAlignment(.center)

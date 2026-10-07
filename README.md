@@ -27,11 +27,11 @@ The October story loop is a **development preview**, not proof of better retenti
 
 The product rules every feature is checked against live in [docs/coherence.md](docs/coherence.md): one core loop, one glossary, one interaction grammar, one success signal.
 
-**Heute** shows one action, **Weiterlernen**, with an estimate and the reason it is next (due Ausdrücke, tutor material, or a Situation). Everything else sits in one collapsed **Frei üben** list, one name per activity: Sprint, Gespräch, Hörstudio, Lesen, Situationen, the games, tutor rounds and the Lernweg.
+**Heute** shows one action, **Weiterlernen**, with an estimate and the reason it is next (due Ausdrücke, tutor material, or a Situation). Everything else sits in one collapsed **Frei üben** list, one name per activity: Sprint, Gespräch, Hörstudio, Situationen, the games, tutor rounds and the Lernweg.
 
-**Spiele** (Spiele-Mix, Paare finden, Hör hin, Wisch & triff, Satzbau, Aus dem Kopf) are presentations of the learner's own Ausdrücke. Paare finden and Wisch & triff are recognition warm-ups. Spoken steps only appear where speaking is recall or shadowing: Hör hin repeats what was heard with the spelling hidden, Satzbau is said without the tiles, and Aus dem Kopf is answered aloud first (typing is the fallback).
+**Spiele** are presentations of the learner's own Ausdrücke. Frei üben offers the Spiele-Mix plus two recognition warm-ups, Paare finden and Wisch & triff. Hör hin, Satzbau and Aus dem Kopf appear as steps inside the Spiele-Mix only, because Hörstudio, Üben and Sprint own those jobs. **Lesen** lives in the Bibliothek. Spoken steps only appear where speaking is recall or shadowing: Hör hin repeats what was heard with the spelling hidden, Satzbau is said without the tiles, and Aus dem Kopf is answered aloud first (typing is the fallback).
 
-**One memory.** An unsupported answer from memory — in Üben, Situationen, Sprint or Aus dem Kopf — writes to the same FSRS schedule (introduced, due cards; once per card per round; `ActivityRecall`). Helped, revealed, tapped or shadowed attempts count as practice and spoken volume, never as a grade.
+**One memory.** An unsupported answer from memory — in Üben, Situationen, Sprint, Gespräch or Aus dem Kopf — writes to the same FSRS schedule (introduced, due cards; once per card per round; `ActivityRecall`). Helped, revealed, tapped or shadowed attempts count as practice and spoken volume, never as a grade.
 
 **One success signal.** Fortschritt leads with Ausdrücke *aus dem Kopf gesprochen* this week and Ausdrücke that *sitzen* (stability ≥ 21 days); the day count is a quiet fact, never a countdown.
 

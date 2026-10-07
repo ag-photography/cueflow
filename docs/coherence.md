@@ -91,7 +91,8 @@ radii in feature code.
 | Activity | Lives at | Name |
 |---|---|---|
 | Composed Runde | Heute → Weiterlernen | Weiterlernen |
-| Sprint, Gespräch, Hörstudio, Spiele, Situationen, Lesen | Heute → Frei üben | one name each |
+| Sprint, Gespräch, Hörstudio, Spiele-Mix, Paare finden, Wisch & triff, Situationen | Heute → Frei üben | one name each |
+| Lesen | Bibliothek | Lesen |
 | Themen & content | Bibliothek | — |
 | Settings | toolbar gear | Einstellungen |
 
@@ -108,10 +109,13 @@ steps, spoken recall → FSRS (Sprint, Aus dem Kopf), one streak definition, hea
 progress, Hook-Model copy, Sprint best per language, primary-button families, Arcade
 quit, stacked modals, dead Heute views and mode picker, glossary renames, Arcade/Episode
 language branches, README/ROADMAP drift.
+Fixed 2026-10-07: Gespräch credits known Ausdrücke used in free answers; Hör hin,
+Satzbau and Aus dem Kopf are Spiele-Mix steps only; Lesen moved to the Bibliothek
+with a completion; Fortschritt shows headline, speaking and topics with the rest
+under "Alle Details"; `.sessionChrome` + `MicButton` for Arcade, Hörstudio, Lesen,
+Gespräch; no Russian fallbacks left.
 
-- No `SessionShell` yet — each activity still builds its own header and feedback — *Grammar*
-- Gespräch turns don't write to FSRS (no item mapping yet) — *Memory*
-- Overlapping families not merged: Hör hin ≈ Hörstudio, Aus dem Kopf ≈ Sprint/Üben, Satzbau ≈ Üben tiles — *Subtraction*
-- Lesen not yet folded into Situationen or moved to the Bibliothek — *Entry points*
-- Fortschritt still stacks ~10 diagnostic sections below the headline — *Success signal*
-- Ratchet baselines (raw colours 61, raw radii 26, `?? "ru-RU"` fallbacks 16) — lower them, never raise — *Visual / Language-agnostic*
+- Üben, Situationen and Sprint keep their own headers (Üben/Situationen already confirm and save on quit); move them onto `.sessionChrome` when next touched — *Grammar*
+- Gespräch's chat composer uses a compact round mic next to the text field instead of `MicButton` (deliberate for the chat layout) — *Grammar*
+- No shared `FeedbackBanner` yet: correct/close/not-yet copy is unified, the views are not — *Grammar*
+- Ratchet baselines (raw colours 61 — mostly story illustrations, raw radii 26, `.borderedProminent` 4) — lower them, never raise — *Visual*

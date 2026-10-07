@@ -20,6 +20,7 @@ struct ReadingView: View {
     @State private var beginner = false
     @State private var activityID = UUID()
     @State private var activityError: String?
+    @State private var finished = false
 
     private let tts = TTSService.shared
 
@@ -46,14 +47,7 @@ struct ReadingView: View {
                     content
                 }
             }
-            .background(DS.pageBackground.ignoresSafeArea())
-            .navigationTitle("Lesen")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Schließen") { dismiss() }
-                }
-            }
+            .sessionChrome("Lesen")
         }
         .task(id: languageCode) { await load() }
         .onDisappear { tts.stop() }
@@ -67,6 +61,25 @@ struct ReadingView: View {
                 header
                 ForEach(passages) { passage in
                     passageCard(passage)
+                }
+                // Same ending as every other activity.
+                if finished {
+                    CompletionCelebration(title: "Gelesen!",
+                        detail: "\(passages.count) Szenen mit vertrauten Wörtern.", symbol: "book.fill")
+                    Button("Fertig") { dismiss() }.buttonStyle(.dsPrimary)
+                        .accessibilityIdentifier("reading-finish")
+                } else {
+                    Button("Fertig gelesen") {
+                        do {
+                            try LearningActivityRecorder.record("reading_completed", language: languageCode,
+                                session: activityID, support: "reading", context: context)
+                        } catch { context.rollback() }
+                        CompletionFeedbackService.shared.playCompletion()
+                        finished = true
+                    }
+                    .buttonStyle(.dsPrimary)
+                    .padding(.top, DS.space.md)
+                    .accessibilityIdentifier("reading-done")
                 }
             }
             .padding(.horizontal, DS.space.md)

@@ -846,7 +846,7 @@ struct PracticeView: View {
         }
         if !speechMuted {
             tts.speak(card.phrase?.targetText ?? "",
-                      language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1)
+                      language: card.phrase.ttsLocaleOrDevice, times: 1)
         }
 
         // Brief feedback dwell — longer when wrong so the correct answer registers.
@@ -1008,7 +1008,7 @@ struct PracticeView: View {
         if presentAsChoice(card) { return "Wähle die passende Formulierung." }
         if presentAsTiles(card) { return "Baue die passende Formulierung." }
         if mode == .clozeDeToRu { return "Ergänze die Formulierung." }
-        return "Wie sagst du das auf \(card.phrase?.language?.germanLabel ?? "Russisch")?"
+        return card.phrase?.language.map { "Wie sagst du das auf \($0.germanLabel)?" } ?? "Wie sagst du das?"
     }
 
     @ViewBuilder
@@ -1104,7 +1104,7 @@ struct PracticeView: View {
                 Button {
                     tts.speak(
                         cloze.sentence,
-                        language: card.phrase?.language?.ttsLocale ?? "ru-RU",
+                        language: card.phrase.ttsLocaleOrDevice,
                         times: 1
                     )
                 } label: {
@@ -1137,7 +1137,7 @@ struct PracticeView: View {
         .background(DS.gradePerfect.opacity(0.10))
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
         .onAppear {
-            if !speechMuted { tts.speak(cloze.sentence, language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1) }
+            if !speechMuted { tts.speak(cloze.sentence, language: card.phrase.ttsLocaleOrDevice, times: 1) }
         }
     }
 
@@ -1152,7 +1152,7 @@ struct PracticeView: View {
                     .tracking(0.5)
                 Spacer()
                 Button {
-                    tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2)
+                    tts.speak(card.phrase?.targetText ?? "", language: card.phrase.ttsLocaleOrDevice, times: 2)
                 } label: {
                     Image(systemName: "speaker.wave.2.fill")
                         .font(.system(size: 20))
@@ -1181,7 +1181,7 @@ struct PracticeView: View {
         .padding(DS.space.md)
         .background(tint.opacity(0.10))
         .clipShape(RoundedRectangle(cornerRadius: DS.radius.md))
-        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: discovery ? 1 : 2) } }
+        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase.ttsLocaleOrDevice, times: discovery ? 1 : 2) } }
     }
 
     @ViewBuilder
@@ -1406,7 +1406,7 @@ struct PracticeView: View {
             .padding(.vertical, DS.space.sm)
             .background(DS.surface0)
         }
-        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 1) } }
+        .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase.ttsLocaleOrDevice, times: 1) } }
     }
 
     private func spokenRecallCard(card: StudyCard, userAnswer: String) -> some View {
@@ -1435,7 +1435,7 @@ struct PracticeView: View {
             Button {
                 tts.speak(
                     card.phrase?.targetText ?? "",
-                    language: card.phrase?.language?.ttsLocale ?? "ru-RU",
+                    language: card.phrase.ttsLocaleOrDevice,
                     rate: 0.62
                 )
             } label: {
@@ -1474,7 +1474,7 @@ struct PracticeView: View {
             }
             if !dynamicTypeSize.isAccessibilitySize { Spacer() }
             Button {
-                tts.speak(card.phrase?.targetText ?? "", language: card.phrase?.language?.ttsLocale ?? "ru-RU", times: 2)
+                tts.speak(card.phrase?.targetText ?? "", language: card.phrase.ttsLocaleOrDevice, times: 2)
             } label: {
                 Image(systemName: "speaker.wave.2.fill")
                     .font(.system(size: 22))
@@ -1547,7 +1547,7 @@ struct PracticeView: View {
     private func exampleSentenceCard(card: StudyCard) -> some View {
         let phrase = card.phrase
         let sentence = phrase?.exampleSentence ?? ""
-        let locale = phrase?.language?.ttsLocale ?? "ru-RU"
+        let locale = phrase.ttsLocaleOrDevice
         VStack(alignment: .leading, spacing: DS.space.sm) {
             HStack(spacing: 6) {
                 Image(systemName: "text.quote")
@@ -1617,7 +1617,7 @@ struct PracticeView: View {
     private func speakSentenceScreen(card: StudyCard) -> some View {
         let phrase = card.phrase
         let sentence = phrase?.exampleSentence ?? ""
-        let locale = phrase?.language?.ttsLocale ?? "ru-RU"
+        let locale = phrase.ttsLocaleOrDevice
         return VStack(spacing: DS.space.lg) {
             VStack(spacing: 8) {
                 Image(systemName: "mic.fill")
@@ -2197,7 +2197,7 @@ struct PracticeView: View {
                 acceptedAlternatives: alternatives,
                 responseTimeMs: elapsedMs,
                 useJudge: useJudge,
-                targetLanguage: card.phrase?.language?.germanLabel ?? "Russisch"
+                targetLanguage: card.phrase?.language?.germanLabel ?? "der Zielsprache"
             )
             guard !Task.isCancelled,
                   interactionGate.accepts(token),

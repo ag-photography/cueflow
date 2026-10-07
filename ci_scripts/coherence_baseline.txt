@@ -1,8 +1,8 @@
-bordered_prominent 5
+bordered_prominent 4
 glossary_item_synonyms 0
 glossary_jargon 6
 glossary_mission 0
-language_hardcodes 16
+language_hardcodes 0
 private_button_styles 2
 raw_corner_radius 26
 raw_rgb_colors 61

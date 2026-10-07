@@ -21,6 +21,19 @@ enum ActivityRecall {
         return Decision(schedules: !supported && introduced && due && !alreadyScheduled, rating: rating)
     }
 
+    /// Known Ausdrücke the learner actually used in a free answer (Gespräch):
+    /// whole-word, normalised containment of the target or an alternative.
+    static func itemsUsed<ID: Hashable>(in text: String, candidates: [(id: ID, answers: [String])]) -> [ID] {
+        let spoken = " " + FuzzyMatcher.normalize(text) + " "
+        guard spoken.count > 2 else { return [] }
+        return candidates.filter { candidate in
+            candidate.answers.contains { answer in
+                let target = FuzzyMatcher.normalize(answer)
+                return target.count >= 2 && spoken.contains(" " + target + " ")
+            }
+        }.map(\.id)
+    }
+
     /// Records one attempt and returns whether it moved the schedule.
     @MainActor @discardableResult
     static func record(card: StudyCard, kind: String, sessionID: UUID, answer: String,

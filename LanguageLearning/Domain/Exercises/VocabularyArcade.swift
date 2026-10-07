@@ -5,6 +5,10 @@ import Foundation
 enum ArcadeMode: String, Identifiable, CaseIterable {
     case mix, snap, sound, swipe, builder, recall
     var id: String { rawValue }
+    /// Games with their own entry in Frei üben. Hör hin, Satzbau and Aus dem
+    /// Kopf do jobs Hörstudio, Üben and Sprint already own, so they appear only
+    /// as steps inside the Spiele-Mix (docs/coherence.md → Subtraction).
+    static let standalone: [ArcadeMode] = [.mix, .snap, .swipe]
     var symbol: String {
         switch self {
         case .mix, .snap: return "square.grid.2x2.fill"

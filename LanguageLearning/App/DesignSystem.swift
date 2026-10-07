@@ -166,9 +166,70 @@ struct PracticeStage<Content: View>: View {
     }
 }
 
+/// The shared session frame (docs/coherence.md → Interaction grammar): title,
+/// page background and one way to leave. When progress would be lost the
+/// learner is asked "Runde beenden?" first; `onQuit` runs before dismissal so
+/// the activity can save what it has.
+struct SessionChrome: ViewModifier {
+    let title: String
+    var confirmQuit: Bool = false
+    var closeIdentifier: String = "session-close"
+    var onQuit: () -> Void = {}
+    @Environment(\.dismiss) private var dismiss
+    @State private var confirming = false
+
+    func body(content: Content) -> some View {
+        content
+            .background(DS.pageBackground.ignoresSafeArea())
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Schließen") {
+                        if confirmQuit { confirming = true } else { onQuit(); dismiss() }
+                    }
+                    .accessibilityIdentifier(closeIdentifier)
+                }
+            }
+            .confirmationDialog("Runde beenden?", isPresented: $confirming, titleVisibility: .visible) {
+                Button("Runde beenden", role: .destructive) { onQuit(); dismiss() }
+                Button("Weitermachen", role: .cancel) {}
+            } message: {
+                Text("Was du aus dem Kopf gesagt hast, ist schon gespeichert.")
+            }
+    }
+}
+
+extension View {
+    func sessionChrome(_ title: String, confirmQuit: Bool = false, closeIdentifier: String = "session-close",
+                       onQuit: @escaping () -> Void = {}) -> some View {
+        modifier(SessionChrome(title: title, confirmQuit: confirmQuit, closeIdentifier: closeIdentifier, onQuit: onQuit))
+    }
+}
+
+/// The one microphone control: the same look, wording and stop affordance in
+/// every activity that listens.
+struct MicButton: View {
+    let isRecording: Bool
+    var title: String = "Sprechen"
+    var identifier: String = "mic-button"
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(isRecording ? "Ich höre zu … Stopp" : title,
+                  systemImage: isRecording ? "stop.circle.fill" : "mic.fill")
+        }
+        .buttonStyle(DSPrimaryButtonStyle(fill: isRecording ? DS.gradeWrong : DS.accent))
+        .accessibilityIdentifier(identifier)
+    }
+}
+
 /// The one primary action style (docs/coherence.md → Visual language): accent
 /// capsule, full width. Mint is for celebration content, never for actions.
 struct DSPrimaryButtonStyle: ButtonStyle {
+    /// Accent for every action; the mic swaps to the stop colour while recording.
+    var fill: Color = DS.accent
     @Environment(\.isEnabled) private var isEnabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
@@ -176,8 +237,8 @@ struct DSPrimaryButtonStyle: ButtonStyle {
             .font(.headline.weight(.bold))
             .foregroundStyle(isEnabled ? Color.white : DS.disabledText)
             .frame(maxWidth: .infinity, minHeight: 54)
-            .background(Capsule().fill(isEnabled ? DS.accent : DS.disabled))
-            .shadow(color: isEnabled ? DS.accent.opacity(0.30) : .clear, radius: 8, x: 0, y: 4)
+            .background(Capsule().fill(isEnabled ? fill : DS.disabled))
+            .shadow(color: isEnabled ? fill.opacity(0.30) : .clear, radius: 8, x: 0, y: 4)
             .opacity(configuration.isPressed ? 0.85 : 1)
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.985 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)

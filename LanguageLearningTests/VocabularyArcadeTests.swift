@@ -100,4 +100,12 @@ struct VocabularyArcadeTests {
         #expect(!ActivityRecall.decision(supported: false, correct: true, introduced: true, due: false, alreadyScheduled: false).schedules)
         #expect(!ActivityRecall.decision(supported: false, correct: true, introduced: true, due: true, alreadyScheduled: true).schedules)
     }
+    @Test func conversationCreditsOnlyWholeKnownExpressionsUsed() {
+        let candidates: [(id: String, answers: [String])] = [
+            ("water", ["вода"]), ("thanks", ["спасибо", "благодарю"]), ("house", ["дом"]), ("much", ["большое спасибо"])]
+        let used = ActivityRecall.itemsUsed(in: "Большое спасибо, вода есть?", candidates: candidates)
+        #expect(Set(used) == ["water", "thanks", "much"])
+        #expect(ActivityRecall.itemsUsed(in: "домой", candidates: candidates).isEmpty)
+        #expect(ActivityRecall.itemsUsed(in: "", candidates: candidates).isEmpty)
+    }
 }

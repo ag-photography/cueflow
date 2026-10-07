@@ -46,7 +46,7 @@ struct FlipCardView: View {
                     if willReveal {
                         TTSService.shared.speak(
                             card.phrase?.targetText ?? "",
-                            language: card.phrase?.language?.ttsLocale ?? "ru-RU",
+                            language: card.phrase.ttsLocaleOrDevice,
                             times: 2
                         )
                     }

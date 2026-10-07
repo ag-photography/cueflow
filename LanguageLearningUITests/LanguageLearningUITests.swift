@@ -190,8 +190,7 @@ final class LanguageLearningUITests: XCTestCase {
     func testBuilderAndRecallCanBeChosenAndFinishedWithHelp() {
         for game in ["builder", "recall", "swipe"] {
             let app = launch()
-            openOtherPractice(in: app)
-            tapArcade("arcade-\(game)-start", in: app)
+            openArcade(game, in: app)
             let count = game == "swipe" ? 8 : 4
             for _ in 0..<count {
                 tapArcade(game == "swipe" ? "arcade-swipe-0" : "arcade-reveal", in: app)
@@ -206,6 +205,13 @@ final class LanguageLearningUITests: XCTestCase {
         }
     }
 
+    /// Hör hin, Satzbau and Aus dem Kopf are mix steps without their own Heute
+    /// entry; the deep link still opens each one on its own for focused tests.
+    private func openArcade(_ game: String, in app: XCUIApplication) {
+        XCTAssertTrue(app.buttons["today-primary-start"].waitForExistence(timeout: 15))
+        app.open(URL(string: "cueflow://arcade/\(game)")!)
+    }
+
     private func tapArcade(_ identifier: String, in app: XCUIApplication) {
         let element = app.buttons[identifier]
         for _ in 0..<8 where !element.isHittable { app.swipeUp() }
@@ -215,11 +221,7 @@ final class LanguageLearningUITests: XCTestCase {
 
     func testSoundHuntSupportsArabicLargeTextAndRevealedAnswers() {
         let app = launch(language: "ar", contentSize: "UICTContentSizeCategoryAccessibilityXXXL", appearance: "Dark")
-        openOtherPractice(in: app)
-        let entry = app.buttons["arcade-sound-start"]
-        XCTAssertTrue(entry.waitForExistence(timeout: 15))
-        for _ in 0..<10 where !entry.isHittable { app.swipeUp() }
-        entry.tap()
+        openArcade("sound", in: app)
         XCTAssertTrue(app.buttons["arcade-listen"].waitForExistence(timeout: 8))
         for _ in 0..<8 {
             let reveal = app.buttons["Antwort zeigen"]
@@ -500,6 +502,10 @@ final class LanguageLearningUITests: XCTestCase {
         let app = launch()
         XCTAssertTrue(app.tabBars.buttons["Fortschritt"].waitForExistence(timeout: 8))
         app.tabBars.buttons["Fortschritt"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["progress-headline"].waitForExistence(timeout: 5))
+        let details = app.buttons["progress-details"]
+        for _ in 0..<5 where !details.isHittable { app.swipeUp() }
+        details.tap()
 
         let recommendation = app.buttons["progress-recommended-practice"]
         XCTAssertTrue(recommendation.waitForExistence(timeout: 5))
@@ -564,8 +570,11 @@ final class LanguageLearningUITests: XCTestCase {
     /// is the empty state — which is exactly the branch worth pinning.
     func testReadingPassOpensAndExplainsItselfWhenNothingIsStabilised() {
         let app = launch()
-        let entry = activityTile("reading-start", in: app)
-        XCTAssertTrue(entry.waitForExistence(timeout: 4))
+        XCTAssertTrue(app.tabBars.buttons["Bibliothek"].waitForExistence(timeout: 15))
+        app.tabBars.buttons["Bibliothek"].tap()
+        let entry = app.buttons["reading-start"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 8))
+        for _ in 0..<6 where !entry.isHittable { app.swipeUp() }
         entry.tap()
         XCTAssertTrue(app.navigationBars["Lesen"].waitForExistence(timeout: 4))
         XCTAssertTrue(

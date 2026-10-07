@@ -84,12 +84,8 @@ struct ListeningLabView: View {
             .frame(maxWidth: 680)
             .frame(maxWidth: .infinity)
             .background(DS.surface0.ignoresSafeArea())
-            .navigationTitle("Hörstudio")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Schließen") { dismiss() }
-                }
+            .sessionChrome("Hörstudio", confirmQuit: completed > 0 && !finished) {
+                recordActivity("listening_ended", support: "audio")
             }
             .onAppear {
                 speech.setLocale(pack.speechLocale)
@@ -287,12 +283,8 @@ struct ListeningLabView: View {
                     Label("Langsam", systemImage: "tortoise.fill")
                 }
                 .buttonStyle(.bordered)
-                Button { toggleShadowing() } label: {
-                    Label(speech.isRecording ? "Stoppen" : "Nachsprechen", systemImage: speech.isRecording ? "stop.fill" : "mic.fill")
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(speech.isRecording ? DS.gradeWrong : DS.accent)
             }
+            MicButton(isRecording: speech.isRecording, title: "Nachsprechen", identifier: "listening-shadow") { toggleShadowing() }
             if hasShadowed {
                 VStack(spacing: 4) {
                     Label("Nachgesprochen", systemImage: "checkmark.circle.fill")

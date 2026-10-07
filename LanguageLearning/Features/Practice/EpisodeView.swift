@@ -178,11 +178,9 @@ struct EpisodeView: View {
                         .environment(\.layoutDirection, pack.isRTL ? .rightToLeft : .leftToRight)
                         .accessibilityIdentifier("episode-answer")
                     if !quiet {
-                        Button {
+                        MicButton(isRecording: speech.isRecording, title: "Antwort sprechen", identifier: "episode-speak") {
                             if speech.isRecording { speech.stop() } else { startRecording() }
-                        } label: {
-                            Label(speech.isRecording ? "Aufnahme stoppen" : "Antwort sprechen", systemImage: speech.isRecording ? "stop.fill" : "mic.fill")
-                        }.buttonStyle(.bordered)
+                        }
                         if let message = speech.lastError { Text(message).font(.footnote).foregroundStyle(DS.textSecondary) }
                     }
                     Button("Prüfen") { submit(step) }

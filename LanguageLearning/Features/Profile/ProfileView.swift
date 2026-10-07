@@ -32,21 +32,45 @@ struct ProfileView: View {
                 if dashboard != nil {
                     ScrollView {
                         VStack(spacing: DS.space.lg) {
+                            // One honest number first, then speaking and topics.
+                            // Everything else is a diagnostic, one tap down.
                             headline
-                            if let data = try? settings.first?.readExperience() {
-                                StoryPassportLink(passport: .init(language: activeLanguageCode, experience: data)) { showingStories = true }
-                            }
-                            retentionEvidenceSection
                             speakingSection
-                            capabilitySection
-                            if !learningPatterns.isEmpty || leechCount > 0 { learningPatternSection }
-                            miniStatsRow
                             topicProgress
-                            weeklyChart
-                            if languages.count > 1 {
-                                perLanguage
+                            NavigationLink {
+                                ScrollView {
+                                    VStack(spacing: DS.space.lg) {
+                                        if let data = try? settings.first?.readExperience() {
+                                            StoryPassportLink(passport: .init(language: activeLanguageCode, experience: data)) { showingStories = true }
+                                        }
+                                        retentionEvidenceSection
+                                        capabilitySection
+                                        if !learningPatterns.isEmpty || leechCount > 0 { learningPatternSection }
+                                        miniStatsRow
+                                        weeklyChart
+                                        if languages.count > 1 { perLanguage }
+                                        learningProgressSection
+                                    }
+                                    .padding(.horizontal, DS.space.md)
+                                    .padding(.vertical, DS.space.sm)
+                                    .frame(maxWidth: DS.mainContentWidth)
+                                    .frame(maxWidth: .infinity)
+                                }
+                                .background(DS.pageBackground.ignoresSafeArea())
+                                .navigationTitle("Details")
+                                .navigationBarTitleDisplayMode(.inline)
+                            } label: {
+                                HStack {
+                                    Label("Alle Details", systemImage: "list.bullet.rectangle")
+                                        .font(.headline).foregroundStyle(DS.textPrimary)
+                                    Spacer()
+                                    Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(DS.textTertiary)
+                                }
+                                .frame(minHeight: 44).padding(.horizontal, DS.space.md)
+                                .background(DS.surface1, in: RoundedRectangle(cornerRadius: DS.radius.md))
                             }
-                            learningProgressSection
+                            .buttonStyle(.plain)
+                            .accessibilityIdentifier("progress-details")
                         }
                         .padding(.horizontal, DS.space.md)
                         .padding(.top, DS.space.sm)
