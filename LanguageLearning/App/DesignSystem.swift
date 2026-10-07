@@ -207,6 +207,85 @@ extension View {
     }
 }
 
+/// The one answer-feedback header: icon in a tinted circle, a short title and
+/// an optional line of detail. Correct, close, not-yet and shown each have one
+/// icon and one grade colour app-wide.
+struct FeedbackBanner: View {
+    enum Outcome { case correct, close, notYet, shown }
+    let icon: String
+    let color: Color
+    let title: String
+    var detail: String? = nil
+
+    init(_ outcome: Outcome, title: String, detail: String? = nil) {
+        switch outcome {
+        case .correct: icon = "checkmark.circle.fill"; color = DS.gradePerfect
+        case .close: icon = "circle.lefthalf.filled"; color = DS.gradeMinor
+        case .notYet: icon = "arrow.uturn.backward.circle.fill"; color = DS.gradeWrong
+        case .shown: icon = "lightbulb.fill"; color = DS.accentText
+        }
+        self.title = title; self.detail = detail
+    }
+
+    /// For grades with their own nuance (e.g. Üben's "hesitant").
+    init(icon: String, color: Color, title: String, detail: String? = nil) {
+        self.icon = icon; self.color = color; self.title = title; self.detail = detail
+    }
+
+    var body: some View {
+        HStack(spacing: DS.space.md) {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .semibold))
+                .foregroundStyle(color)
+                .frame(width: 44, height: 44)
+                .background(color.opacity(0.18))
+                .clipShape(Circle())
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title).font(.title3.bold()).foregroundStyle(DS.textPrimary)
+                if let detail { Text(detail).font(.caption).foregroundStyle(DS.textSecondary) }
+            }
+            Spacer(minLength: 0)
+        }
+    }
+}
+
+/// The one typed-answer field. Return is the action ("Los" checks the answer),
+/// so no "hide keyboard" control is needed; the field reads right-to-left for
+/// RTL languages and highlights while focused.
+struct AnswerField: View {
+    let placeholder: String
+    @Binding var text: String
+    var focus: FocusState<Bool>.Binding
+    var isRTL = false
+    var disabled = false
+    var identifier = "answer-field"
+    let onSubmit: () -> Void
+
+    var body: some View {
+        TextField(placeholder, text: $text)
+            .font(.title3)
+            .textFieldStyle(.plain)
+            .multilineTextAlignment(isRTL ? .trailing : .leading)
+            .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
+            .padding(.horizontal, DS.space.lg)
+            .padding(.vertical, 18)
+            .background(DS.surface1)
+            .clipShape(Capsule())
+            .overlay(Capsule().stroke(focus.wrappedValue ? DS.accent : DS.textTertiary.opacity(0.25), lineWidth: 2))
+            .autocorrectionDisabled()
+            .textInputAutocapitalization(.never)
+            .submitLabel(.go)
+            .focused(focus)
+            .disabled(disabled)
+            .onSubmit {
+                guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+                onSubmit()
+            }
+            .accessibilityIdentifier(identifier)
+    }
+}
+
 /// The one microphone control: the same look, wording and stop affordance in
 /// every activity that listens.
 struct MicButton: View {

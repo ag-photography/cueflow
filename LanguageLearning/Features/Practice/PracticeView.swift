@@ -1213,23 +1213,9 @@ struct PracticeView: View {
         // lives in the keyboard accessory bar so it can't hide behind the
         // keyboard (it has nowhere to go in the non-scrolling prompt layout).
         VStack(spacing: DS.space.sm) {
-            TextField(activeLanguage?.inputPlaceholder ?? "Antwort tippen…", text: $input)
-                .font(.title3)
-                .textFieldStyle(.plain)
-                .multilineTextAlignment(activeLanguage?.isRTL == true ? .trailing : .leading)
-                .padding(.horizontal, DS.space.lg)
-                .padding(.vertical, 18)
-                .background(DS.surface1)
-                .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .stroke(inputFocused ? DS.accent : Color.black.opacity(0.08), lineWidth: 2)
-                )
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
-                .submitLabel(.go)
-                .focused($inputFocused)
-                .onSubmit { submit(revealed: revealed) }
+            AnswerField(placeholder: activeLanguage?.inputPlaceholder ?? "Antwort tippen…", text: $input,
+                        focus: $inputFocused, isRTL: activeLanguage?.isRTL == true,
+                        identifier: "practice-answer") { submit(revealed: revealed) }
                 .toolbar {
                     if !revealed {
                         ToolbarItemGroup(placement: .keyboard) {
@@ -1381,17 +1367,19 @@ struct PracticeView: View {
             VStack(spacing: DS.space.md) {
                 revealHero(card: card, result: result)
                 revealAnswerCard(card: card, result: result)
+                // Pronunciation belongs to the answer it spells out.
+                if shouldShowTransliteration, let translit = card.phrase?.transliteration {
+                    Text(translit)
+                        .font(.footnote)
+                        .foregroundStyle(DS.textTertiary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.top, -DS.space.sm)
+                }
                 revealActions(card: card, result: result, userAnswer: userAnswer, responseTimeMs: responseTimeMs)
                 if lastSubmissionWasSpeech, !userAnswer.isEmpty {
                     DisclosureGroup("Hinweise zur Spracherkennung") {
                         spokenRecallCard(card: card, userAnswer: userAnswer)
                     }.tint(DS.accentText)
-                }
-                if shouldShowTransliteration, let translit = card.phrase?.transliteration {
-                    Text(translit)
-                        .font(.footnote)
-                        .foregroundStyle(DS.textTertiary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 detailsDisclosure(card: card, result: result)
             }
@@ -1404,7 +1392,6 @@ struct PracticeView: View {
             }
             .accessibilityIdentifier("practice-continue")
             .padding(.vertical, DS.space.sm)
-            .background(DS.surface0)
         }
         .onAppear { if !speechMuted { tts.speak(card.phrase?.targetText ?? "", language: card.phrase.ttsLocaleOrDevice, times: 1) } }
     }
@@ -1458,21 +1445,8 @@ struct PracticeView: View {
             ? AnyLayout(VStackLayout(alignment: .leading, spacing: DS.space.sm))
             : AnyLayout(HStackLayout(spacing: DS.space.md))
         return layout {
-            Image(systemName: gradeIcon(for: result.autoGrade))
-                .font(.system(size: 22, weight: .semibold))
-                .foregroundStyle(color)
-                .frame(width: 44, height: 44)
-                .background(color.opacity(0.18))
-                .clipShape(Circle())
-            VStack(alignment: .leading, spacing: 2) {
-                Text(result.autoGrade.label)
-                    .font(.title3.bold())
-                    .foregroundStyle(DS.textPrimary)
-                Text(revealSubtitle(for: result.autoGrade))
-                    .font(.caption)
-                    .foregroundStyle(DS.textSecondary)
-            }
-            if !dynamicTypeSize.isAccessibilitySize { Spacer() }
+            FeedbackBanner(icon: gradeIcon(for: result.autoGrade), color: color,
+                           title: result.autoGrade.label, detail: revealSubtitle(for: result.autoGrade))
             Button {
                 tts.speak(card.phrase?.targetText ?? "", language: card.phrase.ttsLocaleOrDevice, times: 2)
             } label: {
@@ -1943,7 +1917,7 @@ struct PracticeView: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(DS.gradePerfect.opacity(0.10))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: DS.radius.sm))
         .transition(.opacity.combined(with: .move(edge: .top)))
     }
 

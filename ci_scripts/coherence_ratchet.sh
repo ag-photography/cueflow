@@ -9,12 +9,14 @@ cd "$(dirname "$0")/.."
 SRC=LanguageLearning
 BASELINE=ci_scripts/coherence_baseline.txt
 
-count() { { grep -rEo --include="*.swift" "$1" "$SRC" || true; } | wc -l | tr -d " " }
+count() { { grep -rEo --include="*.swift" "$1" "${2:-$SRC}" || true; } | wc -l | tr -d " " }
+# Tokens are defined in App/ (DesignSystem, story illustrations); feature code must use them.
+FEATURES=$SRC/Features
 
 typeset -A now
 # Visual language: tokens, not literals; one primary button style.
-now[raw_corner_radius]=$(count 'cornerRadius: [0-9]+')
-now[raw_rgb_colors]=$(count 'Color\(red:')
+now[raw_corner_radius]=$(count 'cornerRadius: [0-9]+' "$FEATURES")
+now[raw_rgb_colors]=$(count 'Color\(red:' "$FEATURES")
 now[private_button_styles]=$(count 'struct [A-Za-z]+: ButtonStyle')
 now[bordered_prominent]=$(count '\.borderedProminent')
 # Glossary: banned user-facing terms inside string literals.

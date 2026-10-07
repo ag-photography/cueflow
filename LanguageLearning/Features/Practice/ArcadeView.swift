@@ -138,12 +138,6 @@ struct ArcadeView: View {
                         step: mode.rawValue, support: "arcadePractice", context: context)
                 }
             }
-            .toolbar {
-                ToolbarItemGroup(placement: .keyboard) {
-                    Spacer()
-                    Button("Tastatur schließen") { answerFocused = false }
-                }
-            }
         }
         .task { if !loaded { load() } }
         .modifier(ExposureBoundary(mode: "arcade", sessionID: session))
@@ -221,8 +215,8 @@ struct ArcadeView: View {
                     .foregroundStyle(done ? DS.textSecondary : DS.textPrimary)
                     .fixedSize(horizontal: false, vertical: true)
             }.frame(maxWidth: .infinity, minHeight: 70).padding(12)
-                .background(color.opacity(active ? 0.25 : done ? 0.05 : 0.1), in: RoundedRectangle(cornerRadius: 18))
-                .overlay { RoundedRectangle(cornerRadius: 18).strokeBorder(color.opacity(active ? 1 : 0.3), lineWidth: active ? 3 : 1) }
+                .background(color.opacity(active ? 0.25 : done ? 0.05 : 0.1), in: RoundedRectangle(cornerRadius: DS.radius.lg))
+                .overlay { RoundedRectangle(cornerRadius: DS.radius.lg).strokeBorder(color.opacity(active ? 1 : 0.3), lineWidth: active ? 3 : 1) }
                 .scaleEffect(done && !reduceMotion ? 0.94 : 1)
                 .animation(reduceMotion ? nil : .spring(duration: 0.25), value: done)
         }.buttonStyle(PracticePressStyle()).disabled(done)
@@ -242,7 +236,7 @@ struct ArcadeView: View {
                         Text(heard ? "Nochmal hören" : "Wort anhören").font(.headline)
                     }.frame(maxWidth: .infinity).padding(28)
                         .foregroundStyle(DS.accentText)
-                        .background(DS.accentText.opacity(0.14), in: RoundedRectangle(cornerRadius: 24))
+                        .background(DS.accentText.opacity(0.14), in: RoundedRectangle(cornerRadius: DS.radius.lg))
                 }.buttonStyle(PracticePressStyle()).disabled(!canHear).accessibilityIdentifier("arcade-listen")
                 if !canHear { Text("Für diese Sprache ist keine Systemstimme verfügbar. Du kannst das Wort stattdessen ansehen.").font(.caption).foregroundStyle(DS.textSecondary) }
                 if responseID == nil {
@@ -263,7 +257,7 @@ struct ArcadeView: View {
                             if responseID != nil && option.id == word.id { Image(systemName: "checkmark.circle.fill") }
                         }.font(.headline).foregroundStyle(DS.textPrimary)
                             .padding(18).frame(maxWidth: .infinity, minHeight: 56)
-                            .background(responseID != nil && option.id == word.id ? DS.gradePerfect.opacity(0.18) : DS.surface1, in: RoundedRectangle(cornerRadius: 16))
+                            .background(responseID != nil && option.id == word.id ? DS.gradePerfect.opacity(0.18) : DS.surface1, in: RoundedRectangle(cornerRadius: DS.radius.lg))
                     }.buttonStyle(PracticePressStyle()).disabled(!heard || responseID != nil)
                         .accessibilityIdentifier("arcade-choice-\(option.id)")
                 }
@@ -287,7 +281,7 @@ struct ArcadeView: View {
                     .font(LearningTypography.display(.largeTitle, languageCode: language))
                     .multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, minHeight: 150).padding(20)
-                    .background(DS.accentSoft, in: RoundedRectangle(cornerRadius: 26))
+                    .background(DS.accentSoft, in: RoundedRectangle(cornerRadius: DS.radius.lg))
                     .offset(x: reduceMotion ? 0 : swipeOffset)
                     .rotationEffect(.degrees(reduceMotion ? 0 : Double(swipeOffset / 16)))
                     .gesture(DragGesture(minimumDistance: 20)
@@ -312,7 +306,7 @@ struct ArcadeView: View {
                                 if responseID != nil && choice.id == word.id { Image(systemName: "checkmark.circle.fill") }
                             }.font(.headline).foregroundStyle(DS.textPrimary)
                                 .frame(maxWidth: .infinity, minHeight: 80).padding(12)
-                                .background(responseID != nil && choice.id == word.id ? DS.gradePerfect.opacity(0.18) : DS.surface1, in: RoundedRectangle(cornerRadius: 18))
+                                .background(responseID != nil && choice.id == word.id ? DS.gradePerfect.opacity(0.18) : DS.surface1, in: RoundedRectangle(cornerRadius: DS.radius.lg))
                         }.buttonStyle(PracticePressStyle()).disabled(responseID != nil)
                             .accessibilityLabel("\(index == 0 ? "Links" : "Rechts"): \(choice.source)")
                             .accessibilityIdentifier("arcade-swipe-\(index)")
@@ -341,7 +335,7 @@ struct ArcadeView: View {
                                     Button { selectedTiles.removeAll { $0 == id } } label: {
                                         Text(tile.text).font(.headline).padding(12)
                                             .frame(maxWidth: .infinity, minHeight: 48)
-                                            .background(DS.accentText.opacity(0.25), in: RoundedRectangle(cornerRadius: 12))
+                                            .background(DS.accentText.opacity(0.25), in: RoundedRectangle(cornerRadius: DS.radius.md))
                                     }.buttonStyle(.plain).disabled(checked)
                                         .accessibilityLabel("\(tile.text) entfernen")
                                         .accessibilityIdentifier("arcade-built-\(id)")
@@ -350,8 +344,8 @@ struct ArcadeView: View {
                         }
                     }
                 }.frame(maxWidth: .infinity, minHeight: 90, alignment: .leading).padding(16)
-                    .background(DS.surface1, in: RoundedRectangle(cornerRadius: 20))
-                    .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(DS.accentText, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
+                    .background(DS.surface1, in: RoundedRectangle(cornerRadius: DS.radius.lg))
+                    .overlay { RoundedRectangle(cornerRadius: DS.radius.lg).strokeBorder(DS.accentText, style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
                     .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
                     .dropDestination(for: String.self) { items, _ in
                         guard !checked, let raw = items.first, let id = Int(raw), tokens.contains(where: { $0.id == id }), !selectedTiles.contains(id) else { return false }
@@ -363,7 +357,7 @@ struct ArcadeView: View {
                             Text(tile.text).font(.headline).padding(12)
                                 .frame(maxWidth: .infinity, minHeight: 52)
                                 .foregroundStyle(selectedTiles.contains(tile.id) ? DS.textSecondary : DS.textPrimary)
-                                .background(DS.accentText.opacity(selectedTiles.contains(tile.id) ? 0.04 : 0.16), in: RoundedRectangle(cornerRadius: 14))
+                                .background(DS.accentText.opacity(selectedTiles.contains(tile.id) ? 0.04 : 0.16), in: RoundedRectangle(cornerRadius: DS.radius.md))
                         }.buttonStyle(PracticePressStyle()).disabled(checked || selectedTiles.contains(tile.id))
                             .draggable(String(tile.id))
                             .accessibilityIdentifier("arcade-token-\(tile.id)")
@@ -390,7 +384,7 @@ struct ArcadeView: View {
                 Text("Jetzt aus dem Kopf.").font(.system(.title2, design: .rounded, weight: .bold))
                 Text(word.source).font(.title.bold()).multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity, minHeight: 100).padding(20)
-                    .background(DS.accentSoft, in: RoundedRectangle(cornerRadius: 24))
+                    .background(DS.accentSoft, in: RoundedRectangle(cornerRadius: DS.radius.lg))
                 if speaking && !typeInstead && !checked {
                     Text("Sag es auf \(languageLabel).")
                         .font(.subheadline).foregroundStyle(DS.textSecondary)
@@ -413,17 +407,14 @@ struct ArcadeView: View {
                     .font(.subheadline).foregroundStyle(DS.textSecondary)
                 }
                 if !checked || !typedAnswer.isEmpty {
-                TextField("Deine Antwort", text: $typedAnswer, axis: .vertical)
-                    .font(.title2).lineLimit(2...5).padding(16)
-                    .background(DS.surface1, in: RoundedRectangle(cornerRadius: 16))
-                    .environment(\.layoutDirection, isRTL ? .rightToLeft : .leftToRight)
-                    .autocorrectionDisabled().textInputAutocapitalization(.never)
-                    .focused($answerFocused).disabled(checked)
-                    .accessibilityIdentifier("arcade-recall-input")
+                AnswerField(placeholder: "Deine Antwort", text: $typedAnswer, focus: $answerFocused,
+                            isRTL: isRTL, disabled: checked, identifier: "arcade-recall-input") {
+                    checkProduction(typedAnswer, word: word)
+                }
                 }
                 if checked { answerFeedback(word) }
                 else {
-                    Button("Antwort prüfen") { checkProduction(typedAnswer, word: word) }
+                    Button("Prüfen") { checkProduction(typedAnswer, word: word) }
                         .buttonStyle(.dsPrimary).disabled(typedAnswer.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         .accessibilityIdentifier("arcade-recall-check")
                     Button("Antwort zeigen") { revealAnswer(word) }
@@ -433,8 +424,8 @@ struct ArcadeView: View {
 
     private func answerFeedback(_ word: ArcadeWord) -> some View {
         VStack(spacing: 12) {
-            Label(correctAnswer && !revealed ? "Yes! Getroffen!" : "Antwort", systemImage: correctAnswer && !revealed ? "checkmark.circle.fill" : "lightbulb.fill")
-                .font(.headline).foregroundStyle(DS.accentText)
+            FeedbackBanner(correctAnswer && !revealed ? .correct : revealed ? .shown : .notYet,
+                           title: correctAnswer && !revealed ? "Yes! Getroffen!" : "Antwort")
             if !hidesAnswer(word) {
                 Text(word.target).font(LearningTypography.display(.title2, languageCode: language))
                     .multilineTextAlignment(.center).foregroundStyle(DS.textPrimary)
@@ -452,7 +443,7 @@ struct ArcadeView: View {
             }
             if asksToSpeak(word) || spokenIDs.contains(word.id) { sayIt(word) }
             nextButton(word, identifier: "arcade-answer-next")
-        }.padding(16).background(gameColor.opacity(0.1), in: RoundedRectangle(cornerRadius: 20))
+        }.padding(16).background(gameColor.opacity(0.1), in: RoundedRectangle(cornerRadius: DS.radius.lg))
     }
 
     /// The spoken step: recall or shadowing, then a "Laut gesagt" receipt.
@@ -570,7 +561,7 @@ struct ArcadeView: View {
 
     private func stat(_ value: String, _ label: String) -> some View {
         VStack { Text(value).font(.largeTitle.bold()).foregroundStyle(DS.accentText); Text(label).font(.caption).foregroundStyle(DS.textSecondary) }
-            .frame(maxWidth: .infinity).padding().background(DS.surface1, in: RoundedRectangle(cornerRadius: 18))
+            .frame(maxWidth: .infinity).padding().background(DS.surface1, in: RoundedRectangle(cornerRadius: DS.radius.lg))
     }
 
     private func load() {

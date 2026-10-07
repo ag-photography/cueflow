@@ -26,6 +26,7 @@ struct EpisodeView: View {
     @State private var nextEpisode: LearningEpisode?
     @State private var newLimitWarning: Int?
     @State private var allowExtraIntroductions = false
+    @FocusState private var answerFocused: Bool
 
     private var pack: LanguagePack { LanguagePack.configuration(for: episode.language) ?? .russian }
     private var step: LearningEpisode.Step? {
@@ -68,13 +69,15 @@ struct EpisodeView: View {
             .navigationTitle("Situation üben")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                // A finished Situation ends with its own "Fertig"; "Pause" only
+                // makes sense while the scene can still be resumed.
+                if run?.isOpen ?? true { ToolbarItem(placement: .cancellationAction) {
                     Button("Pause") {
                         stopAudio()
                         if let run, run.isOpen, !save(run, event: "session_paused") { return }
                         dismiss()
                     }.accessibilityIdentifier("episode-close")
-                }
+                } }
             }
         }
         .onChange(of: speech.transcription) { _, text in
@@ -153,8 +156,7 @@ struct EpisodeView: View {
                     .font(.caption.weight(.semibold)).foregroundStyle(DS.accentText)
                 Text(step.prompt).font(.title3.weight(.semibold))
                 if let result {
-                    Label(result.correct ? "Formulierung getroffen" : "Antwort", systemImage: result.correct ? "checkmark.circle.fill" : "lightbulb.fill")
-                        .foregroundStyle(result.correct ? DS.gradePerfect : DS.textSecondary)
+                    FeedbackBanner(result.correct ? .correct : .shown, title: result.correct ? "Formulierung getroffen" : "Antwort")
                     target(step.answer)
                     Text(episode.consequence(for: step, correct: result.correct))
                         .font(.subheadline.weight(.medium))
@@ -172,11 +174,11 @@ struct EpisodeView: View {
                             savePreference(quiet: value)
                         }
                     if run.modelRevealed { target(step.answer) }
-                    TextField("Deine Antwort", text: Binding(get: { input }, set: { input = $0; submittedWithVoice = false }), axis: .vertical)
-                        .textFieldStyle(.roundedBorder).lineLimit(2...5)
-                        .autocorrectionDisabled().textInputAutocapitalization(.never)
-                        .environment(\.layoutDirection, pack.isRTL ? .rightToLeft : .leftToRight)
-                        .accessibilityIdentifier("episode-answer")
+                    AnswerField(placeholder: "Deine Antwort",
+                                text: Binding(get: { input }, set: { input = $0; submittedWithVoice = false }),
+                                focus: $answerFocused, isRTL: pack.isRTL, identifier: "episode-answer") {
+                        if permissionTask == nil { submit(step) }
+                    }
                     if !quiet {
                         MicButton(isRecording: speech.isRecording, title: "Antwort sprechen", identifier: "episode-speak") {
                             if speech.isRecording { speech.stop() } else { startRecording() }
@@ -244,8 +246,8 @@ struct EpisodeView: View {
                         Text("In deiner Sammlung unter Heute → Frei üben → Situationen. Ein kleines Stück Alltag, das du ausprobiert hast.")
                             .font(.subheadline).foregroundStyle(DS.textSecondary)
                     }.padding(DS.space.md)
-                        .background(DS.surface1, in: RoundedRectangle(cornerRadius: 20))
-                        .overlay { RoundedRectangle(cornerRadius: 20).strokeBorder(DS.accent.opacity(0.25), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
+                        .background(DS.surface1, in: RoundedRectangle(cornerRadius: DS.radius.lg))
+                        .overlay { RoundedRectangle(cornerRadius: DS.radius.lg).strokeBorder(DS.accent.opacity(0.25), style: StrokeStyle(lineWidth: 1.5, dash: [5, 4])) }
                         .accessibilityIdentifier("episode-new-postcard")
                 }
                 StoryStampRow(stamp: stamp)

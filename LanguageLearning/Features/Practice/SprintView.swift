@@ -49,6 +49,7 @@ struct SprintView: View {
     @State private var skipGeneration = UUID()
     /// Cards whose FSRS memory this round already moved (the pool cycles).
     @State private var scheduledCards: Set<PersistentIdentifier> = []
+    @State private var confirmingQuit = false
 
     private let duration: TimeInterval = 60
     private let ticker = Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()
@@ -439,7 +440,8 @@ struct SprintView: View {
     // MARK: - Shared chrome
 
     private var closeButton: some View {
-        Button { dismiss() } label: {
+        // Same quit grammar as every session: ask before discarding a running round.
+        Button { if phase == .running && cleared > 0 { confirmingQuit = true } else { dismiss() } } label: {
             Image(systemName: "xmark")
                 .font(.callout.weight(.semibold))
                 .foregroundStyle(DS.textSecondary)
@@ -449,6 +451,12 @@ struct SprintView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Sprint schließen")
+        .confirmationDialog("Runde beenden?", isPresented: $confirmingQuit, titleVisibility: .visible) {
+            Button("Runde beenden", role: .destructive) { endRound(); dismiss() }
+            Button("Weitermachen", role: .cancel) {}
+        } message: {
+            Text("Was du aus dem Kopf gesagt hast, ist schon gespeichert.")
+        }
     }
 
     private func primaryButton(title: String, systemImage: String, action: @escaping () -> Void) -> some View {

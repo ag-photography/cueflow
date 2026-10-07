@@ -51,13 +51,14 @@ that owns header, mic, feedback banner and summary for every activity.
 | Moment | Wording | Component |
 |---|---|---|
 | Start | activity title, ≈ Minuten | shell header |
-| Answer | speak first; "Lieber tippen" fallback | `MicButton` |
+| Answer (spoken) | speak first; "Lieber tippen" fallback | `MicButton` |
+| Answer (typed) | Return key = "Los" checks; no "Tastatur schließen" | `AnswerField` |
 | Help / reveal | "Antwort zeigen" | one help action |
 | Check | "Prüfen" | one check button |
-| Feedback | richtig / fast / noch nicht — one colour + haptic set | `FeedbackBanner` |
+| Feedback | richtig / fast / noch nicht / Antwort — one icon + grade colour each | `FeedbackBanner` |
 | Continue | "Weiter" | `DSPrimaryButton` |
 | Finish | one summary for every activity | `CompletionSummary` |
-| Quit | X; confirm **and save** if progress would be lost | shell header |
+| Quit | Schließen/X; "Runde beenden?" if progress would be lost; Situationen: "Pause" (resumable) | `.sessionChrome` |
 Activities may differ in **tone** (energy, illustration), never in grammar.
 
 ## Success signal
@@ -115,7 +116,11 @@ with a completion; Fortschritt shows headline, speaking and topics with the rest
 under "Alle Details"; `.sessionChrome` + `MicButton` for Arcade, Hörstudio, Lesen,
 Gespräch; no Russian fallbacks left.
 
-- Üben, Situationen and Sprint keep their own headers (Üben/Situationen already confirm and save on quit); move them onto `.sessionChrome` when next touched — *Grammar*
-- Gespräch's chat composer uses a compact round mic next to the text field instead of `MicButton` (deliberate for the chat layout) — *Grammar*
-- No shared `FeedbackBanner` yet: correct/close/not-yet copy is unified, the views are not — *Grammar*
-- Ratchet baselines (raw colours 61 — mostly story illustrations, raw radii 26, `.borderedProminent` 4) — lower them, never raise — *Visual*
+Fixed 2026-10-07 (later): `AnswerField` (Return checks, no hide-keyboard button),
+`FeedbackBanner` in Üben, Spiele and Situationen, Sprint asks before quitting, raw
+radii replaced by tokens, transliteration under the answer, no band behind "Weiter",
+no "Pause" on a finished Situation.
+
+- Üben and Sprint keep their own visual headers (X + "Runde beenden?": same grammar, different chrome); Situationen uses "Pause" because scenes resume — *Grammar*
+- Gespräch's chat composer keeps a compact round mic and a multi-line field with a send button (Messages pattern) — *Grammar*
+- Ratchet baselines in feature code: raw radii 4 (chart bars), `.borderedProminent` 4, private button styles 2 — lower them, never raise — *Visual*
